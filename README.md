@@ -48,12 +48,21 @@ Ouvrez http://localhost:3000.
 Pour devenir administrateur : passez le `role` d'un profil à `admin` dans la
 table `profiles`.
 
-## Paiements (DexpayAfrica)
+## Paiements (DexPay / DEXCHANGE PAY)
 
-Renseignez `DEXPAY_API_KEY`, `DEXPAY_WEBHOOK_SECRET` et `DEXPAY_BASE_URL`.
-Configurez l'URL de webhook côté Dexpay vers
-`${NEXT_PUBLIC_SITE_URL}/api/payments/webhook`. La signature des webhooks est
-vérifiée en HMAC SHA-256.
+Renseignez `DEXPAY_PUBLIC_KEY` (clé `pk_...`), `DEXPAY_SECRET_KEY` (clé `sk_...`),
+éventuellement `DEXPAY_WEBHOOK_SECRET`, et `DEXPAY_BASE_URL`
+(`https://api.dexpay.africa/api/v1` en prod, `https://api-sandbox.dexpay.africa/api/v1`
+en sandbox).
+
+Pour un événement payant, l'app crée une **checkout session** hébergée
+(`POST /checkout-sessions`, header `x-api-key`) et redirige le client vers la
+`payment_url` retournée (choix Wave / Orange Money / MTN / Moov).
+Configurez l'URL de webhook côté DexPay vers
+`${NEXT_PUBLIC_SITE_URL}/api/payments/webhook` : à réception de l'événement
+`checkout.completed`, les tickets sont générés. La signature des webhooks
+(`x-dexchange-signature`) est vérifiée en HMAC SHA-256.
+Voir https://docs.dexpay.africa.
 
 ## Structure
 

@@ -1,103 +1,122 @@
 /**
- * DexpayAfrica integration (Wave & Orange Money).
+ * DexPay (DEXCHANGE PAY) integration — Wave, Orange Money, MTN, Moov.
  *
- * Docs: https://dexpayafrica.com (configurez vos clés dans `.env`).
- * Cette couche encapsule l'appel de création de paiement et la vérification de
- * signature des webhooks. Les endpoints exacts peuvent varier selon votre compte
- * marchand — ajustez `DEXPAY_BASE_URL` et les champs si nécessaire.
+ * Docs : https://docs.dexpay.africa
+ * Flux retenu : checkout session hébergée.
+ *   1. On crée une "checkout session" (POST /checkout-sessions, header x-api-key
+ *      = clé publique pk_...). DexPay renvoie une `payment_url`.
+ *   2. On redirige le client vers `payment_url` : il choisit son opérateur et paie.
+ *   3. DexPay nous notifie via webhook `checkout.completed` (signé HMAC-SHA256).
+ *
+ * Clés (voir https://docs.dexpay.africa/authentication) :
+ *   - DEXPAY_PUBLIC_KEY  : pk_live_... / pk_test_... (x-api-key, checkout sessions)
+ *   - DEXPAY_SECRET_KEY  : sk_live_... / sk_test_... (opérations sensibles + webhook)
+ *   - DEXPAY_WEBHOOK_SECRET : optionnel ; à défaut on utilise DEXPAY_SECRET_KEY
+ *   - DEXPAY_BASE_URL    : https://api.dexpay.africa/api/v1 (prod) ou sandbox
  */
 
-import type { PaymentProvider } from "@/lib/types";
-
 const DEXPAY_BASE_URL =
-  process.env.DEXPAY_BASE_URL ?? "https://api.dexpayafrica.com";
+  process.env.DEXPAY_BASE_URL ?? "https://api.dexpay.africa/api/v1";
 
-export interface CreatePaymentInput {
+export interface CreateCheckoutInput {
   amount: number;
   currency: string;
-  provider: PaymentProvider; // 'wave' | 'orange_money'
   reference: string; // notre id de paiement interne
-  customerName: string;
+  itemName: string;
+  countryISO?: string;
+  customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
-  description: string;
-  callbackUrl: string; // webhook serveur
-  returnUrl: string; // retour navigateur après paiement
+  webhookUrl: string;
+  successUrl: string;
+  failureUrl: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface CreatePaymentResult {
-  checkoutUrl: string;
+export interface CreateCheckoutResult {
+  paymentUrl: string;
   providerReference: string;
 }
 
 export function isDexpayConfigured(): boolean {
-  return Boolean(process.env.DEXPAY_API_KEY);
+  return Boolean(process.env.DEXPAY_PUBLIC_KEY);
+}
+
+interface CheckoutSessionResponse {
+  id?: string;
+  reference?: string;
+  payment_url?: string;
+  checkout_url?: string;
+  data?: CheckoutSessionResponse;
 }
 
 /**
- * Crée une session de paiement chez DexpayAfrica et renvoie l'URL de checkout
- * vers laquelle rediriger le client (page Wave / Orange Money).
+ * Crée une checkout session DexPay et renvoie l'URL de paiement hébergée vers
+ * laquelle rediriger le client.
  */
-export async function createDexpayPayment(
-  input: CreatePaymentInput
-): Promise<CreatePaymentResult> {
-  const apiKey = process.env.DEXPAY_API_KEY;
-  if (!apiKey) throw new Error("DEXPAY_API_KEY manquant.");
+export async function createDexpayCheckout(
+  input: CreateCheckoutInput
+): Promise<CreateCheckoutResult> {
+  const apiKey = process.env.DEXPAY_PUBLIC_KEY;
+  if (!apiKey) throw new Error("DEXPAY_PUBLIC_KEY manquant.");
 
-  const res = await fetch(`${DEXPAY_BASE_URL}/v1/payments`, {
+  const res = await fetch(`${DEXPAY_BASE_URL}/checkout-sessions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
     },
     body: JSON.stringify({
+      reference: input.reference,
+      item_name: input.itemName,
       amount: input.amount,
       currency: input.currency,
-      payment_method: input.provider,
-      reference: input.reference,
-      description: input.description,
-      customer: {
-        name: input.customerName,
-        email: input.customerEmail,
-        phone: input.customerPhone,
-      },
-      callback_url: input.callbackUrl,
-      return_url: input.returnUrl,
+      countryISO: input.countryISO ?? "SN",
+      webhook_url: input.webhookUrl,
+      success_url: input.successUrl,
+      failure_url: input.failureUrl,
+      ...(input.customerName || input.customerEmail || input.customerPhone
+        ? {
+            customer: {
+              name: input.customerName,
+              email: input.customerEmail,
+              phone: input.customerPhone,
+            },
+          }
+        : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
     }),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Échec création paiement DexpayAfrica: ${res.status} ${text}`);
+    throw new Error(`Échec création session DexPay : ${res.status} ${text}`);
   }
 
-  const data = (await res.json()) as {
-    checkout_url?: string;
-    payment_url?: string;
-    reference?: string;
-    id?: string;
-  };
-
-  const checkoutUrl = data.checkout_url ?? data.payment_url;
-  if (!checkoutUrl) {
-    throw new Error("Réponse DexpayAfrica invalide (URL de checkout manquante).");
+  const json = (await res.json()) as CheckoutSessionResponse;
+  const session = json.data ?? json;
+  const paymentUrl = session.payment_url ?? session.checkout_url;
+  if (!paymentUrl) {
+    throw new Error("Réponse DexPay invalide (payment_url manquante).");
   }
 
   return {
-    checkoutUrl,
-    providerReference: data.reference ?? data.id ?? input.reference,
+    paymentUrl,
+    providerReference: session.id ?? session.reference ?? input.reference,
   };
 }
 
 /**
- * Vérifie la signature d'un webhook DexpayAfrica (HMAC SHA-256 du corps brut).
- * Ajustez l'en-tête / l'algorithme selon la documentation de votre compte.
+ * Vérifie la signature d'un webhook DexPay : HMAC-SHA256 du corps JSON
+ * (`JSON.stringify(payload)`), comparé à l'en-tête `x-dexchange-signature`.
+ * Voir https://docs.dexpay.africa/architecture.
  */
 export async function verifyDexpaySignature(
-  rawBody: string,
+  payload: unknown,
   signature: string | null
 ): Promise<boolean> {
-  const secret = process.env.DEXPAY_WEBHOOK_SECRET;
+  const secret =
+    process.env.DEXPAY_WEBHOOK_SECRET ?? process.env.DEXPAY_SECRET_KEY;
   if (!secret || !signature) return false;
 
   const encoder = new TextEncoder();
@@ -108,7 +127,11 @@ export async function verifyDexpaySignature(
     false,
     ["sign"]
   );
-  const sigBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
+  const sigBuffer = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(JSON.stringify(payload))
+  );
   const expected = Buffer.from(sigBuffer).toString("hex");
   return timingSafeEqual(expected, signature);
 }

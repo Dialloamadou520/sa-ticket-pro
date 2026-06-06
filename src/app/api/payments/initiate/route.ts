@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
-  createDexpayPayment,
+  createDexpayCheckout,
   isDexpayConfigured,
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
@@ -91,24 +91,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Paiement mobile non configuré. Ajoutez DEXPAY_API_KEY dans les variables d'environnement.",
+          "Paiement mobile non configuré. Ajoutez DEXPAY_PUBLIC_KEY dans les variables d'environnement.",
       },
       { status: 503 }
     );
   }
 
   try {
-    const result = await createDexpayPayment({
+    const result = await createDexpayCheckout({
       amount,
       currency: SITE.currency,
-      provider: body.provider,
       reference: payment.id,
+      itemName: `${quantity} ticket(s) — ${event.title}`,
+      countryISO: "SN",
       customerName: body.holderName,
       customerEmail: user.email ?? undefined,
       customerPhone: body.phone,
-      description: `Tickets — ${event.title}`,
-      callbackUrl: `${SITE.url}/api/payments/webhook`,
-      returnUrl: `${SITE.url}/paiement/confirmation?ref=${payment.id}`,
+      webhookUrl: `${SITE.url}/api/payments/webhook`,
+      successUrl: `${SITE.url}/paiement/confirmation?ref=${payment.id}`,
+      failureUrl: `${SITE.url}/evenements/${event.slug}/achat?echec=1`,
+      metadata: { provider: body.provider, event_id: event.id },
     });
 
     await supabase
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
       .update({ provider_reference: result.providerReference })
       .eq("id", payment.id);
 
-    return NextResponse.json({ redirect: result.checkoutUrl });
+    return NextResponse.json({ redirect: result.paymentUrl });
   } catch (e) {
     await supabase.from("payments").update({ status: "failed" }).eq("id", payment.id);
     return NextResponse.json(

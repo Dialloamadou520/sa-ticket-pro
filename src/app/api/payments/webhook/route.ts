@@ -9,21 +9,21 @@ import { verifyDexpaySignature } from "@/lib/payments/dexpay";
  */
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const signature =
-    request.headers.get("x-dexpay-signature") ??
-    request.headers.get("x-signature");
+  const payload = JSON.parse(rawBody) as {
+    event?: string;
+    data?: { reference?: string; status?: string };
+  };
 
-  const valid = await verifyDexpaySignature(rawBody, signature);
+  const signature =
+    request.headers.get("x-dexchange-signature") ??
+    request.headers.get("x-dexpay-signature");
+
+  const valid = await verifyDexpaySignature(payload, signature);
   if (!valid) {
     return NextResponse.json({ error: "Signature invalide." }, { status: 401 });
   }
 
-  const payload = JSON.parse(rawBody) as {
-    reference?: string;
-    status?: string;
-  };
-
-  const paymentId = payload.reference;
+  const paymentId = payload.data?.reference;
   if (!paymentId) {
     return NextResponse.json({ error: "Référence manquante." }, { status: 400 });
   }
@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const success = payload.status === "success" || payload.status === "paid";
+  const success =
+    payload.event === "checkout.completed" ||
+    payload.data?.status === "success" ||
+    payload.data?.status === "paid";
 
   if (!success) {
     await supabase.from("payments").update({ status: "failed" }).eq("id", paymentId);
