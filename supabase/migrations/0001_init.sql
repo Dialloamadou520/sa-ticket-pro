@@ -203,40 +203,50 @@ alter table public.tickets    enable row level security;
 alter table public.scans      enable row level security;
 
 -- Profiles
+drop policy if exists "profils: lecture propre" on public.profiles;
 create policy "profils: lecture propre" on public.profiles
   for select using (auth.uid() = id or public.is_admin());
+drop policy if exists "profils: mise à jour propre" on public.profiles;
 create policy "profils: mise à jour propre" on public.profiles
   for update using (auth.uid() = id or public.is_admin());
 
 -- Organizers
+drop policy if exists "organisateurs: lecture publique" on public.organizers;
 create policy "organisateurs: lecture publique" on public.organizers
   for select using (true);
+drop policy if exists "organisateurs: gestion propre" on public.organizers;
 create policy "organisateurs: gestion propre" on public.organizers
   for all using (auth.uid() = user_id or public.is_admin())
   with check (auth.uid() = user_id or public.is_admin());
 
 -- Categories
+drop policy if exists "catégories: lecture publique" on public.categories;
 create policy "catégories: lecture publique" on public.categories
   for select using (true);
+drop policy if exists "catégories: écriture admin" on public.categories;
 create policy "catégories: écriture admin" on public.categories
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- Events
+drop policy if exists "événements: lecture publiée" on public.events;
 create policy "événements: lecture publiée" on public.events
   for select using (
     status = 'published'
     or public.is_admin()
     or organizer_id in (select id from public.organizers where user_id = auth.uid())
   );
+drop policy if exists "événements: création organisateur" on public.events;
 create policy "événements: création organisateur" on public.events
   for insert with check (
     organizer_id in (select id from public.organizers where user_id = auth.uid())
   );
+drop policy if exists "événements: gestion propriétaire" on public.events;
 create policy "événements: gestion propriétaire" on public.events
   for update using (
     public.is_admin()
     or organizer_id in (select id from public.organizers where user_id = auth.uid())
   );
+drop policy if exists "événements: suppression propriétaire" on public.events;
 create policy "événements: suppression propriétaire" on public.events
   for delete using (
     public.is_admin()
@@ -244,12 +254,15 @@ create policy "événements: suppression propriétaire" on public.events
   );
 
 -- Payments
+drop policy if exists "paiements: lecture propre" on public.payments;
 create policy "paiements: lecture propre" on public.payments
   for select using (auth.uid() = user_id or public.is_admin());
+drop policy if exists "paiements: création propre" on public.payments;
 create policy "paiements: création propre" on public.payments
   for insert with check (auth.uid() = user_id);
 
 -- Tickets
+drop policy if exists "tickets: lecture autorisée" on public.tickets;
 create policy "tickets: lecture autorisée" on public.tickets
   for select using (
     auth.uid() = user_id
@@ -260,8 +273,10 @@ create policy "tickets: lecture autorisée" on public.tickets
       where o.user_id = auth.uid()
     )
   );
+drop policy if exists "tickets: création propre" on public.tickets;
 create policy "tickets: création propre" on public.tickets
   for insert with check (auth.uid() = user_id);
+drop policy if exists "tickets: mise à jour organisateur" on public.tickets;
 create policy "tickets: mise à jour organisateur" on public.tickets
   for update using (
     public.is_admin()
@@ -273,6 +288,7 @@ create policy "tickets: mise à jour organisateur" on public.tickets
   );
 
 -- Scans
+drop policy if exists "scans: organisateur" on public.scans;
 create policy "scans: organisateur" on public.scans
   for all using (
     public.is_admin()
