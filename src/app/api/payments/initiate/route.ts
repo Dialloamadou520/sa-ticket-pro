@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   createDexpayCheckout,
@@ -72,6 +73,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Mutations serveur (statut, référence, tickets) : client service-role pour
+  // contourner le RLS (le client utilisateur n'a pas de droit UPDATE).
+  const admin = createAdminClient();
+
   // Événement gratuit : générer les tickets immédiatement.
   if (amount === 0) {
     const tickets = Array.from({ length: quantity }).map(() => ({
@@ -82,8 +87,8 @@ export async function POST(request: NextRequest) {
       price: 0,
       holder_name: body.holderName,
     }));
-    await supabase.from("tickets").insert(tickets);
-    await supabase.from("payments").update({ status: "paid" }).eq("id", payment.id);
+    await admin.from("tickets").insert(tickets);
+    await admin.from("payments").update({ status: "paid" }).eq("id", payment.id);
     return NextResponse.json({ redirect: `/profil?tab=tickets` });
   }
 
@@ -113,14 +118,14 @@ export async function POST(request: NextRequest) {
       metadata: { provider: body.provider, event_id: event.id },
     });
 
-    await supabase
+    await admin
       .from("payments")
       .update({ provider_reference: result.providerReference })
       .eq("id", payment.id);
 
     return NextResponse.json({ redirect: result.paymentUrl });
   } catch (e) {
-    await supabase.from("payments").update({ status: "failed" }).eq("id", payment.id);
+    await admin.from("payments").update({ status: "failed" }).eq("id", payment.id);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Erreur de paiement." },
       { status: 502 }
