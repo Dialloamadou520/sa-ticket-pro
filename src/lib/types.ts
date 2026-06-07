@@ -74,20 +74,21 @@ export interface Event {
 export interface Ticket {
   id: string;
   event_id: string;
-  user_id: string;
+  user_id: string | null;
   payment_id: string | null;
   ticket_type: TicketType;
   price: number;
   qr_token: string;
   status: TicketStatus;
   holder_name: string | null;
+  holder_email: string | null;
   created_at: string;
   event?: Event;
 }
 
 export interface Payment {
   id: string;
-  user_id: string;
+  user_id: string | null;
   event_id: string;
   amount: number;
   currency: string;
@@ -96,6 +97,8 @@ export interface Payment {
   provider_reference: string | null;
   quantity: number;
   ticket_type: TicketType;
+  guest_email: string | null;
+  guest_name: string | null;
   created_at: string;
 }
 

@@ -5,6 +5,8 @@ import { ChevronRight, CalendarDays, MapPin } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { PurchaseForm } from "@/components/events/purchase-form";
 import { getEventBySlug } from "@/lib/data/events";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Achat de ticket" };
@@ -17,6 +19,15 @@ export default async function AchatPage({
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) notFound();
+
+  let isAuthenticated = false;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    isAuthenticated = Boolean(user);
+  }
 
   return (
     <Container className="py-10">
@@ -41,8 +52,21 @@ export default async function AchatPage({
             <p className="mt-1 text-sm text-slate-500">
               Remplissez les informations ci-dessous pour finaliser votre achat.
             </p>
+            {!isAuthenticated && (
+              <p className="mt-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                Achetez en tant qu&apos;invité, sans créer de compte. Vous avez
+                déjà un compte ?{" "}
+                <Link
+                  href={`/connexion?redirect=/evenements/${event.slug}/achat`}
+                  className="font-semibold underline"
+                >
+                  Connectez-vous
+                </Link>
+                .
+              </p>
+            )}
             <div className="mt-6">
-              <PurchaseForm event={event} />
+              <PurchaseForm event={event} isAuthenticated={isAuthenticated} />
             </div>
           </div>
         </div>

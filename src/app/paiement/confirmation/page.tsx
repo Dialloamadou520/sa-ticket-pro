@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 import { TicketView, type TicketViewData } from "@/components/tickets/ticket-view";
 import { getEventBySlug } from "@/lib/data/events";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
@@ -34,11 +34,12 @@ export default async function ConfirmationPage({
           Paiement en cours de traitement
         </h1>
         <p className="mt-2 text-slate-500">
-          Votre paiement est en attente de confirmation. Vos tickets
-          apparaîtront dans votre profil dès validation.
+          Votre paiement est en attente de confirmation. Vos tickets vous
+          seront envoyés par email et s&apos;afficheront ici dès validation —
+          actualisez la page dans quelques instants.
         </p>
-        <LinkButton href="/profil?tab=tickets" className="mt-6">
-          Voir mes tickets
+        <LinkButton href="/explorer" className="mt-6">
+          Découvrir d&apos;autres événements
         </LinkButton>
       </Container>
     );
@@ -96,9 +97,11 @@ async function resolveTickets(sp: {
     }));
   }
 
-  // Mode réel
+  // Mode réel. La référence (UUID du paiement) sert de jeton de capacité :
+  // elle permet à un acheteur invité (non connecté) de voir son ticket sans
+  // dépendre du RLS. On lit donc via le client service-role.
   if (!sp.ref) return "pending";
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: payment } = await supabase
     .from("payments")
     .select("status")

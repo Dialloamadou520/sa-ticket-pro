@@ -9,7 +9,13 @@ import { formatPrice } from "@/lib/format";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
 import type { Event, PaymentProvider } from "@/lib/types";
 
-export function PurchaseForm({ event }: { event: Event }) {
+export function PurchaseForm({
+  event,
+  isAuthenticated = false,
+}: {
+  event: Event;
+  isAuthenticated?: boolean;
+}) {
   const [quantity, setQuantity] = useState(1);
   const [provider, setProvider] = useState<PaymentProvider>("wave");
   const [loading, setLoading] = useState(false);
@@ -29,6 +35,7 @@ export function PurchaseForm({ event }: { event: Event }) {
           quantity,
           ticketType: event.ticket_type,
           holderName: String(form.get("holderName")),
+          email: String(form.get("email")),
           phone: String(form.get("phone")),
           provider,
         }),
@@ -73,6 +80,22 @@ export function PurchaseForm({ event }: { event: Event }) {
         <Label htmlFor="holderName">Nom du participant</Label>
         <Input id="holderName" name="holderName" required placeholder="Nom complet" />
       </div>
+
+      {!isAuthenticated && (
+        <div>
+          <Label htmlFor="email">Email (pour recevoir votre ticket)</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required
+            placeholder="vous@exemple.com"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Pas besoin de compte : votre ticket QR sera envoyé à cet email.
+          </p>
+        </div>
+      )}
 
       <div>
         <Label htmlFor="phone">Téléphone (pour le paiement mobile)</Label>

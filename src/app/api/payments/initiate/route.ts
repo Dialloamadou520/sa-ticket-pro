@@ -17,6 +17,11 @@ interface Body {
   holderName: string;
   provider: PaymentProvider;
   phone?: string;
+  email?: string;
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export async function POST(request: NextRequest) {
@@ -43,18 +48,33 @@ export async function POST(request: NextRequest) {
   }
 
   // ---- Mode réel -------------------------------------------------------------
+  // Achat invité autorisé : pas de connexion requise. Si l'utilisateur est
+  // connecté, on rattache l'achat à son compte ; sinon on conserve l'email
+  // fourni pour lui envoyer / afficher son ticket.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
+
+  const guestEmail = (body.email ?? "").trim();
+  const buyerEmail = user?.email ?? guestEmail;
+  if (!user && !isValidEmail(guestEmail)) {
+    return NextResponse.json(
+      { error: "Un email valide est requis pour recevoir votre ticket." },
+      { status: 400 }
+    );
   }
 
-  const { data: payment, error } = await supabase
+  // Mutations serveur (insert/maj/tickets) : client service-role pour
+  // contourner le RLS (un invité n'a pas de session authentifiée).
+  const admin = createAdminClient();
+
+  const { data: payment, error } = await admin
     .from("payments")
     .insert({
-      user_id: user.id,
+      user_id: user?.id ?? null,
+      guest_email: user ? null : guestEmail,
+      guest_name: user ? null : body.holderName,
       event_id: event.id,
       amount,
       currency: SITE.currency,
@@ -73,23 +93,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Mutations serveur (statut, référence, tickets) : client service-role pour
-  // contourner le RLS (le client utilisateur n'a pas de droit UPDATE).
-  const admin = createAdminClient();
-
   // Événement gratuit : générer les tickets immédiatement.
   if (amount === 0) {
     const tickets = Array.from({ length: quantity }).map(() => ({
       event_id: event.id,
-      user_id: user.id,
+      user_id: user?.id ?? null,
       payment_id: payment.id,
       ticket_type: body.ticketType,
       price: 0,
       holder_name: body.holderName,
+      holder_email: buyerEmail || null,
     }));
     await admin.from("tickets").insert(tickets);
     await admin.from("payments").update({ status: "paid" }).eq("id", payment.id);
-    return NextResponse.json({ redirect: `/profil?tab=tickets` });
+    return NextResponse.json({
+      redirect: `/paiement/confirmation?ref=${payment.id}`,
+    });
   }
 
   if (!isDexpayConfigured()) {
@@ -110,7 +129,7 @@ export async function POST(request: NextRequest) {
       itemName: `${quantity} ticket(s) — ${event.title}`,
       countryISO: "SN",
       customerName: body.holderName,
-      customerEmail: user.email ?? undefined,
+      customerEmail: buyerEmail || undefined,
       customerPhone: body.phone,
       webhookUrl: `${SITE.url}/api/payments/webhook`,
       successUrl: `${SITE.url}/paiement/confirmation?ref=${payment.id}`,

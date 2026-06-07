@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
     payment_id: payment.id,
     ticket_type: payment.ticket_type,
     price: payment.amount / payment.quantity,
+    holder_name: payment.guest_name,
+    holder_email: payment.guest_email,
   }));
   await supabase.from("tickets").insert(tickets);
 
