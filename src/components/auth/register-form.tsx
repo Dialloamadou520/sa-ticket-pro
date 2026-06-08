@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { GoogleButton } from "./google-button";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { SITE } from "@/lib/constants";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -22,26 +21,43 @@ export function RegisterForm() {
       return;
     }
     const form = new FormData(e.currentTarget);
+    const email = String(form.get("email"));
+    const password = String(form.get("password"));
+    const role = String(form.get("role"));
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-      options: {
-        emailRedirectTo: `${SITE.url}/auth/callback`,
-        data: {
-          full_name: String(form.get("full_name")),
-          role: String(form.get("role")),
-        },
-      },
+
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        fullName: String(form.get("full_name")),
+        role,
+      }),
     });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
+    const data = await res.json();
+    if (!res.ok) {
+      setLoading(false);
+      toast.error(data.error || "Inscription impossible.");
       return;
     }
-    toast.success("Compte créé ! Vérifiez votre email pour confirmer.");
-    router.push("/connexion");
+
+    // Compte confirmé côté serveur : on connecte directement l'utilisateur.
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setLoading(false);
+    if (signInError) {
+      toast.success("Compte créé ! Vous pouvez vous connecter.");
+      router.push("/connexion");
+      return;
+    }
+    toast.success("Compte créé ! Bienvenue 🎉");
+    router.push(role === "organizer" ? "/dashboard" : "/");
+    router.refresh();
   }
 
   return (
