@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import jsQR from "jsqr";
 import { Camera, CheckCircle2, ScanLine, XCircle, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function ScannerClient() {
   const [cameraOn, setCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   async function verify(token: string) {
     if (!token) return;
@@ -36,8 +38,12 @@ export function ScannerClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: extractToken(token) }),
       });
-      const data = (await res.json()) as Result;
-      setResult(data);
+      const data = (await res.json()) as Result & { error?: string };
+      if (!data.result) {
+        setResult({ result: "invalid", message: data.error ?? "Vérification impossible." });
+      } else {
+        setResult(data);
+      }
     } catch {
       setResult({ result: "invalid", message: "Erreur réseau." });
     } finally {
@@ -46,15 +52,22 @@ export function ScannerClient() {
   }
 
   async function startCamera() {
-    const Detector = (
-      globalThis as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => { detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]> } }
-    ).BarcodeDetector;
-    if (!Detector) {
+    if (!navigator.mediaDevices?.getUserMedia) {
       alert(
-        "La détection caméra n'est pas supportée par ce navigateur. Utilisez la saisie manuelle."
+        "L'accès caméra nécessite une connexion sécurisée (https). Utilisez la saisie manuelle."
       );
       return;
     }
+
+    // Détecteur natif (rapide) si disponible, sinon repli jsQR (compatible iOS).
+    const Detector = (
+      globalThis as unknown as {
+        BarcodeDetector?: new (o: { formats: string[] }) => {
+          detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]>;
+        };
+      }
+    ).BarcodeDetector;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -62,18 +75,41 @@ export function ScannerClient() {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", "true");
         await videoRef.current.play();
       }
       setCameraOn(true);
-      const detector = new Detector({ formats: ["qr_code"] });
+
+      const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+
       const tick = async () => {
-        if (!videoRef.current || !streamRef.current) return;
+        const video = videoRef.current;
+        if (!video || !streamRef.current) return;
         try {
-          const codes = await detector.detect(videoRef.current);
-          if (codes[0]?.rawValue) {
-            stopCamera();
-            verify(codes[0].rawValue);
-            return;
+          if (detector) {
+            const codes = await detector.detect(video);
+            if (codes[0]?.rawValue) {
+              stopCamera();
+              verify(codes[0].rawValue);
+              return;
+            }
+          } else if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            const canvas = (canvasRef.current ??= document.createElement("canvas"));
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            if (ctx && canvas.width && canvas.height) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const code = jsQR(img.data, img.width, img.height, {
+                inversionAttempts: "dontInvert",
+              });
+              if (code?.data) {
+                stopCamera();
+                verify(code.data);
+                return;
+              }
+            }
           }
         } catch {
           /* ignore frame errors */
@@ -82,7 +118,9 @@ export function ScannerClient() {
       };
       requestAnimationFrame(tick);
     } catch {
-      alert("Impossible d'accéder à la caméra.");
+      alert(
+        "Impossible d'accéder à la caméra. Autorisez l'accès ou utilisez la saisie manuelle."
+      );
     }
   }
 
@@ -130,8 +168,12 @@ export function ScannerClient() {
         <label className="mb-2 block text-sm font-medium text-slate-700">
           Saisie manuelle du code
         </label>
+        <p className="mb-2 text-xs text-slate-400">
+          Entrez la « Référence » affichée sur le ticket (ex. A1B2C3D4) ou collez
+          le lien du QR code.
+        </p>
         <div className="flex gap-2">
-          <Input name="token" placeholder="Code ou lien du ticket" />
+          <Input name="token" placeholder="Référence ou lien du ticket" />
           <Button type="submit" disabled={loading}>
             {loading ? "..." : "Vérifier"}
           </Button>

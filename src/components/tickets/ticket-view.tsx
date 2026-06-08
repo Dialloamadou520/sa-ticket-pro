@@ -19,6 +19,7 @@ export interface TicketViewData {
 
 export function TicketView({ ticket }: { ticket: TicketViewData }) {
   const [qr, setQr] = useState<string>("");
+  const reference = ticket.qrToken.slice(0, 8).toUpperCase();
 
   useEffect(() => {
     QRCode.toDataURL(`${SITE.url}/verifier/${ticket.qrToken}`, {
@@ -47,7 +48,7 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
     doc.text(`Lieu : ${ticket.location}`, 12, 60);
     doc.text(`Participant : ${ticket.holderName}`, 12, 68);
     doc.text(`Type : ${ticket.ticketType}`, 12, 76);
-    doc.text(`Réf : ${ticket.id.slice(0, 8).toUpperCase()}`, 12, 84);
+    doc.text(`Réf : ${reference}`, 12, 84);
 
     if (qr) doc.addImage(qr, "PNG", 95, 95, 42, 42);
     doc.setFontSize(9);
@@ -71,7 +72,7 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
             <Row label="Lieu" value={ticket.location} />
             <Row label="Participant" value={ticket.holderName} />
             <Row label="Type" value={ticket.ticketType} />
-            <Row label="Référence" value={ticket.id.slice(0, 8).toUpperCase()} />
+            <Row label="Référence" value={reference} />
           </dl>
         </div>
         <div className="flex flex-col items-center gap-3">

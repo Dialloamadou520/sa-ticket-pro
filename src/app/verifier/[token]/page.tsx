@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export const metadata: Metadata = { title: "Vérification du ticket" };
@@ -44,7 +44,9 @@ export default async function VerifierPage({
 
 async function getStatus(token: string): Promise<"valid" | "used" | "invalid"> {
   if (!isSupabaseConfigured) return "valid";
-  const supabase = await createClient();
+  // Le qr_token sert de jeton de capacité : on lit via le client service-role
+  // pour que la page publique fonctionne même sans connexion (scan téléphone).
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("tickets")
     .select("status")
