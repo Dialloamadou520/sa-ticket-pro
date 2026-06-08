@@ -21,10 +21,27 @@ function extractToken(value: string): string {
   return trimmed;
 }
 
+function cameraErrorMessage(err: unknown): string {
+  const name = err instanceof Error ? err.name : "";
+  switch (name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Accès caméra refusé. Autorisez la caméra dans les réglages du navigateur (icône cadenas dans la barre d'adresse), puis réessayez.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "Aucune caméra détectée sur cet appareil. Utilisez la saisie manuelle.";
+    case "NotReadableError":
+      return "La caméra est déjà utilisée par une autre application. Fermez-la et réessayez.";
+    default:
+      return "Impossible d'accéder à la caméra. Vérifiez que vous êtes en https et que la caméra est autorisée, ou utilisez la saisie manuelle.";
+  }
+}
+
 export function ScannerClient() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -52,9 +69,10 @@ export function ScannerClient() {
   }
 
   async function startCamera() {
+    setCameraError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
-      alert(
-        "L'accès caméra nécessite une connexion sécurisée (https). Utilisez la saisie manuelle."
+      setCameraError(
+        "L'accès caméra nécessite une connexion sécurisée (https) et un navigateur compatible. Utilisez la saisie manuelle."
       );
       return;
     }
@@ -68,81 +86,108 @@ export function ScannerClient() {
       }
     ).BarcodeDetector;
 
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+      stream = await navigator.mediaDevices.getUserMedia({
+        // "ideal" plutôt que strict : si la caméra arrière n'existe pas
+        // (ex. ordinateur portable), on retombe sur la caméra frontale.
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
       });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute("playsinline", "true");
-        await videoRef.current.play();
-      }
-      setCameraOn(true);
+    } catch (err) {
+      setCameraError(cameraErrorMessage(err));
+      return;
+    }
 
-      const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+    streamRef.current = stream;
+    // Important : on monte d'abord l'élément <video> (cameraOn=true) AVANT
+    // d'attacher le flux, sinon videoRef.current est null au montage.
+    setCameraOn(true);
 
-      const tick = async () => {
-        const video = videoRef.current;
-        if (!video || !streamRef.current) return;
-        try {
-          if (detector) {
-            const codes = await detector.detect(video);
-            if (codes[0]?.rawValue) {
+    const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
+
+    const tick = async () => {
+      const video = videoRef.current;
+      if (!video || !streamRef.current) return;
+      try {
+        if (detector) {
+          const codes = await detector.detect(video);
+          if (codes[0]?.rawValue) {
+            stopCamera();
+            verify(codes[0].rawValue);
+            return;
+          }
+        } else if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          const canvas = (canvasRef.current ??= document.createElement("canvas"));
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (ctx && canvas.width && canvas.height) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(img.data, img.width, img.height, {
+              inversionAttempts: "dontInvert",
+            });
+            if (code?.data) {
               stopCamera();
-              verify(codes[0].rawValue);
+              verify(code.data);
               return;
             }
-          } else if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            const canvas = (canvasRef.current ??= document.createElement("canvas"));
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d", { willReadFrequently: true });
-            if (ctx && canvas.width && canvas.height) {
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const code = jsQR(img.data, img.width, img.height, {
-                inversionAttempts: "dontInvert",
-              });
-              if (code?.data) {
-                stopCamera();
-                verify(code.data);
-                return;
-              }
-            }
           }
-        } catch {
-          /* ignore frame errors */
         }
-        requestAnimationFrame(tick);
-      };
+      } catch {
+        /* ignore frame errors */
+      }
       requestAnimationFrame(tick);
-    } catch {
-      alert(
-        "Impossible d'accéder à la caméra. Autorisez l'accès ou utilisez la saisie manuelle."
-      );
-    }
+    };
+
+    // Attache le flux et démarre la lecture une fois l'élément monté.
+    requestAnimationFrame(async () => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = stream;
+      video.setAttribute("playsinline", "true");
+      try {
+        await video.play();
+      } catch {
+        /* la lecture démarrera via autoPlay/onLoadedMetadata */
+      }
+      requestAnimationFrame(tick);
+    });
   }
 
   function stopCamera() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOn(false);
   }
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="aspect-video overflow-hidden rounded-xl bg-slate-900">
-          {cameraOn ? (
-            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
-          ) : (
+        <div className="relative aspect-video overflow-hidden rounded-xl bg-slate-900">
+          {/* L'élément vidéo reste monté en permanence : sinon videoRef est
+              null au moment d'attacher le flux et la caméra reste noire. */}
+          <video
+            ref={videoRef}
+            className={`h-full w-full object-cover ${cameraOn ? "" : "hidden"}`}
+            muted
+            autoPlay
+            playsInline
+          />
+          {!cameraOn && (
             <div className="flex h-full flex-col items-center justify-center text-slate-400">
               <ScanLine className="h-10 w-10" />
               <p className="mt-2 text-sm">Caméra désactivée</p>
             </div>
           )}
         </div>
+        {cameraError && (
+          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+            {cameraError}
+          </p>
+        )}
         <div className="mt-4 flex gap-3">
           {cameraOn ? (
             <Button variant="danger" className="flex-1" onClick={stopCamera}>
