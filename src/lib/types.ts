@@ -40,6 +40,7 @@ export interface Organizer {
   description: string | null;
   logo_url: string | null;
   verified: boolean;
+  disabled: boolean;
   created_at: string;
 }
 

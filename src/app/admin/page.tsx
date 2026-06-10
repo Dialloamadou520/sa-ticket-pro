@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { CalendarDays, Users, Wallet, Percent } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Users, Wallet, Percent, ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
+import { OrganizerActions } from "@/components/admin/organizer-actions";
 import {
   getAdminStats,
+  getAllOrganizers,
   getAllUsers,
   getPendingEvents,
 } from "@/lib/data/admin";
@@ -12,9 +15,10 @@ import { formatDateShort, formatPrice } from "@/lib/format";
 export const metadata: Metadata = { title: "Administration" };
 
 export default async function AdminPage() {
-  const [stats, pending, users] = await Promise.all([
+  const [stats, pending, organizers, users] = await Promise.all([
     getAdminStats(),
     getPendingEvents(),
+    getAllOrganizers(),
     getAllUsers(),
   ]);
 
@@ -69,6 +73,98 @@ export default async function AdminPage() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <h2 className="font-semibold text-slate-900">
+            Organisateurs
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+              {organizers.length}
+            </span>
+          </h2>
+          <p className="text-xs text-slate-500">
+            Activité par organisateur. Retirez un organisateur pour annuler et
+            masquer ses événements (réversible).
+          </p>
+        </div>
+        {organizers.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            {`La liste des organisateurs s'affichera ici une fois Supabase configuré.`}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Organisateur</th>
+                  <th className="px-5 py-3">Événements</th>
+                  <th className="px-5 py-3">Tickets</th>
+                  <th className="px-5 py-3">Revenus</th>
+                  <th className="px-5 py-3">Commission</th>
+                  <th className="px-5 py-3">Statut</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {organizers.map((o) => (
+                  <tr key={o.id} className={o.disabled ? "bg-red-50/40" : undefined}>
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/admin/organisateurs/${o.id}`}
+                        className="flex items-center gap-1 font-medium text-slate-900 hover:text-brand-700"
+                      >
+                        {o.company_name}
+                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                      </Link>
+                      <p className="text-xs text-slate-500">
+                        {o.owner?.full_name || "—"} · {o.owner?.email ?? "—"}
+                      </p>
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {o.eventsCount}
+                      <span className="text-xs text-slate-400">
+                        {" "}
+                        ({o.publishedEvents} publiés)
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">{o.ticketsSold}</td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {formatPrice(o.revenue)}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {formatPrice(o.commission)}
+                    </td>
+                    <td className="px-5 py-3">
+                      {o.disabled ? (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                          Retiré
+                        </span>
+                      ) : o.verified ? (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Vérifié
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          Actif
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end">
+                        <OrganizerActions
+                          id={o.id}
+                          disabled={o.disabled}
+                          verified={o.verified}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
