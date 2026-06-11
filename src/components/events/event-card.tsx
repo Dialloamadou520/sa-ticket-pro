@@ -2,18 +2,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import type { Event } from "@/lib/types";
 
 export function EventCard({ event }: { event: Event }) {
   const remaining = event.capacity - event.tickets_sold;
   const almostSoldOut = remaining > 0 && remaining <= event.capacity * 0.1;
+  const soldOut = remaining <= 0;
 
   return (
-    <Link
-      href={`/evenements/${event.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-    >
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+      <Link href={`/evenements/${event.slug}`} className="block">
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
         {event.banner_url ? (
           <Image
@@ -60,6 +60,19 @@ export function EventCard({ event }: { event: Event }) {
           </span>
         </div>
       </div>
-    </Link>
+      </Link>
+      <div className="px-4 pb-4">
+        <Button
+          asChild
+          size="sm"
+          className="w-full"
+          disabled={soldOut}
+        >
+          <Link href={soldOut ? "#" : `/evenements/${event.slug}/achat`}>
+            {soldOut ? "Complet" : "Acheter"}
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }
