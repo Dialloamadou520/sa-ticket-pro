@@ -35,7 +35,6 @@ export function PurchaseForm({
           quantity,
           ticketType: event.ticket_type,
           holderName: String(form.get("holderName")),
-          email: String(form.get("email")),
           phone: String(form.get("phone")),
           provider,
         }),
@@ -80,22 +79,6 @@ export function PurchaseForm({
         <Label htmlFor="holderName">Nom du participant</Label>
         <Input id="holderName" name="holderName" required placeholder="Nom complet" />
       </div>
-
-      {!isAuthenticated && (
-        <div>
-          <Label htmlFor="email">Email (pour recevoir votre ticket)</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            required
-            placeholder="vous@exemple.com"
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            Pas besoin de compte : votre ticket QR sera envoyé à cet email.
-          </p>
-        </div>
-      )}
 
       <div>
         <Label htmlFor="phone">Téléphone (pour le paiement mobile)</Label>
@@ -143,8 +126,7 @@ export function PurchaseForm({
             : `Payer ${formatPrice(total)}`}
       </Button>
       <p className="text-center text-xs text-slate-400">
-        Paiement sécurisé via Wave & Orange Money. Vous recevrez vos tickets avec
-        QR code par email.
+        Paiement sécurisé via Wave & Orange Money.
       </p>
     </form>
   );

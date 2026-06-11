@@ -17,11 +17,6 @@ interface Body {
   holderName: string;
   provider: PaymentProvider;
   phone?: string;
-  email?: string;
-}
-
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export async function POST(request: NextRequest) {
@@ -48,22 +43,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ---- Mode réel -------------------------------------------------------------
-  // Achat invité autorisé : pas de connexion requise. Si l'utilisateur est
-  // connecté, on rattache l'achat à son compte ; sinon on conserve l'email
-  // fourni pour lui envoyer / afficher son ticket.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const guestEmail = (body.email ?? "").trim();
-  const buyerEmail = user?.email ?? guestEmail;
-  if (!user && !isValidEmail(guestEmail)) {
-    return NextResponse.json(
-      { error: "Un email valide est requis pour recevoir votre ticket." },
-      { status: 400 }
-    );
-  }
+  const buyerEmail = user?.email ?? null;
 
   // Mutations serveur (insert/maj/tickets) : client service-role pour
   // contourner le RLS (un invité n'a pas de session authentifiée).
@@ -73,7 +58,7 @@ export async function POST(request: NextRequest) {
     .from("payments")
     .insert({
       user_id: user?.id ?? null,
-      guest_email: user ? null : guestEmail,
+      guest_email: null,
       guest_name: user ? null : body.holderName,
       event_id: event.id,
       amount,

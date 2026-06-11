@@ -34,8 +34,8 @@ export default async function ConfirmationPage({
           Paiement en cours de traitement
         </h1>
         <p className="mt-2 text-slate-500">
-          Votre paiement est en attente de confirmation. Vos tickets vous
-          seront envoyés par email et s&apos;afficheront ici dès validation —
+          Votre paiement est en attente de confirmation. Vos tickets
+          s&apos;afficheront ici dès validation —
           actualisez la page dans quelques instants.
         </p>
         <LinkButton href="/explorer" className="mt-6">
