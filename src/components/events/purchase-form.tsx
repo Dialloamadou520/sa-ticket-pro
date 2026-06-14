@@ -9,13 +9,7 @@ import { formatPrice } from "@/lib/format";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
 import type { Event, PaymentProvider } from "@/lib/types";
 
-export function PurchaseForm({
-  event,
-  isAuthenticated = false,
-}: {
-  event: Event;
-  isAuthenticated?: boolean;
-}) {
+export function PurchaseForm({ event }: { event: Event }) {
   const [quantity, setQuantity] = useState(1);
   const [provider, setProvider] = useState<PaymentProvider>("wave");
   const [loading, setLoading] = useState(false);

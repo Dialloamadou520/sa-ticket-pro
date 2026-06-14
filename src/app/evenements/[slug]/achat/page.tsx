@@ -66,7 +66,7 @@ export default async function AchatPage({
               </p>
             )}
             <div className="mt-6">
-              <PurchaseForm event={event} isAuthenticated={isAuthenticated} />
+              <PurchaseForm event={event} />
             </div>
           </div>
         </div>
