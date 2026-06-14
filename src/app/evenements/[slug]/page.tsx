@@ -111,6 +111,19 @@ export default async function EventDetailPage({
                 {formatPrice(event.price)}
               </p>
 
+              {event.tiers && event.tiers.length > 0 && (
+                <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4 text-sm">
+                  {event.tiers.map((t) => (
+                    <li key={t.id} className="flex items-center justify-between">
+                      <span className="text-slate-600">{t.name}</span>
+                      <span className="font-medium text-slate-900">
+                        {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <div className="mt-4 space-y-2 text-sm text-slate-600">
                 <div className="flex items-center justify-between">
                   <span>Places restantes</span>

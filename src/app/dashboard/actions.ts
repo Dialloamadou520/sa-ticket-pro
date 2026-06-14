@@ -2,9 +2,56 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { slugify } from "@/lib/slug";
 import type { TicketType } from "@/lib/types";
+
+interface TierInput {
+  name: string;
+  price: number;
+  capacity: number;
+}
+
+function parseTiers(formData: FormData): TierInput[] {
+  const raw = String(formData.get("tiers_json") || "");
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw) as Array<{
+      name?: string;
+      price?: number | string;
+      capacity?: number | string;
+    }>;
+    return arr
+      .map((t) => ({
+        name: String(t.name ?? "").trim(),
+        price: Math.max(0, Number(t.price) || 0),
+        capacity: Math.max(0, Number(t.capacity) || 0),
+      }))
+      .filter((t) => t.name.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Remplace les catégories de tickets d'un événement (delete + insert) via le
+ * client service-role (l'appelant a déjà été authentifié comme propriétaire).
+ */
+async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
+  const admin = createAdminClient();
+  await admin.from("ticket_tiers").delete().eq("event_id", eventId);
+  if (tiers.length === 0) return;
+  await admin.from("ticket_tiers").insert(
+    tiers.map((t, i) => ({
+      event_id: eventId,
+      name: t.name,
+      price: t.price,
+      capacity: t.capacity,
+      position: i,
+    }))
+  );
+}
 
 export interface EventFormState {
   error?: string;
@@ -80,13 +127,26 @@ export async function createEvent(
     return { error: "Le titre et le lieu sont obligatoires." };
   }
 
+  const tiers = parseTiers(formData);
+  if (tiers.length > 0) {
+    values.price = Math.min(...tiers.map((t) => t.price));
+    const totalCapacity = tiers.reduce((s, t) => s + t.capacity, 0);
+    if (totalCapacity > 0) values.capacity = totalCapacity;
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.from("events").insert({
-    ...values,
-    slug: slugify(values.title),
-    organizer_id: organizer.id,
-  });
-  if (error) return { error: error.message };
+  const { data: created, error } = await supabase
+    .from("events")
+    .insert({
+      ...values,
+      slug: slugify(values.title),
+      organizer_id: organizer.id,
+    })
+    .select("id")
+    .single();
+  if (error || !created) return { error: error?.message ?? "Erreur." };
+
+  await syncTiers(created.id, tiers);
 
   revalidatePath("/dashboard/evenements");
   return { success: true };
@@ -104,9 +164,18 @@ export async function updateEvent(
   if (!organizer) return { error: "Vous devez être connecté." };
 
   const values = parseEvent(formData);
+  const tiers = parseTiers(formData);
+  if (tiers.length > 0) {
+    values.price = Math.min(...tiers.map((t) => t.price));
+    const totalCapacity = tiers.reduce((s, t) => s + t.capacity, 0);
+    if (totalCapacity > 0) values.capacity = totalCapacity;
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("events").update(values).eq("id", id);
   if (error) return { error: error.message };
+
+  await syncTiers(id, tiers);
 
   revalidatePath("/dashboard/evenements");
   return { success: true };

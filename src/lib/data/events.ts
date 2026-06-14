@@ -13,7 +13,14 @@ export interface EventFilters {
   search?: string;
 }
 
-const EVENT_SELECT = "*, category:categories(*)";
+const EVENT_SELECT = "*, category:categories(*), tiers:ticket_tiers(*)";
+
+function sortTiers(event: Event | null): Event | null {
+  if (event?.tiers) {
+    event.tiers = [...event.tiers].sort((a, b) => a.position - b.position);
+  }
+  return event;
+}
 
 export async function getCategories(): Promise<Category[]> {
   if (!isSupabaseConfigured) return sampleCategories;
@@ -73,7 +80,7 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
     .select(EVENT_SELECT)
     .eq("slug", slug)
     .maybeSingle();
-  return (data as Event) ?? null;
+  return sortTiers((data as Event) ?? null);
 }
 
 function filterSampleEvents(filters: EventFilters): Event[] {
