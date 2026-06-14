@@ -106,6 +106,44 @@ export async function createDexpayCheckout(
   };
 }
 
+export interface CheckoutStatus {
+  status: string;
+  paid: boolean;
+  totalPayments: number;
+}
+
+/**
+ * Récupère l'état d'une checkout session auprès de DexPay (source de vérité),
+ * par sa référence métier (= notre id de paiement). Sert à confirmer un
+ * paiement sans dépendre du webhook. Lecture avec la clé publique (x-api-key).
+ * Voir GET /checkout-sessions/{reference}.
+ */
+export async function getDexpayCheckoutStatus(
+  reference: string
+): Promise<CheckoutStatus | null> {
+  const apiKey = process.env.DEXPAY_PUBLIC_KEY;
+  if (!apiKey) return null;
+
+  const res = await fetch(`${DEXPAY_BASE_URL}/checkout-sessions/${reference}`, {
+    headers: { "x-api-key": apiKey },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+
+  const json = (await res.json()) as {
+    status?: string;
+    total_payments?: number;
+    data?: { status?: string; total_payments?: number };
+  };
+  const session = json.data ?? json;
+  const status = String(session.status ?? "").toLowerCase();
+  const totalPayments = Number(session.total_payments ?? 0);
+  const paid =
+    status === "completed" || status === "paid" || status === "success";
+
+  return { status, paid, totalPayments };
+}
+
 /**
  * Vérifie la signature d'un webhook DexPay : HMAC-SHA256 du corps JSON
  * (`JSON.stringify(payload)`), comparé à l'en-tête `x-dexchange-signature`.

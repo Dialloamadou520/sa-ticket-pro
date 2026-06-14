@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import type { Event } from "@/lib/types";
 
@@ -62,16 +62,19 @@ export function EventCard({ event }: { event: Event }) {
       </div>
       </Link>
       <div className="px-4 pb-4">
-        <Button
-          asChild
-          size="sm"
-          className="w-full"
-          disabled={soldOut}
-        >
-          <Link href={soldOut ? "#" : `/evenements/${event.slug}/achat`}>
-            {soldOut ? "Complet" : "Acheter"}
-          </Link>
-        </Button>
+        {soldOut ? (
+          <Button size="sm" className="w-full" disabled>
+            Complet
+          </Button>
+        ) : (
+          <LinkButton
+            href={`/evenements/${event.slug}/achat`}
+            size="sm"
+            className="w-full"
+          >
+            Acheter
+          </LinkButton>
+        )}
       </div>
     </div>
   );
