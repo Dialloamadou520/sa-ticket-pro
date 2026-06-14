@@ -106,6 +106,81 @@ export async function createDexpayCheckout(
   };
 }
 
+/** Opérateurs mobile money supportés (Sénégal). */
+export type DexpayOperator = "wave_sn" | "om_sn";
+
+const OPERATOR_MAP: Record<string, DexpayOperator> = {
+  wave: "wave_sn",
+  orange_money: "om_sn",
+};
+
+export function toDexpayOperator(provider: string): DexpayOperator | null {
+  return OPERATOR_MAP[provider] ?? null;
+}
+
+/**
+ * Normalise un numéro sénégalais au format attendu par DexPay : 9 chiffres
+ * (sans indicatif). Renvoie null si invalide.
+ */
+export function normalizeSenegalPhone(raw: string): string | null {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  const local = digits.startsWith("221") ? digits.slice(3) : digits;
+  return /^[0-9]{9}$/.test(local) ? local : null;
+}
+
+export interface PaymentAttemptResult {
+  status: string;
+  /** Lien de paiement opérateur (Wave) ; null pour un push USSD/OTP (OM). */
+  cashoutUrl: string | null;
+}
+
+/**
+ * Déclenche une tentative de paiement intégrée (sans page DexPay hébergée).
+ * - Wave : renvoie `cashoutUrl` (lien pay.wave.com) à ouvrir par le client.
+ * - Orange Money : push/USSD sur le téléphone du client (cashoutUrl null).
+ * Voir POST /checkout-sessions/{reference}/transaction-attempt.
+ */
+export async function createDexpayPaymentAttempt(input: {
+  reference: string;
+  operator: DexpayOperator;
+  customerName: string;
+  customerPhone: string;
+  countryISO?: string;
+}): Promise<PaymentAttemptResult> {
+  const apiKey = process.env.DEXPAY_PUBLIC_KEY;
+  if (!apiKey) throw new Error("DEXPAY_PUBLIC_KEY manquant.");
+
+  const res = await fetch(
+    `${DEXPAY_BASE_URL}/checkout-sessions/${input.reference}/transaction-attempt`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+      body: JSON.stringify({
+        payment_method: "mobile_money",
+        operator: input.operator,
+        customer: { name: input.customerName, phone: input.customerPhone },
+        countryISO: input.countryISO ?? "SN",
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Échec tentative de paiement DexPay : ${res.status} ${text}`);
+  }
+
+  const json = (await res.json()) as {
+    status?: string;
+    cashout_url?: string | null;
+    data?: { status?: string; cashout_url?: string | null };
+  };
+  const data = json.data ?? json;
+  return {
+    status: String(data.status ?? "pending").toLowerCase(),
+    cashoutUrl: data.cashout_url ?? null,
+  };
+}
+
 export interface CheckoutStatus {
   status: string;
   paid: boolean;

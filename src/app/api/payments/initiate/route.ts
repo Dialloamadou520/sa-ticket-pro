@@ -4,7 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   createDexpayCheckout,
+  createDexpayPaymentAttempt,
   isDexpayConfigured,
+  normalizeSenegalPhone,
+  toDexpayOperator,
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
 import { SITE } from "@/lib/constants";
@@ -106,6 +109,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const operator = toDexpayOperator(body.provider);
+  const phone = normalizeSenegalPhone(body.phone ?? "");
+  if (operator && !phone) {
+    await admin.from("payments").update({ status: "failed" }).eq("id", payment.id);
+    return NextResponse.json(
+      { error: "Numéro de téléphone valide requis (9 chiffres)." },
+      { status: 400 }
+    );
+  }
+
   try {
     const result = await createDexpayCheckout({
       amount,
@@ -115,7 +128,7 @@ export async function POST(request: NextRequest) {
       countryISO: "SN",
       customerName: body.holderName,
       customerEmail: buyerEmail || undefined,
-      customerPhone: body.phone,
+      customerPhone: phone ?? body.phone,
       webhookUrl: `${SITE.url}/api/payments/webhook`,
       successUrl: `${SITE.url}/paiement/confirmation?ref=${payment.id}`,
       failureUrl: `${SITE.url}/evenements/${event.slug}/achat?echec=1`,
@@ -126,6 +139,31 @@ export async function POST(request: NextRequest) {
       .from("payments")
       .update({ provider_reference: result.providerReference })
       .eq("id", payment.id);
+
+    // Paiement intégré (sans page DexPay) : on déclenche directement la
+    // tentative sur l'opérateur choisi. Wave → lien pay.wave.com ; Orange
+    // Money → validation par push/USSD sur le téléphone. En cas d'échec on
+    // retombe sur la page de paiement hébergée.
+    if (operator && phone) {
+      try {
+        const attempt = await createDexpayPaymentAttempt({
+          reference: payment.id,
+          operator,
+          customerName: body.holderName,
+          customerPhone: phone,
+        });
+        return NextResponse.json({
+          mode: "integrated",
+          provider: body.provider,
+          paymentId: payment.id,
+          cashoutUrl: attempt.cashoutUrl,
+          confirmUrl: `/paiement/confirmation?ref=${payment.id}`,
+        });
+      } catch {
+        // Repli : page de paiement hébergée DexPay.
+        return NextResponse.json({ redirect: result.paymentUrl });
+      }
+    }
 
     return NextResponse.json({ redirect: result.paymentUrl });
   } catch (e) {
