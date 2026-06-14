@@ -1,20 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Minus, Plus, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
 import type { Event, PaymentProvider } from "@/lib/types";
+
+interface Pending {
+  provider: PaymentProvider;
+  paymentId: string;
+  cashoutUrl: string | null;
+  confirmUrl: string;
+}
 
 export function PurchaseForm({ event }: { event: Event }) {
   const [quantity, setQuantity] = useState(1);
   const [provider, setProvider] = useState<PaymentProvider>("wave");
   const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFree = event.price <= 0;
   const total = event.price * quantity;
+
+  useEffect(() => {
+    if (!pending) return;
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts > 60) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/payments/status?ref=${pending.paymentId}`,
+          { cache: "no-store" }
+        );
+        const data = await res.json();
+        if (data.status === "paid") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          window.location.href = pending.confirmUrl;
+        } else if (data.status === "failed") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          toast.error("Paiement échoué ou annulé. Réessayez.");
+          setPending(null);
+          setLoading(false);
+        }
+      } catch {
+        /* on réessaie au prochain tick */
+      }
+    }, 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [pending]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -39,11 +81,78 @@ export function PurchaseForm({ event }: { event: Event }) {
         setLoading(false);
         return;
       }
+      if (data.mode === "integrated") {
+        setPending({
+          provider: data.provider,
+          paymentId: data.paymentId,
+          cashoutUrl: data.cashoutUrl ?? null,
+          confirmUrl: data.confirmUrl,
+        });
+        if (data.cashoutUrl) window.open(data.cashoutUrl, "_blank");
+        return;
+      }
       window.location.href = data.redirect;
     } catch {
       toast.error("Connexion impossible. Réessayez.");
       setLoading(false);
     }
+  }
+
+  if (pending) {
+    const isWave = pending.provider === "wave";
+    return (
+      <div className="space-y-5 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
+          <Smartphone className="h-7 w-7 text-brand-600" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">
+          Validez le paiement sur votre téléphone
+        </h3>
+        {isWave ? (
+          <p className="text-slate-500">
+            Ouvrez Wave pour confirmer le paiement de{" "}
+            <strong>{formatPrice(total)}</strong>. Si l&apos;onglet Wave ne
+            s&apos;est pas ouvert, utilisez le bouton ci-dessous.
+          </p>
+        ) : (
+          <p className="text-slate-500">
+            Une demande de paiement de <strong>{formatPrice(total)}</strong> a
+            été envoyée à votre numéro Orange Money. Confirmez-la sur votre
+            téléphone (notification ou code USSD).
+          </p>
+        )}
+
+        {isWave && pending.cashoutUrl && (
+          <LinkButton
+            href={pending.cashoutUrl}
+            target="_blank"
+            size="lg"
+            className="w-full"
+          >
+            Ouvrir Wave pour payer
+          </LinkButton>
+        )}
+
+        <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          En attente de confirmation…
+        </div>
+        <p className="text-xs text-slate-400">
+          Cette page se met à jour automatiquement dès le paiement validé.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setPending(null);
+            setLoading(false);
+          }}
+          className="text-sm text-slate-400 underline hover:text-slate-600"
+        >
+          Annuler
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -75,8 +184,16 @@ export function PurchaseForm({ event }: { event: Event }) {
       </div>
 
       <div>
-        <Label htmlFor="phone">Téléphone (pour le paiement mobile)</Label>
-        <Input id="phone" name="phone" type="tel" placeholder="+221 77 000 00 00" />
+        <Label htmlFor="phone">
+          Numéro de téléphone {isFree ? "(facultatif)" : "(mobile money)"}
+        </Label>
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          required={!isFree}
+          placeholder="77 000 00 00"
+        />
       </div>
 
       {!isFree && (
