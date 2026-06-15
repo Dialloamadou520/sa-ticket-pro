@@ -32,6 +32,8 @@ export async function fulfillPaidPayment(
     user_id: payment.user_id,
     payment_id: payment.id,
     ticket_type: payment.ticket_type,
+    tier_id: payment.tier_id,
+    tier_name: payment.tier_name,
     price: unitPrice,
     holder_name: payment.guest_name,
     holder_email: payment.guest_email,

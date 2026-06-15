@@ -144,7 +144,7 @@ async function resolveTickets(sp: {
       ? `${t.event.location}${t.event.city ? `, ${t.event.city}` : ""}`
       : "",
     holderName: t.holder_name ?? "",
-    ticketType: TICKET_TYPE_LABELS[t.ticket_type],
+    ticketType: t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type],
     qrToken: t.qr_token,
   }));
 }

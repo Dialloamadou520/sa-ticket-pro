@@ -44,11 +44,15 @@ export interface Organizer {
   created_at: string;
 }
 
-export interface EventTicketTier {
-  type: TicketType;
-  label: string;
+export interface TicketTier {
+  id: string;
+  event_id: string;
+  name: string;
   price: number;
-  quantity: number;
+  capacity: number;
+  sold: number;
+  position: number;
+  created_at: string;
 }
 
 export interface Event {
@@ -70,6 +74,7 @@ export interface Event {
   status: EventStatus;
   tickets_sold: number;
   created_at: string;
+  tiers?: TicketTier[];
 }
 
 export interface Ticket {
@@ -78,6 +83,8 @@ export interface Ticket {
   user_id: string | null;
   payment_id: string | null;
   ticket_type: TicketType;
+  tier_id: string | null;
+  tier_name: string | null;
   price: number;
   qr_token: string;
   status: TicketStatus;
@@ -98,6 +105,8 @@ export interface Payment {
   provider_reference: string | null;
   quantity: number;
   ticket_type: TicketType;
+  tier_id: string | null;
+  tier_name: string | null;
   guest_email: string | null;
   guest_name: string | null;
   created_at: string;

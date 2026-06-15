@@ -87,7 +87,11 @@ export default async function AchatPage({
               </p>
             </div>
             <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-sm">
-              <span className="text-slate-600">Prix unitaire</span>
+              <span className="text-slate-600">
+                {event.tiers && event.tiers.length > 0
+                  ? "À partir de"
+                  : "Prix unitaire"}
+              </span>
               <span className="font-semibold text-slate-900">
                 {formatPrice(event.price)}
               </span>

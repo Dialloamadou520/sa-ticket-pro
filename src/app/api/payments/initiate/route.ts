@@ -20,6 +20,7 @@ interface Body {
   holderName: string;
   provider: PaymentProvider;
   phone?: string;
+  tierId?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -30,7 +31,30 @@ export async function POST(request: NextRequest) {
   }
 
   const quantity = Math.max(1, Math.min(10, Number(body.quantity) || 1));
-  const amount = event.price * quantity;
+
+  // Catégorie de ticket choisie (Standard/VIP/…) : le prix fait foi côté
+  // serveur. À défaut de catégorie, on retombe sur le prix unique de l'événement.
+  let unitPrice = event.price;
+  let tierId: string | null = null;
+  let tierName: string | null = null;
+  if (body.tierId && isSupabaseConfigured) {
+    const lookup = createAdminClient();
+    const { data: tier } = await lookup
+      .from("ticket_tiers")
+      .select("id, name, price, event_id")
+      .eq("id", body.tierId)
+      .maybeSingle();
+    if (!tier || tier.event_id !== event.id) {
+      return NextResponse.json(
+        { error: "Catégorie de ticket invalide." },
+        { status: 400 }
+      );
+    }
+    unitPrice = tier.price;
+    tierId = tier.id;
+    tierName = tier.name;
+  }
+  const amount = unitPrice * quantity;
 
   // ---- Mode démo : aucun backend configuré -----------------------------------
   if (!isSupabaseConfigured) {
@@ -70,6 +94,8 @@ export async function POST(request: NextRequest) {
       status: "pending",
       quantity,
       ticket_type: body.ticketType,
+      tier_id: tierId,
+      tier_name: tierName,
     })
     .select()
     .single();
@@ -88,6 +114,8 @@ export async function POST(request: NextRequest) {
       user_id: user?.id ?? null,
       payment_id: payment.id,
       ticket_type: body.ticketType,
+      tier_id: tierId,
+      tier_name: tierName,
       price: 0,
       holder_name: body.holderName,
       holder_email: buyerEmail || null,

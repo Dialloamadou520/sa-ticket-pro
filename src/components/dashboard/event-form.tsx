@@ -1,12 +1,19 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { EventFormState } from "@/app/dashboard/actions";
 import type { Category, Event } from "@/lib/types";
+
+interface TierRow {
+  name: string;
+  price: string;
+  capacity: string;
+}
 
 interface Props {
   action: (prev: EventFormState, formData: FormData) => Promise<EventFormState>;
@@ -18,6 +25,38 @@ interface Props {
 export function EventForm({ action, categories, event, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const router = useRouter();
+  const [tiers, setTiers] = useState<TierRow[]>(
+    event?.tiers && event.tiers.length > 0
+      ? event.tiers.map((t) => ({
+          name: t.name,
+          price: String(t.price),
+          capacity: t.capacity ? String(t.capacity) : "",
+        }))
+      : []
+  );
+
+  function updateTier(i: number, field: keyof TierRow, value: string) {
+    setTiers((rows) =>
+      rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r))
+    );
+  }
+  function addTier() {
+    setTiers((rows) => [...rows, { name: "", price: "", capacity: "" }]);
+  }
+  function removeTier(i: number) {
+    setTiers((rows) => rows.filter((_, idx) => idx !== i));
+  }
+
+  const tiersJson = JSON.stringify(
+    tiers
+      .filter((t) => t.name.trim())
+      .map((t) => ({
+        name: t.name.trim(),
+        price: Number(t.price) || 0,
+        capacity: Number(t.capacity) || 0,
+      }))
+  );
+  const hasTiers = tiers.length > 0;
 
   useEffect(() => {
     if (state.success) {
@@ -109,11 +148,89 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
         <div>
           <Label htmlFor="capacity">Nombre de places</Label>
           <Input id="capacity" name="capacity" type="number" min={0} defaultValue={event?.capacity ?? 100} />
+          {hasTiers && (
+            <p className="mt-1 text-xs text-slate-400">
+              Ignoré : la capacité est la somme des places par catégorie.
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="price">Prix (FCFA)</Label>
           <Input id="price" name="price" type="number" min={0} defaultValue={event?.price ?? 0} />
+          {hasTiers && (
+            <p className="mt-1 text-xs text-slate-400">
+              Ignoré : le prix dépend des catégories ci-dessous.
+            </p>
+          )}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="mb-0">Catégories de tickets (optionnel)</Label>
+            <p className="text-xs text-slate-400">
+              Ajoutez plusieurs catégories (ex. Standard, VIP, VVIP) avec leur
+              prix. L&apos;acheteur choisira la sienne. Laissez vide pour
+              utiliser le prix unique ci-dessus.
+            </p>
+          </div>
+        </div>
+
+        {tiers.length > 0 && (
+          <div className="mt-4 space-y-3">
+            <div className="hidden gap-2 text-xs font-medium text-slate-400 sm:grid sm:grid-cols-[1fr_120px_120px_40px]">
+              <span>Nom</span>
+              <span>Prix (FCFA)</span>
+              <span>Places (0 = illimité)</span>
+              <span />
+            </div>
+            {tiers.map((t, i) => (
+              <div
+                key={i}
+                className="grid gap-2 sm:grid-cols-[1fr_120px_120px_40px]"
+              >
+                <Input
+                  value={t.name}
+                  onChange={(e) => updateTier(i, "name", e.target.value)}
+                  placeholder="Ex: VIP"
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  value={t.price}
+                  onChange={(e) => updateTier(i, "price", e.target.value)}
+                  placeholder="Prix"
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  value={t.capacity}
+                  onChange={(e) => updateTier(i, "capacity", e.target.value)}
+                  placeholder="Places"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeTier(i)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                  aria-label="Supprimer la catégorie"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={addTier}
+          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:border-brand-400 hover:text-brand-600"
+        >
+          <Plus className="h-4 w-4" />
+          Ajouter une catégorie
+        </button>
+        <input type="hidden" name="tiers_json" value={tiersJson} />
       </div>
 
       <div>

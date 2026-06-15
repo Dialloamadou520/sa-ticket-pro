@@ -17,13 +17,17 @@ interface Pending {
 }
 
 export function PurchaseForm({ event }: { event: Event }) {
+  const tiers = event.tiers ?? [];
   const [quantity, setQuantity] = useState(1);
   const [provider, setProvider] = useState<PaymentProvider>("wave");
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [tierId, setTierId] = useState<string>(tiers[0]?.id ?? "");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isFree = event.price <= 0;
-  const total = event.price * quantity;
+  const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
+  const unitPrice = selectedTier ? selectedTier.price : event.price;
+  const isFree = unitPrice <= 0;
+  const total = unitPrice * quantity;
 
   useEffect(() => {
     if (!pending) return;
@@ -73,6 +77,7 @@ export function PurchaseForm({ event }: { event: Event }) {
           holderName: String(form.get("holderName")),
           phone: String(form.get("phone")),
           provider,
+          tierId: tierId || undefined,
         }),
       });
       const data = await res.json();
@@ -157,6 +162,31 @@ export function PurchaseForm({ event }: { event: Event }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {tiers.length > 0 && (
+        <div>
+          <Label>Catégorie de ticket</Label>
+          <div className="space-y-2">
+            {tiers.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTierId(t.id)}
+                className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                  tierId === t.id
+                    ? "border-brand-600 bg-brand-50"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <span className="font-medium text-slate-800">{t.name}</span>
+                <span className="font-semibold text-brand-700">
+                  {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <Label>Quantité</Label>
         <div className="flex items-center gap-4">
