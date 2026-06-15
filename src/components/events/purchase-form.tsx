@@ -7,6 +7,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { serviceFeeForUnitPrice } from "@/lib/payments/commission";
+import { getTierTheme } from "@/lib/tier-theme";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
 import type { Event, PaymentProvider } from "@/lib/types";
 
@@ -170,23 +171,28 @@ export function PurchaseForm({ event }: { event: Event }) {
         <div>
           <Label>Catégorie de ticket</Label>
           <div className="space-y-2">
-            {tiers.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTierId(t.id)}
-                className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${
-                  tierId === t.id
-                    ? "border-brand-600 bg-brand-50"
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <span className="font-medium text-slate-800">{t.name}</span>
-                <span className="font-semibold text-brand-700">
-                  {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
-                </span>
-              </button>
-            ))}
+            {tiers.map((t) => {
+              const tt = getTierTheme(t.name);
+              const active = tierId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTierId(t.id)}
+                  className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                    active ? tt.ring : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5 font-medium text-slate-800">
+                    <span className={`h-3 w-3 rounded-full ${tt.dot}`} />
+                    {t.name}
+                  </span>
+                  <span className={`font-semibold ${active ? tt.text : "text-slate-700"}`}>
+                    {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

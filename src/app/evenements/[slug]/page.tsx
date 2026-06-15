@@ -15,6 +15,7 @@ import { LinkButton } from "@/components/ui/button";
 import { getEventBySlug } from "@/lib/data/events";
 import { formatDate, formatPrice, formatTime } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { getTierTheme } from "@/lib/tier-theme";
 
 export async function generateMetadata({
   params,
@@ -112,15 +113,21 @@ export default async function EventDetailPage({
               </p>
 
               {event.tiers && event.tiers.length > 0 && (
-                <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4 text-sm">
-                  {event.tiers.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between">
-                      <span className="text-slate-600">{t.name}</span>
-                      <span className="font-medium text-slate-900">
-                        {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
+                  {event.tiers.map((t) => {
+                    const tt = getTierTheme(t.name);
+                    return (
+                      <li key={t.id} className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-slate-600">
+                          <span className={`h-2.5 w-2.5 rounded-full ${tt.dot}`} />
+                          {t.name}
+                        </span>
+                        <span className="font-medium text-slate-900">
+                          {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
 
