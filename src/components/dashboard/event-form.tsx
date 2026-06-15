@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { EventFormState } from "@/app/dashboard/actions";
@@ -25,6 +26,32 @@ interface Props {
 export function EventForm({ action, categories, event, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const router = useRouter();
+  const [bannerUrl, setBannerUrl] = useState(event?.banner_url ?? "");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: data });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Échec de l'upload de l'image.");
+        return;
+      }
+      setBannerUrl(json.url);
+      toast.success("Image importée.");
+    } catch {
+      toast.error("Connexion impossible. Réessayez.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
   const [tiers, setTiers] = useState<TierRow[]>(
     event?.tiers && event.tiers.length > 0
       ? event.tiers.map((t) => ({
@@ -90,13 +117,59 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
       </div>
 
       <div>
-        <Label htmlFor="banner_url">URL de la bannière</Label>
+        <Label>Image de l&apos;événement</Label>
+        <input type="hidden" name="banner_url" value={bannerUrl} />
+        {bannerUrl && (
+          <div className="relative mb-3 h-40 w-full overflow-hidden rounded-xl border border-slate-200">
+            <Image
+              src={bannerUrl}
+              alt="Aperçu de la bannière"
+              fill
+              className="object-cover"
+              unoptimized
+            />
+            <button
+              type="button"
+              onClick={() => setBannerUrl("")}
+              className="absolute right-2 top-2 rounded-lg bg-white/90 p-1.5 text-slate-600 shadow hover:text-red-600"
+              aria-label="Retirer l'image"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPickImage}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Import en cours…
+              </>
+            ) : (
+              <>
+                <ImagePlus className="h-4 w-4" /> Importer une image
+              </>
+            )}
+          </Button>
+          <span className="text-xs text-slate-400">JPG/PNG, 5 Mo max</span>
+        </div>
         <Input
-          id="banner_url"
-          name="banner_url"
+          className="mt-3"
           type="url"
-          defaultValue={event?.banner_url ?? ""}
-          placeholder="https://..."
+          value={bannerUrl}
+          onChange={(e) => setBannerUrl(e.target.value)}
+          placeholder="…ou collez une URL d'image (https://)"
         />
       </div>
 

@@ -10,6 +10,7 @@ import {
   toDexpayOperator,
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
+import { serviceFeeForUnitPrice } from "@/lib/payments/commission";
 import { SITE } from "@/lib/constants";
 import type { PaymentProvider, TicketType } from "@/lib/types";
 
@@ -54,7 +55,12 @@ export async function POST(request: NextRequest) {
     tierId = tier.id;
     tierName = tier.name;
   }
+  // `amount` = revenu de base (revient à l'organisateur). Les frais de service
+  // (commission plateforme) sont ajoutés au montant débité côté opérateur, mais
+  // pas au revenu de l'organisateur.
   const amount = unitPrice * quantity;
+  const serviceFee = serviceFeeForUnitPrice(unitPrice) * quantity;
+  const chargeAmount = amount + serviceFee;
 
   // ---- Mode démo : aucun backend configuré -----------------------------------
   if (!isSupabaseConfigured) {
@@ -149,7 +155,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await createDexpayCheckout({
-      amount,
+      amount: chargeAmount,
       currency: SITE.currency,
       reference: payment.id,
       itemName: `${quantity} ticket(s) — ${event.title}`,
