@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
-import { CalendarDays, Download, MapPin, Ticket as TicketIcon, User } from "lucide-react";
+import {
+  CalendarDays,
+  Download,
+  MapPin,
+  Ticket as TicketIcon,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SITE } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
@@ -63,38 +69,73 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-200">
-      {/* En-tête coloré selon la catégorie */}
+    <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-200/70">
+      {/* Bandeau coloré selon la catégorie */}
       <div
-        className={`flex items-center justify-between bg-gradient-to-r ${theme.gradient} px-6 py-4 text-white`}
+        className={`relative flex items-center justify-between bg-gradient-to-r ${theme.gradient} px-6 py-4 text-white`}
       >
-        <span className="flex items-center gap-2 font-semibold">
+        {/* motif décoratif subtil */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0)",
+            backgroundSize: "16px 16px",
+          }}
+        />
+        <span className="relative flex items-center gap-2 font-semibold tracking-tight">
           <TicketIcon className="h-5 w-5" />
           {SITE.name}
         </span>
-        <span className="rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase tracking-wide backdrop-blur">
+        <span className="relative rounded-full bg-white/25 px-3 py-1 text-xs font-bold uppercase tracking-widest ring-1 ring-white/30 backdrop-blur">
           {ticket.ticketType}
         </span>
       </div>
 
-      <div className="grid gap-6 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div>
-          <h3 className="text-lg font-bold text-slate-900">{ticket.eventTitle}</h3>
-          <dl className="mt-4 space-y-2.5 text-sm">
-            <Row icon={<CalendarDays className="h-4 w-4" />} value={ticket.date} />
-            <Row icon={<MapPin className="h-4 w-4" />} value={ticket.location} />
-            <Row icon={<User className="h-4 w-4" />} value={ticket.holderName} />
+      <div className="grid sm:grid-cols-[1fr_auto]">
+        {/* Corps principal */}
+        <div className="p-6">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
+            Billet d&apos;entrée
+          </p>
+          <h3 className="mt-1 text-xl font-bold leading-snug text-slate-900">
+            {ticket.eventTitle}
+          </h3>
+
+          <dl className="mt-5 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <Field icon={<CalendarDays className="h-4 w-4" />} label="Date" value={ticket.date} />
+            <Field icon={<MapPin className="h-4 w-4" />} label="Lieu" value={ticket.location} />
+            <Field icon={<User className="h-4 w-4" />} label="Participant" value={ticket.holderName} />
+            <Field
+              icon={<span className={`h-3 w-3 rounded-full ${theme.dot}`} />}
+              label="Catégorie"
+              value={ticket.ticketType}
+            />
           </dl>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-xs">
-            <span className="text-slate-400">Réf.</span>
-            <span className="font-mono font-semibold tracking-wider text-slate-700">
-              {reference}
-            </span>
+
+          <div className="mt-5 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-xs text-white">
+            <span className="text-slate-400">RÉF.</span>
+            <span className="font-mono font-semibold tracking-[0.2em]">{reference}</span>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3 sm:border-l sm:border-dashed sm:border-slate-200 sm:pl-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+        {/* Talon perforé avec le QR */}
+        <div className="relative flex flex-col items-center justify-center gap-3 px-6 py-6 sm:px-8">
+          {/* ligne de perforation + encoches */}
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 hidden h-full border-l-2 border-dashed border-slate-200 sm:block"
+          />
+          <span
+            aria-hidden
+            className="absolute -left-3 -top-3 hidden h-6 w-6 rounded-full bg-white ring-1 ring-slate-200/70 sm:block"
+          />
+          <span
+            aria-hidden
+            className="absolute -bottom-3 -left-3 hidden h-6 w-6 rounded-full bg-white ring-1 ring-slate-200/70 sm:block"
+          />
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
             {qr ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qr} alt="QR code du ticket" className="h-36 w-36" />
@@ -102,7 +143,10 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
               <div className="h-36 w-36 animate-pulse rounded bg-slate-100" />
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={downloadPdf}>
+          <p className="text-center text-xs text-slate-400">
+            Présentez ce QR à l&apos;entrée
+          </p>
+          <Button variant="outline" size="sm" onClick={downloadPdf} className="w-full">
             <Download className="h-4 w-4" />
             Télécharger PDF
           </Button>
@@ -112,11 +156,24 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
   );
 }
 
-function Row({ icon, value }: { icon: React.ReactNode; value: string }) {
+function Field({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="flex items-center gap-2.5 text-slate-600">
-      <span className="text-slate-400">{icon}</span>
-      <span className="font-medium text-slate-800">{value}</span>
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-4 w-4 items-center justify-center text-slate-400">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[11px] uppercase tracking-wide text-slate-400">{label}</dt>
+        <dd className="truncate text-sm font-semibold text-slate-800">{value}</dd>
+      </div>
     </div>
   );
 }
