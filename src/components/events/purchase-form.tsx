@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
+import { serviceFeeForUnitPrice } from "@/lib/payments/commission";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
 import type { Event, PaymentProvider } from "@/lib/types";
 
@@ -27,7 +28,10 @@ export function PurchaseForm({ event }: { event: Event }) {
   const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
   const unitPrice = selectedTier ? selectedTier.price : event.price;
   const isFree = unitPrice <= 0;
-  const total = unitPrice * quantity;
+  const unitFee = serviceFeeForUnitPrice(unitPrice);
+  const subtotal = unitPrice * quantity;
+  const fee = unitFee * quantity;
+  const total = subtotal + fee;
 
   useEffect(() => {
     if (!pending) return;
@@ -252,11 +256,25 @@ export function PurchaseForm({ event }: { event: Event }) {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-        <span className="text-slate-600">Total</span>
-        <span className="text-2xl font-bold text-brand-700">
-          {formatPrice(total)}
-        </span>
+      <div className="space-y-2 border-t border-slate-100 pt-4">
+        {fee > 0 && (
+          <>
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>Sous-total</span>
+              <span>{formatPrice(subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>Frais de service</span>
+              <span>{formatPrice(fee)}</span>
+            </div>
+          </>
+        )}
+        <div className="flex items-center justify-between">
+          <span className="text-slate-600">Total</span>
+          <span className="text-2xl font-bold text-brand-700">
+            {formatPrice(total)}
+          </span>
+        </div>
       </div>
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
