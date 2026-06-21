@@ -5,6 +5,8 @@ import { ChevronRight, CalendarDays, MapPin } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { PurchaseForm } from "@/components/events/purchase-form";
 import { getEventBySlug } from "@/lib/data/events";
+import { getServiceFeesEnabled } from "@/lib/data/settings";
+import { resolveFeeMode } from "@/lib/payments/commission";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -19,6 +21,8 @@ export default async function AchatPage({
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) notFound();
+
+  const feeMode = resolveFeeMode(event.fee_mode, await getServiceFeesEnabled());
 
   let isAuthenticated = false;
   if (isSupabaseConfigured) {
@@ -66,7 +70,7 @@ export default async function AchatPage({
               </p>
             )}
             <div className="mt-6">
-              <PurchaseForm event={event} />
+              <PurchaseForm event={event} feeMode={feeMode} />
             </div>
           </div>
         </div>

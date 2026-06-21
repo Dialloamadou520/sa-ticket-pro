@@ -4,23 +4,27 @@ import { CalendarDays, Users, Wallet, Percent, ChevronRight } from "lucide-react
 import { StatCard } from "@/components/dashboard/stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
+import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
   getAdminStats,
   getAllOrganizers,
   getAllUsers,
   getPendingEvents,
 } from "@/lib/data/admin";
+import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Administration" };
 
 export default async function AdminPage() {
-  const [stats, pending, organizers, users] = await Promise.all([
-    getAdminStats(),
-    getPendingEvents(),
-    getAllOrganizers(),
-    getAllUsers(),
-  ]);
+  const [stats, pending, organizers, users, serviceFeesEnabled] =
+    await Promise.all([
+      getAdminStats(),
+      getPendingEvents(),
+      getAllOrganizers(),
+      getAllUsers(),
+      getServiceFeesEnabled(),
+    ]);
 
   return (
     <div className="space-y-8">
@@ -41,6 +45,25 @@ export default async function AdminPage() {
           icon={Percent}
         />
       </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+          <div>
+            <h2 className="font-semibold text-slate-900">Frais de service</h2>
+            <p className="text-xs text-slate-500">
+              Activez ou désactivez globalement les frais de service ajoutés au
+              prix des tickets. Chaque événement peut aussi être réglé
+              individuellement (frais standard, commission 1,5 % ou aucun).
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-600">
+              {serviceFeesEnabled ? "Activés" : "Désactivés"}
+            </span>
+            <ServiceFeesToggle enabled={serviceFeesEnabled} />
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-100 px-5 py-4">
