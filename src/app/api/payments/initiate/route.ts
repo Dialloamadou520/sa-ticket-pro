@@ -10,7 +10,8 @@ import {
   toDexpayOperator,
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
-import { serviceFeeForUnitPrice } from "@/lib/payments/commission";
+import { getServiceFeesEnabled } from "@/lib/data/settings";
+import { feeForUnitPrice, resolveFeeMode } from "@/lib/payments/commission";
 import { SITE } from "@/lib/constants";
 import type { PaymentProvider, TicketType } from "@/lib/types";
 
@@ -57,9 +58,12 @@ export async function POST(request: NextRequest) {
   }
   // `amount` = revenu de base (revient à l'organisateur). Les frais de service
   // (commission plateforme) sont ajoutés au montant débité côté opérateur, mais
-  // pas au revenu de l'organisateur.
+  // pas au revenu de l'organisateur. Le mode de frais est résolu par événement
+  // en tenant compte de l'interrupteur global (réglage admin).
+  const feesEnabled = await getServiceFeesEnabled();
+  const feeMode = resolveFeeMode(event.fee_mode, feesEnabled);
   const amount = unitPrice * quantity;
-  const serviceFee = serviceFeeForUnitPrice(unitPrice) * quantity;
+  const serviceFee = feeForUnitPrice(unitPrice, feeMode) * quantity;
   const chargeAmount = amount + serviceFee;
 
   // ---- Mode démo : aucun backend configuré -----------------------------------
@@ -95,6 +99,7 @@ export async function POST(request: NextRequest) {
       guest_name: user ? null : body.holderName,
       event_id: event.id,
       amount,
+      service_fee: serviceFee,
       currency: SITE.currency,
       provider: body.provider,
       status: "pending",

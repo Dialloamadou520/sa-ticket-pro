@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
-import { serviceFeeForUnitPrice } from "@/lib/payments/commission";
+import { feeForUnitPrice } from "@/lib/payments/commission";
 import { getTierTheme } from "@/lib/tier-theme";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
-import type { Event, PaymentProvider } from "@/lib/types";
+import type { Event, FeeMode, PaymentProvider } from "@/lib/types";
 
 interface Pending {
   provider: PaymentProvider;
@@ -18,7 +18,13 @@ interface Pending {
   confirmUrl: string;
 }
 
-export function PurchaseForm({ event }: { event: Event }) {
+export function PurchaseForm({
+  event,
+  feeMode = "service_fee",
+}: {
+  event: Event;
+  feeMode?: FeeMode;
+}) {
   const tiers = event.tiers ?? [];
   const [quantity, setQuantity] = useState(1);
   const [provider, setProvider] = useState<PaymentProvider>("wave");
@@ -29,7 +35,7 @@ export function PurchaseForm({ event }: { event: Event }) {
   const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
   const unitPrice = selectedTier ? selectedTier.price : event.price;
   const isFree = unitPrice <= 0;
-  const unitFee = serviceFeeForUnitPrice(unitPrice);
+  const unitFee = feeForUnitPrice(unitPrice, feeMode);
   const subtotal = unitPrice * quantity;
   const fee = unitFee * quantity;
   const total = subtotal + fee;
@@ -262,25 +268,11 @@ export function PurchaseForm({ event }: { event: Event }) {
         </div>
       )}
 
-      <div className="space-y-2 border-t border-slate-100 pt-4">
-        {fee > 0 && (
-          <>
-            <div className="flex items-center justify-between text-sm text-slate-500">
-              <span>Sous-total</span>
-              <span>{formatPrice(subtotal)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-slate-500">
-              <span>Frais de service</span>
-              <span>{formatPrice(fee)}</span>
-            </div>
-          </>
-        )}
-        <div className="flex items-center justify-between">
-          <span className="text-slate-600">Total</span>
-          <span className="text-2xl font-bold text-brand-700">
-            {formatPrice(total)}
-          </span>
-        </div>
+      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+        <span className="text-slate-600">{isFree ? "Total" : "À payer"}</span>
+        <span className="text-2xl font-bold text-brand-700">
+          {formatPrice(total)}
+        </span>
       </div>
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>

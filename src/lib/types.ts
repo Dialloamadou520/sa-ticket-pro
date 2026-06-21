@@ -15,6 +15,8 @@ export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 export type PaymentProvider = "wave" | "orange_money" | "dexpay";
 
+export type FeeMode = "service_fee" | "commission" | "none";
+
 export interface Category {
   id: string;
   slug: string;
@@ -73,6 +75,7 @@ export interface Event {
   ticket_type: TicketType;
   status: EventStatus;
   tickets_sold: number;
+  fee_mode?: FeeMode;
   created_at: string;
   tiers?: TicketTier[];
 }
