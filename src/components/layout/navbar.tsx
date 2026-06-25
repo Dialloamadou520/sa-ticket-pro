@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ticket } from "lucide-react";
+import Image from "next/image";
 import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 import { SITE } from "@/lib/constants";
@@ -24,9 +24,14 @@ export async function Navbar() {
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
       <Container className="flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-slate-900">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <Ticket className="h-5 w-5" />
-          </span>
+          <Image
+            src="/logo-mark.png"
+            alt={SITE.name}
+            width={804}
+            height={448}
+            priority
+            className="h-9 w-auto"
+          />
           <span className="text-lg tracking-tight">{SITE.name}</span>
         </Link>
 

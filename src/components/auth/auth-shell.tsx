@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ticket } from "lucide-react";
+import Image from "next/image";
 import { SITE } from "@/lib/constants";
 
 const perks = [
@@ -21,9 +21,13 @@ export function AuthShell({
     <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-2">
       <div className="gradient-hero hidden flex-col justify-between p-12 text-white lg:flex">
         <Link href="/" className="flex items-center gap-2 font-bold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-            <Ticket className="h-5 w-5" />
-          </span>
+          <Image
+            src="/logo-mark.png"
+            alt={SITE.name}
+            width={804}
+            height={448}
+            className="h-10 w-auto"
+          />
           <span className="text-lg">{SITE.name}</span>
         </Link>
         <div>
