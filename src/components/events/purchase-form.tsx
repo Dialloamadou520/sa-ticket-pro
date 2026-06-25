@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Loader2, Smartphone } from "lucide-react";
+import { Minus, Plus, Loader2, Smartphone, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -268,22 +268,37 @@ export function PurchaseForm({
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-        <span className="text-slate-600">{isFree ? "Total" : "À payer"}</span>
+      <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100/60 px-5 py-4">
+        <div>
+          <span className="block text-sm font-medium text-brand-700">
+            {isFree ? "Total" : "À payer"}
+          </span>
+          {quantity > 1 && (
+            <span className="text-xs text-brand-600/80">
+              {quantity} tickets
+            </span>
+          )}
+        </div>
         <span className="text-2xl font-bold text-brand-700">
           {formatPrice(total)}
         </span>
       </div>
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
-        {loading
-          ? "Traitement..."
-          : isFree
-            ? "Obtenir mon ticket"
-            : `Payer ${formatPrice(total)}`}
+        {loading ? (
+          <>
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Traitement...
+          </>
+        ) : isFree ? (
+          "Obtenir mon ticket"
+        ) : (
+          `Payer ${formatPrice(total)}`
+        )}
       </Button>
-      <p className="text-center text-xs text-slate-400">
-        Paiement sécurisé via Wave & Orange Money.
+      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        Paiement sécurisé via Wave &amp; Orange Money.
       </p>
     </form>
   );
