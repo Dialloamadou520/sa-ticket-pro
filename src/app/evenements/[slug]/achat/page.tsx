@@ -48,7 +48,7 @@ export default async function AchatPage({
   return (
     <div className="bg-slate-50">
       {/* Bandeau image de l'événement */}
-      <div className="relative h-52 w-full bg-slate-900 sm:h-64">
+      <div className="relative h-44 w-full bg-slate-900 sm:h-64">
         {event.banner_url && (
           <Image
             src={event.banner_url}
@@ -60,8 +60,8 @@ export default async function AchatPage({
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-slate-900/30" />
-        <Container className="relative flex h-full flex-col justify-end pb-6">
-          <nav className="mb-3 flex items-center gap-1 text-sm text-white/70">
+        <Container className="relative flex h-full flex-col justify-end pb-5 sm:pb-6">
+          <nav className="mb-2 flex items-center gap-1 text-xs text-white/70 sm:mb-3 sm:text-sm">
             <Link href="/explorer" className="hover:text-white">
               Explorer
             </Link>
@@ -85,7 +85,7 @@ export default async function AchatPage({
               {TICKET_TYPE_LABELS[event.ticket_type]}
             </Badge>
           </div>
-          <h1 className="mt-2 text-2xl font-bold text-white drop-shadow-sm sm:text-3xl">
+          <h1 className="mt-2 text-xl font-bold leading-tight text-white drop-shadow-sm sm:text-3xl">
             {event.title}
           </h1>
         </Container>
@@ -95,10 +95,10 @@ export default async function AchatPage({
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
           {/* Formulaire */}
           <div className="lg:col-span-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30">
-                  <TicketIcon className="h-6 w-6" />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30 sm:h-11 sm:w-11">
+                  <TicketIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </span>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">

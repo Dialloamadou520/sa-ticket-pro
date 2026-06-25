@@ -268,38 +268,39 @@ export function PurchaseForm({
         </div>
       )}
 
-      <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100/60 px-5 py-4">
-        <div>
-          <span className="block text-sm font-medium text-brand-700">
-            {isFree ? "Total" : "À payer"}
-          </span>
-          {quantity > 1 && (
-            <span className="text-xs text-brand-600/80">
-              {quantity} tickets
+      {/* Total + CTA — épinglé en bas de l'écran sur mobile pour rester accessible. */}
+      <div className="sticky bottom-0 z-10 -mx-5 space-y-3 border-t border-slate-100 bg-white/95 px-5 pb-4 pt-3 backdrop-blur sm:-mx-8 sm:px-8 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
+        <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100/60 px-5 py-3.5">
+          <div>
+            <span className="block text-sm font-medium text-brand-700">
+              {isFree ? "Total" : "À payer"}
             </span>
-          )}
+            {quantity > 1 && (
+              <span className="text-xs text-brand-600/80">{quantity} tickets</span>
+            )}
+          </div>
+          <span className="text-2xl font-bold text-brand-700">
+            {formatPrice(total)}
+          </span>
         </div>
-        <span className="text-2xl font-bold text-brand-700">
-          {formatPrice(total)}
-        </span>
-      </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={loading}>
-        {loading ? (
-          <>
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Traitement...
-          </>
-        ) : isFree ? (
-          "Obtenir mon ticket"
-        ) : (
-          `Payer ${formatPrice(total)}`
-        )}
-      </Button>
-      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
-        <ShieldCheck className="h-3.5 w-3.5" />
-        Paiement sécurisé via Wave &amp; Orange Money.
-      </p>
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Traitement...
+            </>
+          ) : isFree ? (
+            "Obtenir mon ticket"
+          ) : (
+            `Payer ${formatPrice(total)}`
+          )}
+        </Button>
+        <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Paiement sécurisé via Wave &amp; Orange Money.
+        </p>
+      </div>
     </form>
   );
 }
