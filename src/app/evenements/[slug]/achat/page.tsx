@@ -18,8 +18,6 @@ import { PurchaseForm } from "@/components/events/purchase-form";
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { resolveFeeMode } from "@/lib/payments/commission";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate, formatPrice, formatTime } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 
@@ -35,15 +33,6 @@ export default async function AchatPage({
   if (!event) notFound();
 
   const feeMode = resolveFeeMode(event.fee_mode, await getServiceFeesEnabled());
-
-  let isAuthenticated = false;
-  if (isSupabaseConfigured) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    isAuthenticated = Boolean(user);
-  }
 
   return (
     <div className="bg-slate-50">
@@ -109,20 +98,6 @@ export default async function AchatPage({
                   </p>
                 </div>
               </div>
-
-              {!isAuthenticated && (
-                <p className="mt-5 flex flex-wrap items-center gap-1 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-                  <span className="font-medium">Achat en tant qu&apos;invité</span>
-                  — aucun compte requis. Déjà inscrit&nbsp;?
-                  <Link
-                    href={`/connexion?redirect=/evenements/${event.slug}/achat`}
-                    className="font-semibold underline"
-                  >
-                    Connectez-vous
-                  </Link>
-                  .
-                </p>
-              )}
 
               <div className="mt-6">
                 <PurchaseForm event={event} feeMode={feeMode} />
