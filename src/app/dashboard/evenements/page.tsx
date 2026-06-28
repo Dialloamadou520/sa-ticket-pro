@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Pencil, Plus, Users } from "lucide-react";
+import { Pencil, Plus, ShieldCheck, Users } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { EventStatusBadge } from "@/components/dashboard/event-status-badge";
 import { DeleteEventButton } from "@/components/dashboard/delete-event-button";
@@ -71,6 +71,13 @@ export default async function MesEvenementsPage() {
                       >
                         <Users className="h-4 w-4" />
                         Participants
+                      </Link>
+                      <Link
+                        href={`/dashboard/evenements/${event.id}/controleurs`}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        Contrôleurs
                       </Link>
                       <Link
                         href={`/dashboard/evenements/${event.id}/modifier`}

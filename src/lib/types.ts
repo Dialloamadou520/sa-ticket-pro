@@ -122,3 +122,10 @@ export interface Scan {
   result: "valid" | "already_used" | "invalid";
   created_at: string;
 }
+
+export interface EventController {
+  id: string;
+  event_id: string;
+  email: string;
+  created_at: string;
+}
