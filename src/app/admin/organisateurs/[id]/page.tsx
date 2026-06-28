@@ -9,7 +9,7 @@ import {
   Percent,
   ScanLine,
 } from "lucide-react";
-import { StatCard } from "@/components/dashboard/stat-card";
+import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { getOrganizerActivity } from "@/lib/data/admin";
 import { EVENT_STATUS_LABELS } from "@/lib/constants";
@@ -77,33 +77,40 @@ export default async function OrganizerDetailPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard
+        <AdminStatCard
           label="Événements"
           value={String(organizer.eventsCount)}
           icon={CalendarDays}
           hint={`${organizer.publishedEvents} publiés`}
+          accent="violet"
         />
-        <StatCard
+        <AdminStatCard
           label="Tickets vendus"
           value={String(organizer.ticketsSold)}
           icon={TicketIcon}
+          accent="blue"
         />
-        <StatCard
+        <AdminStatCard
           label="Revenus"
           value={formatPrice(organizer.revenue)}
           icon={Wallet}
+          accent="emerald"
         />
-        <StatCard
+        <AdminStatCard
           label="Commission (10%)"
           value={formatPrice(organizer.commission)}
           icon={Percent}
+          accent="amber"
         />
-        <StatCard label="Scans (entrées)" value={String(scansCount)} icon={ScanLine} />
+        <AdminStatCard label="Scans (entrées)" value={String(scansCount)} icon={ScanLine} accent="rose" />
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="font-semibold text-slate-900">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+            <CalendarDays className="h-5 w-5" />
+          </span>
+          <h2 className="flex items-center font-semibold text-slate-900">
             Événements
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
               {events.length}
@@ -128,7 +135,7 @@ export default async function OrganizerDetailPage({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {events.map((e) => (
-                  <tr key={e.id}>
+                  <tr key={e.id} className="transition-colors hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-900">{e.title}</td>
                     <td className="px-5 py-3 text-slate-500">
                       {formatDateShort(e.starts_at)}
@@ -148,17 +155,22 @@ export default async function OrganizerDetailPage({
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="font-semibold text-slate-900">
-            Paiements
-            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              {payments.length}
-            </span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            {paidPayments.length} payé(s) · {formatPrice(organizer.revenue)} encaissés
-          </p>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <Wallet className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="flex items-center font-semibold text-slate-900">
+              Paiements
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {payments.length}
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              {paidPayments.length} payé(s) · {formatPrice(organizer.revenue)} encaissés
+            </p>
+          </div>
         </div>
         {payments.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-500">
@@ -178,7 +190,7 @@ export default async function OrganizerDetailPage({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {payments.slice(0, 50).map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="transition-colors hover:bg-slate-50">
                     <td className="px-5 py-3 text-slate-500">
                       {formatDateShort(p.created_at)}
                     </td>
