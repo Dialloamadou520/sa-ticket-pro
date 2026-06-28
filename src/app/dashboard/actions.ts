@@ -194,3 +194,80 @@ export async function deleteEvent(id: string): Promise<void> {
   await supabase.from("events").delete().eq("id", id);
   revalidatePath("/dashboard/evenements");
 }
+
+// -- Contrôleurs d'événement ---------------------------------------------------
+
+export interface ControllerFormState {
+  error?: string;
+  success?: boolean;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Vrai si l'utilisateur courant possède l'événement (ou est admin). */
+async function canManageEvent(eventId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.role === "admin") return true;
+
+  const { data: organizer } = await admin
+    .from("organizers")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!organizer) return false;
+
+  const { data: event } = await admin
+    .from("events")
+    .select("organizer_id")
+    .eq("id", eventId)
+    .maybeSingle();
+  return Boolean(event && event.organizer_id === organizer.id);
+}
+
+export async function addController(
+  eventId: string,
+  _prev: ControllerFormState,
+  formData: FormData
+): Promise<ControllerFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Adresse email invalide." };
+
+  if (!(await canManageEvent(eventId))) {
+    return { error: "Action non autorisée." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("event_controllers")
+    .upsert({ event_id: eventId, email }, { onConflict: "event_id,email" });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/evenements/${eventId}/controleurs`);
+  return { success: true };
+}
+
+export async function removeController(
+  eventId: string,
+  controllerId: string
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (!(await canManageEvent(eventId))) return;
+  const admin = createAdminClient();
+  await admin.from("event_controllers").delete().eq("id", controllerId);
+  revalidatePath(`/dashboard/evenements/${eventId}/controleurs`);
+}

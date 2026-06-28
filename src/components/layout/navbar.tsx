@@ -4,6 +4,7 @@ import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 import { SITE } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/data/auth";
+import { getControllerEventIds } from "@/lib/data/controllers";
 import { MobileMenu } from "./mobile-menu";
 import { UserMenu } from "./user-menu";
 
@@ -17,6 +18,7 @@ const navLinks = [
 
 export async function Navbar() {
   const user = await getCurrentUser();
+  const isController = user ? (await getControllerEventIds()).length > 0 : false;
   const displayName =
     user?.profile?.full_name || user?.email?.split("@")[0] || "Mon compte";
 
@@ -49,7 +51,11 @@ export async function Navbar() {
 
         <div className="flex items-center gap-2">
           {user ? (
-            <UserMenu name={displayName} role={user.profile?.role ?? "participant"} />
+            <UserMenu
+              name={displayName}
+              role={user.profile?.role ?? "participant"}
+              isController={isController}
+            />
           ) : (
             <div className="hidden items-center gap-2 md:flex">
               <LinkButton href="/connexion" variant="ghost" size="sm">
