@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { EventControllers } from "@/components/dashboard/event-controllers";
 import { getMyEvents } from "@/lib/data/dashboard";
-import { getEventControllers } from "@/lib/data/controllers";
+import {
+  getEventControllers,
+  getEventControllerScanCounts,
+} from "@/lib/data/controllers";
 
 export const metadata: Metadata = { title: "Contrôleurs" };
 
@@ -18,7 +21,10 @@ export default async function ControleursPage({
   const event = events.find((e) => e.id === id);
   if (!event) notFound();
 
-  const controllers = await getEventControllers(id);
+  const [controllers, scanCounts] = await Promise.all([
+    getEventControllers(id),
+    getEventControllerScanCounts(id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -39,7 +45,11 @@ export default async function ControleursPage({
         </p>
       </div>
 
-      <EventControllers eventId={id} controllers={controllers} />
+      <EventControllers
+        eventId={id}
+        controllers={controllers}
+        scanCounts={scanCounts}
+      />
     </div>
   );
 }
