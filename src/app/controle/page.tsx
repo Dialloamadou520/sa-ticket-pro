@@ -18,7 +18,7 @@ export default async function ControlePage() {
   return (
     <Container className="max-w-xl py-10">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-sm">
           <ScanLine className="h-5 w-5" />
         </span>
         <div>
@@ -48,7 +48,7 @@ export default async function ControlePage() {
             {events.map((event) => (
               <div
                 key={event.id}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50/40"
               >
                 <p className="font-medium text-slate-900">{event.title}</p>
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
