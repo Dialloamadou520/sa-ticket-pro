@@ -1,7 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Users, Wallet, Percent, ChevronRight } from "lucide-react";
-import { StatCard } from "@/components/dashboard/stat-card";
+import {
+  CalendarDays,
+  Users,
+  Wallet,
+  Percent,
+  ChevronRight,
+  ShieldCheck,
+  Receipt,
+  Clock,
+  Building2,
+} from "lucide-react";
+import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
@@ -28,36 +38,57 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Administration</h1>
-        <p className="text-sm text-slate-500">
-          Pilotez la plateforme Sa Ticket Pro.
-        </p>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-brand-800 px-6 py-7 text-white shadow-sm">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-500/20 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-accent-500/10 blur-2xl" />
+        <div className="relative flex items-center gap-4">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 backdrop-blur">
+            <ShieldCheck className="h-6 w-6" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Administration</h1>
+            <p className="text-sm text-white/70">
+              Pilotez la plateforme Sa Ticket Pro.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Utilisateurs" value={stats.totalUsers.toLocaleString("fr-FR")} icon={Users} />
-        <StatCard label="Événements" value={String(stats.totalEvents)} icon={CalendarDays} />
-        <StatCard label="Revenus plateforme" value={formatPrice(stats.totalRevenue)} icon={Wallet} />
-        <StatCard
+        <AdminStatCard label="Utilisateurs" value={stats.totalUsers.toLocaleString("fr-FR")} icon={Users} accent="blue" />
+        <AdminStatCard label="Événements" value={String(stats.totalEvents)} icon={CalendarDays} accent="violet" />
+        <AdminStatCard label="Revenus plateforme" value={formatPrice(stats.totalRevenue)} icon={Wallet} accent="emerald" />
+        <AdminStatCard
           label="Commissions (10%)"
           value={formatPrice(stats.platformCommission)}
           icon={Percent}
+          accent="amber"
         />
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-          <div>
-            <h2 className="font-semibold text-slate-900">Frais de service</h2>
-            <p className="text-xs text-slate-500">
-              Activez ou désactivez globalement les frais de service ajoutés au
-              prix des tickets. Chaque événement peut aussi être réglé
-              individuellement (frais standard, commission 1,5 % ou aucun).
-            </p>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <Receipt className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-semibold text-slate-900">Frais de service</h2>
+              <p className="text-xs text-slate-500">
+                Activez ou désactivez globalement les frais de service ajoutés au
+                prix des tickets. Chaque événement peut aussi être réglé
+                individuellement (frais standard, commission 1,5 % ou aucun).
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-600">
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                serviceFeesEnabled
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
               {serviceFeesEnabled ? "Activés" : "Désactivés"}
             </span>
             <ServiceFeesToggle enabled={serviceFeesEnabled} />
@@ -65,9 +96,12 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="font-semibold text-slate-900">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+            <Clock className="h-5 w-5" />
+          </span>
+          <h2 className="flex items-center font-semibold text-slate-900">
             Événements en attente de validation
             <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
               {pending.length}
@@ -83,7 +117,7 @@ export default async function AdminPage() {
             {pending.map((event) => (
               <li
                 key={event.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50"
               >
                 <div>
                   <p className="font-medium text-slate-900">{event.title}</p>
@@ -99,18 +133,23 @@ export default async function AdminPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="font-semibold text-slate-900">
-            Organisateurs
-            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              {organizers.length}
-            </span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            Activité par organisateur. Retirez un organisateur pour annuler et
-            masquer ses événements (réversible).
-          </p>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+            <Building2 className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="flex items-center font-semibold text-slate-900">
+              Organisateurs
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {organizers.length}
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Activité par organisateur. Retirez un organisateur pour annuler et
+              masquer ses événements (réversible).
+            </p>
+          </div>
         </div>
         {organizers.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-500">
@@ -132,7 +171,12 @@ export default async function AdminPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {organizers.map((o) => (
-                  <tr key={o.id} className={o.disabled ? "bg-red-50/40" : undefined}>
+                  <tr
+                    key={o.id}
+                    className={`transition-colors hover:bg-slate-50 ${
+                      o.disabled ? "bg-red-50/40" : ""
+                    }`}
+                  >
                     <td className="px-5 py-3">
                       <Link
                         href={`/admin/organisateurs/${o.id}`}
@@ -191,8 +235,11 @@ export default async function AdminPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-5 py-4">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+            <Users className="h-5 w-5" />
+          </span>
           <h2 className="font-semibold text-slate-900">Utilisateurs récents</h2>
         </div>
         {users.length === 0 ? (
@@ -212,7 +259,7 @@ export default async function AdminPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {users.map((u) => (
-                  <tr key={u.id}>
+                  <tr key={u.id} className="transition-colors hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-900">
                       {u.full_name || "—"}
                     </td>
