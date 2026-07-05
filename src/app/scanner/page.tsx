@@ -7,13 +7,13 @@ export const metadata: Metadata = { title: "Scanner les tickets" };
 
 export default function ScannerPage() {
   return (
-    <Container className="max-w-xl py-10">
+    <Container className="max-w-xl py-6 sm:py-10">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-sm">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-sm sm:h-11 sm:w-11">
           <ScanLine className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
             Contrôle des entrées
           </h1>
           <p className="text-sm text-slate-500">
@@ -22,7 +22,7 @@ export default function ScannerPage() {
           </p>
         </div>
       </div>
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <ScannerClient />
       </div>
     </Container>
