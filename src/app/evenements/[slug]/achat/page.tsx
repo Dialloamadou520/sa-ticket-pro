@@ -1,13 +1,25 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, CalendarDays, MapPin } from "lucide-react";
+import {
+  ChevronRight,
+  CalendarDays,
+  Clock,
+  MapPin,
+  ShieldCheck,
+  Smartphone,
+  QrCode,
+  Ticket as TicketIcon,
+} from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { Badge } from "@/components/ui/badge";
 import { PurchaseForm } from "@/components/events/purchase-form";
 import { getEventBySlug } from "@/lib/data/events";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { formatDate, formatPrice } from "@/lib/format";
+import { getServiceFeesEnabled } from "@/lib/data/settings";
+import { resolveFeeMode } from "@/lib/payments/commission";
+import { formatDate, formatPrice, formatTime } from "@/lib/format";
+import { TICKET_TYPE_LABELS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Achat de ticket" };
 
@@ -20,85 +32,174 @@ export default async function AchatPage({
   const event = await getEventBySlug(slug);
   if (!event) notFound();
 
-  let isAuthenticated = false;
-  if (isSupabaseConfigured) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    isAuthenticated = Boolean(user);
-  }
+  const feeMode = resolveFeeMode(event.fee_mode, await getServiceFeesEnabled());
 
   return (
-    <Container className="py-10">
-      <nav className="mb-6 flex items-center gap-1 text-sm text-slate-500">
-        <Link href="/explorer" className="hover:text-brand-600">
-          Explorer
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link href={`/evenements/${event.slug}`} className="hover:text-brand-600">
-          {event.title}
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-slate-700">Achat</span>
-      </nav>
-
-      <div className="grid gap-8 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <h1 className="text-2xl font-bold text-slate-900">
-              Réserver vos tickets
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Remplissez les informations ci-dessous pour finaliser votre achat.
-            </p>
-            {!isAuthenticated && (
-              <p className="mt-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
-                Achetez en tant qu&apos;invité, sans créer de compte. Vous avez
-                déjà un compte ?{" "}
-                <Link
-                  href={`/connexion?redirect=/evenements/${event.slug}/achat`}
-                  className="font-semibold underline"
-                >
-                  Connectez-vous
-                </Link>
-                .
-              </p>
+    <div className="bg-slate-50">
+      {/* Bandeau image de l'événement */}
+      <div className="relative h-44 w-full bg-slate-900 sm:h-64">
+        {event.banner_url && (
+          <Image
+            src={event.banner_url}
+            alt={event.title}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover opacity-60"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-slate-900/30" />
+        <Container className="relative flex h-full flex-col justify-end pb-5 sm:pb-6">
+          <nav className="mb-2 flex items-center gap-1 text-xs text-white/70 sm:mb-3 sm:text-sm">
+            <Link href="/explorer" className="hover:text-white">
+              Explorer
+            </Link>
+            <ChevronRight className="h-4 w-4" />
+            <Link
+              href={`/evenements/${event.slug}`}
+              className="max-w-[10rem] truncate hover:text-white sm:max-w-none"
+            >
+              {event.title}
+            </Link>
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-white">Achat</span>
+          </nav>
+          <div className="flex flex-wrap items-center gap-2">
+            {event.category && (
+              <Badge tone="brand" className="bg-white/15 text-white backdrop-blur">
+                {event.category.name}
+              </Badge>
             )}
-            <div className="mt-6">
-              <PurchaseForm event={event} />
-            </div>
+            <Badge tone="purple" className="bg-white/15 text-white backdrop-blur">
+              {TICKET_TYPE_LABELS[event.ticket_type]}
+            </Badge>
           </div>
-        </div>
-
-        <aside className="lg:col-span-2">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="font-semibold text-slate-900">Récapitulatif</h2>
-            <p className="mt-3 font-medium text-slate-800">{event.title}</p>
-            <div className="mt-3 space-y-2 text-sm text-slate-500">
-              <p className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                {formatDate(event.starts_at)}
-              </p>
-              <p className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                {event.location}
-                {event.city ? `, ${event.city}` : ""}
-              </p>
-            </div>
-            <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-sm">
-              <span className="text-slate-600">
-                {event.tiers && event.tiers.length > 0
-                  ? "À partir de"
-                  : "Prix unitaire"}
-              </span>
-              <span className="font-semibold text-slate-900">
-                {formatPrice(event.price)}
-              </span>
-            </div>
-          </div>
-        </aside>
+          <h1 className="mt-2 text-xl font-bold leading-tight text-white drop-shadow-sm sm:text-3xl">
+            {event.title}
+          </h1>
+        </Container>
       </div>
-    </Container>
+
+      <Container className="relative -mt-6 pb-16">
+        <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
+          {/* Formulaire */}
+          <div className="lg:col-span-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30 sm:h-11 sm:w-11">
+                  <TicketIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                </span>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Réserver vos tickets
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Quelques infos et c&apos;est réglé — votre billet s&apos;affiche aussitôt.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <PurchaseForm event={event} feeMode={feeMode} />
+              </div>
+            </div>
+          </div>
+
+          {/* Récapitulatif */}
+          <aside className="lg:col-span-2">
+            <div className="sticky top-20 space-y-4">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    Récapitulatif
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <p className="font-semibold text-slate-900">{event.title}</p>
+                  <div className="mt-4 space-y-3 text-sm text-slate-600">
+                    <p className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                        <CalendarDays className="h-4 w-4" />
+                      </span>
+                      {formatDate(event.starts_at)}
+                    </p>
+                    <p className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                        <Clock className="h-4 w-4" />
+                      </span>
+                      {formatTime(event.starts_at)}
+                    </p>
+                    <p className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                        <MapPin className="h-4 w-4" />
+                      </span>
+                      <span>
+                        {event.location}
+                        {event.city ? `, ${event.city}` : ""}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <span className="text-sm text-slate-600">
+                      {event.tiers && event.tiers.length > 0
+                        ? "À partir de"
+                        : "Prix unitaire"}
+                    </span>
+                    <span className="text-lg font-bold text-brand-700">
+                      {formatPrice(event.price)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Réassurance */}
+              <ul className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+                <Reassurance
+                  icon={<ShieldCheck className="h-4 w-4" />}
+                  title="Paiement 100% sécurisé"
+                >
+                  Wave &amp; Orange Money, directement sur cette page.
+                </Reassurance>
+                <Reassurance
+                  icon={<QrCode className="h-4 w-4" />}
+                  title="Billet immédiat"
+                >
+                  Votre QR code s&apos;affiche aussitôt et reste téléchargeable.
+                </Reassurance>
+                <Reassurance
+                  icon={<Smartphone className="h-4 w-4" />}
+                  title="Validez sur votre téléphone"
+                >
+                  Confirmez le paiement en un tap, sans quitter le site.
+                </Reassurance>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </Container>
+    </div>
+  );
+}
+
+function Reassurance({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+        {icon}
+      </span>
+      <div>
+        <p className="font-medium text-slate-800">{title}</p>
+        <p className="text-xs text-slate-500">{children}</p>
+      </div>
+    </li>
   );
 }

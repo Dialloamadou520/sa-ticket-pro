@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { GoogleButton } from "./google-button";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -62,12 +61,6 @@ export function RegisterForm() {
 
   return (
     <div className="space-y-5">
-      <GoogleButton />
-      <div className="flex items-center gap-3 text-xs text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
-        ou
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="full_name">Nom complet</Label>

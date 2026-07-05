@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, LogOut, Shield, User } from "lucide-react";
+import { LayoutDashboard, LogOut, ScanLine, Shield, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
 
 interface Props {
   name: string;
   role: UserRole;
+  isController?: boolean;
 }
 
-export function UserMenu({ name, role }: Props) {
+export function UserMenu({ name, role, isController = false }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -54,6 +55,11 @@ export function UserMenu({ name, role }: Props) {
             <MenuLink href="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />}>
               Tableau de bord
             </MenuLink>
+            {isController && (
+              <MenuLink href="/controle" icon={<ScanLine className="h-4 w-4" />}>
+                Contrôle des entrées
+              </MenuLink>
+            )}
             {role === "admin" && (
               <MenuLink href="/admin" icon={<Shield className="h-4 w-4" />}>
                 Administration

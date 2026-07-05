@@ -307,6 +307,23 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
       </div>
 
       <div>
+        <Label htmlFor="fee_mode">Frais de service</Label>
+        <Select
+          id="fee_mode"
+          name="fee_mode"
+          defaultValue={event?.fee_mode ?? "service_fee"}
+        >
+          <option value="service_fee">Frais standard (barème par palier)</option>
+          <option value="commission">Commission 1,5 % du prix</option>
+          <option value="none">Aucun frais</option>
+        </Select>
+        <p className="mt-1 text-xs text-slate-400">
+          Frais ajoutés au prix et payés par l&apos;acheteur. « Frais standard »
+          suit le barème de la plateforme (s&apos;ils sont activés).
+        </p>
+      </div>
+
+      <div>
         <Label htmlFor="status">Statut</Label>
         <Select id="status" name="status" defaultValue={event?.status ?? "pending"}>
           <option value="draft">Brouillon</option>
