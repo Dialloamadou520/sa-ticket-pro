@@ -15,6 +15,8 @@ export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 export type PaymentProvider = "wave" | "orange_money" | "dexpay";
 
+export type FeeMode = "service_fee" | "commission" | "none";
+
 export interface Category {
   id: string;
   slug: string;
@@ -44,11 +46,15 @@ export interface Organizer {
   created_at: string;
 }
 
-export interface EventTicketTier {
-  type: TicketType;
-  label: string;
+export interface TicketTier {
+  id: string;
+  event_id: string;
+  name: string;
   price: number;
-  quantity: number;
+  capacity: number;
+  sold: number;
+  position: number;
+  created_at: string;
 }
 
 export interface Event {
@@ -69,7 +75,9 @@ export interface Event {
   ticket_type: TicketType;
   status: EventStatus;
   tickets_sold: number;
+  fee_mode?: FeeMode;
   created_at: string;
+  tiers?: TicketTier[];
 }
 
 export interface Ticket {
@@ -78,6 +86,8 @@ export interface Ticket {
   user_id: string | null;
   payment_id: string | null;
   ticket_type: TicketType;
+  tier_id: string | null;
+  tier_name: string | null;
   price: number;
   qr_token: string;
   status: TicketStatus;
@@ -98,6 +108,8 @@ export interface Payment {
   provider_reference: string | null;
   quantity: number;
   ticket_type: TicketType;
+  tier_id: string | null;
+  tier_name: string | null;
   guest_email: string | null;
   guest_name: string | null;
   created_at: string;
@@ -108,5 +120,12 @@ export interface Scan {
   ticket_id: string;
   scanned_by: string | null;
   result: "valid" | "already_used" | "invalid";
+  created_at: string;
+}
+
+export interface EventController {
+  id: string;
+  event_id: string;
+  email: string;
   created_at: string;
 }

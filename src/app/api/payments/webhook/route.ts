@@ -1,30 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyDexpaySignature } from "@/lib/payments/dexpay";
+import { getDexpayCheckoutStatus } from "@/lib/payments/dexpay";
+import { fulfillPaidPayment } from "@/lib/payments/fulfill";
+import type { Payment } from "@/lib/types";
 
 /**
- * Webhook DexpayAfrica. Après un paiement réussi, marque le paiement comme payé
- * et génère les tickets correspondants (avec QR token unique côté base).
- * Utilise le client service-role (bypass RLS) — endpoint serveur uniquement.
+ * Webhook DexpayAfrica. Au lieu de faire confiance au contenu notifié, on
+ * récupère la référence puis on vérifie l'état réel de la session directement
+ * auprès de DexPay (source de vérité). Si le paiement est confirmé, on génère
+ * les tickets (QR token unique). Client service-role (bypass RLS).
  */
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const payload = JSON.parse(rawBody) as {
+  let payload: {
     event?: string;
-    data?: { reference?: string; status?: string };
+    reference?: string;
+    data?: { reference?: string };
   };
-
-  const signature =
-    request.headers.get("x-dexchange-signature") ??
-    request.headers.get("x-dexpay-signature");
-
-  const valid = await verifyDexpaySignature(payload, signature);
-  if (!valid) {
-    return NextResponse.json({ error: "Signature invalide." }, { status: 401 });
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
 
-  const paymentId = payload.data?.reference;
-  if (!paymentId) {
+  const reference = payload.data?.reference ?? payload.reference;
+  if (!reference) {
     return NextResponse.json({ error: "Référence manquante." }, { status: 400 });
   }
 
@@ -33,40 +33,32 @@ export async function POST(request: NextRequest) {
   const { data: payment } = await supabase
     .from("payments")
     .select("*")
-    .eq("id", paymentId)
+    .eq("id", reference)
     .maybeSingle();
 
   if (!payment) {
     return NextResponse.json({ error: "Paiement introuvable." }, { status: 404 });
   }
 
-  // Idempotence : ne pas régénérer les tickets si déjà payé.
-  if (payment.status === "paid") {
+  if ((payment as Payment).status === "paid") {
     return NextResponse.json({ ok: true });
   }
 
-  const success =
-    payload.event === "checkout.completed" ||
-    payload.data?.status === "success" ||
-    payload.data?.status === "paid";
+  // Vérification indépendante auprès de DexPay (sécurise le webhook sans
+  // dépendre de la signature : on interroge directement l'API).
+  const status = await getDexpayCheckoutStatus(reference);
 
-  if (!success) {
-    await supabase.from("payments").update({ status: "failed" }).eq("id", paymentId);
+  if (status?.paid) {
+    await fulfillPaidPayment(supabase, payment as Payment);
     return NextResponse.json({ ok: true });
   }
 
-  await supabase.from("payments").update({ status: "paid" }).eq("id", paymentId);
-
-  const tickets = Array.from({ length: payment.quantity }).map(() => ({
-    event_id: payment.event_id,
-    user_id: payment.user_id,
-    payment_id: payment.id,
-    ticket_type: payment.ticket_type,
-    price: payment.amount / payment.quantity,
-    holder_name: payment.guest_name,
-    holder_email: payment.guest_email,
-  }));
-  await supabase.from("tickets").insert(tickets);
+  if (status && status.status === "cancelled") {
+    await supabase
+      .from("payments")
+      .update({ status: "failed" })
+      .eq("id", reference);
+  }
 
   return NextResponse.json({ ok: true });
 }

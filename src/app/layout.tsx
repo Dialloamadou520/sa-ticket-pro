@@ -18,6 +18,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE.name}`,
   },
   description: SITE.description,
+  icons: { icon: "/logo-mark.png", apple: "/logo-mark.png" },
   keywords: [
     "billetterie",
     "tickets",

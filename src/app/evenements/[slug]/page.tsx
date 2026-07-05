@@ -15,6 +15,8 @@ import { LinkButton } from "@/components/ui/button";
 import { getEventBySlug } from "@/lib/data/events";
 import { formatDate, formatPrice, formatTime } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { getTierTheme } from "@/lib/tier-theme";
+import { EventCountdown } from "@/components/events/event-countdown";
 
 export async function generateMetadata({
   params,
@@ -105,11 +107,32 @@ export default async function EventDetailPage({
           </div>
 
           <aside className="lg:col-span-1">
-            <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="sticky top-20 space-y-4">
+            <EventCountdown startsAt={event.starts_at} />
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">À partir de</p>
               <p className="mt-1 text-3xl font-bold text-brand-700">
                 {formatPrice(event.price)}
               </p>
+
+              {event.tiers && event.tiers.length > 0 && (
+                <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
+                  {event.tiers.map((t) => {
+                    const tt = getTierTheme(t.name);
+                    return (
+                      <li key={t.id} className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-slate-600">
+                          <span className={`h-2.5 w-2.5 rounded-full ${tt.dot}`} />
+                          {t.name}
+                        </span>
+                        <span className="font-medium text-slate-900">
+                          {t.price > 0 ? formatPrice(t.price) : "Gratuit"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
                 <div className="flex items-center justify-between">
@@ -160,6 +183,7 @@ export default async function EventDetailPage({
                 <Share2 className="h-4 w-4" />
                 Partager
               </a>
+            </div>
             </div>
           </aside>
         </div>

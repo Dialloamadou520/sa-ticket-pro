@@ -47,7 +47,7 @@ export default async function ProfilPage({
       ? `${t.event.location}${t.event.city ? `, ${t.event.city}` : ""}`
       : "",
     holderName: t.holder_name ?? user?.profile?.full_name ?? "",
-    ticketType: TICKET_TYPE_LABELS[t.ticket_type],
+    ticketType: t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type],
     qrToken: t.qr_token,
   }));
 

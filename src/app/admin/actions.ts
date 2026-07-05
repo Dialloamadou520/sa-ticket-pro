@@ -72,3 +72,15 @@ export async function setOrganizerVerified(id: string, verified: boolean) {
   revalidatePath("/admin");
   revalidatePath(`/admin/organisateurs/${id}`);
 }
+
+/** Active ou désactive globalement les frais de service de la plateforme. */
+export async function setServiceFeesEnabled(enabled: boolean) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const admin = createAdminClient();
+  await admin
+    .from("app_settings")
+    .update({ service_fees_enabled: enabled, updated_at: new Date().toISOString() })
+    .eq("id", true);
+  revalidatePath("/admin");
+}

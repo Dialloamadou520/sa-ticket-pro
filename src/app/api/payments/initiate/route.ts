@@ -4,9 +4,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   createDexpayCheckout,
+  createDexpayPaymentAttempt,
   isDexpayConfigured,
+  normalizeSenegalPhone,
+  toDexpayOperator,
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
+import { getServiceFeesEnabled } from "@/lib/data/settings";
+import { feeForUnitPrice, resolveFeeMode } from "@/lib/payments/commission";
 import { SITE } from "@/lib/constants";
 import type { PaymentProvider, TicketType } from "@/lib/types";
 
@@ -17,6 +22,7 @@ interface Body {
   holderName: string;
   provider: PaymentProvider;
   phone?: string;
+  tierId?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +33,38 @@ export async function POST(request: NextRequest) {
   }
 
   const quantity = Math.max(1, Math.min(10, Number(body.quantity) || 1));
-  const amount = event.price * quantity;
+
+  // Catégorie de ticket choisie (Standard/VIP/…) : le prix fait foi côté
+  // serveur. À défaut de catégorie, on retombe sur le prix unique de l'événement.
+  let unitPrice = event.price;
+  let tierId: string | null = null;
+  let tierName: string | null = null;
+  if (body.tierId && isSupabaseConfigured) {
+    const lookup = createAdminClient();
+    const { data: tier } = await lookup
+      .from("ticket_tiers")
+      .select("id, name, price, event_id")
+      .eq("id", body.tierId)
+      .maybeSingle();
+    if (!tier || tier.event_id !== event.id) {
+      return NextResponse.json(
+        { error: "Catégorie de ticket invalide." },
+        { status: 400 }
+      );
+    }
+    unitPrice = tier.price;
+    tierId = tier.id;
+    tierName = tier.name;
+  }
+  // `amount` = revenu de base (revient à l'organisateur). Les frais de service
+  // (commission plateforme) sont ajoutés au montant débité côté opérateur, mais
+  // pas au revenu de l'organisateur. Le mode de frais est résolu par événement
+  // en tenant compte de l'interrupteur global (réglage admin).
+  const feesEnabled = await getServiceFeesEnabled();
+  const feeMode = resolveFeeMode(event.fee_mode, feesEnabled);
+  const amount = unitPrice * quantity;
+  const serviceFee = feeForUnitPrice(unitPrice, feeMode) * quantity;
+  const chargeAmount = amount + serviceFee;
 
   // ---- Mode démo : aucun backend configuré -----------------------------------
   if (!isSupabaseConfigured) {
@@ -62,11 +99,14 @@ export async function POST(request: NextRequest) {
       guest_name: user ? null : body.holderName,
       event_id: event.id,
       amount,
+      service_fee: serviceFee,
       currency: SITE.currency,
       provider: body.provider,
       status: "pending",
       quantity,
       ticket_type: body.ticketType,
+      tier_id: tierId,
+      tier_name: tierName,
     })
     .select()
     .single();
@@ -85,6 +125,8 @@ export async function POST(request: NextRequest) {
       user_id: user?.id ?? null,
       payment_id: payment.id,
       ticket_type: body.ticketType,
+      tier_id: tierId,
+      tier_name: tierName,
       price: 0,
       holder_name: body.holderName,
       holder_email: buyerEmail || null,
@@ -106,16 +148,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const operator = toDexpayOperator(body.provider);
+  const phone = normalizeSenegalPhone(body.phone ?? "");
+  if (operator && !phone) {
+    await admin.from("payments").update({ status: "failed" }).eq("id", payment.id);
+    return NextResponse.json(
+      { error: "Numéro de téléphone valide requis (9 chiffres)." },
+      { status: 400 }
+    );
+  }
+
   try {
     const result = await createDexpayCheckout({
-      amount,
+      amount: chargeAmount,
       currency: SITE.currency,
       reference: payment.id,
       itemName: `${quantity} ticket(s) — ${event.title}`,
       countryISO: "SN",
       customerName: body.holderName,
       customerEmail: buyerEmail || undefined,
-      customerPhone: body.phone,
+      customerPhone: phone ?? body.phone,
       webhookUrl: `${SITE.url}/api/payments/webhook`,
       successUrl: `${SITE.url}/paiement/confirmation?ref=${payment.id}`,
       failureUrl: `${SITE.url}/evenements/${event.slug}/achat?echec=1`,
@@ -126,6 +178,31 @@ export async function POST(request: NextRequest) {
       .from("payments")
       .update({ provider_reference: result.providerReference })
       .eq("id", payment.id);
+
+    // Paiement intégré (sans page DexPay) : on déclenche directement la
+    // tentative sur l'opérateur choisi. Wave → lien pay.wave.com ; Orange
+    // Money → validation par push/USSD sur le téléphone. En cas d'échec on
+    // retombe sur la page de paiement hébergée.
+    if (operator && phone) {
+      try {
+        const attempt = await createDexpayPaymentAttempt({
+          reference: payment.id,
+          operator,
+          customerName: body.holderName,
+          customerPhone: phone,
+        });
+        return NextResponse.json({
+          mode: "integrated",
+          provider: body.provider,
+          paymentId: payment.id,
+          cashoutUrl: attempt.cashoutUrl,
+          confirmUrl: `/paiement/confirmation?ref=${payment.id}`,
+        });
+      } catch {
+        // Repli : page de paiement hébergée DexPay.
+        return NextResponse.json({ redirect: result.paymentUrl });
+      }
+    }
 
     return NextResponse.json({ redirect: result.paymentUrl });
   } catch (e) {

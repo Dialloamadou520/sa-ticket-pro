@@ -22,3 +22,18 @@ export function formatDateShort(date: string | Date): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return format(d, "d MMM yyyy", { locale: fr });
 }
+
+/**
+ * Étiquette de compte à rebours basée sur les jours calendaires :
+ * "Terminé", "Aujourd'hui", "Demain" ou "J-5".
+ */
+export function countdownLabel(date: string | Date, now: Date = new Date()): string {
+  const target = typeof date === "string" ? new Date(date) : date;
+  if (target.getTime() <= now.getTime()) return "Terminé";
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(target) - startOfDay(now)) / 86_400_000);
+  if (days <= 0) return "Aujourd'hui";
+  if (days === 1) return "Demain";
+  return `J-${days}`;
+}

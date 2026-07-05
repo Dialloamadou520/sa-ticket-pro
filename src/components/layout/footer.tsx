@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Ticket, Globe, MessageCircle, Send } from "lucide-react";
+import Image from "next/image";
+import { Globe, MessageCircle, Send } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SITE } from "@/lib/constants";
 
@@ -37,9 +38,13 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 font-bold text-slate-900">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-                <Ticket className="h-5 w-5" />
-              </span>
+              <Image
+                src="/logo-mark.png"
+                alt={SITE.name}
+                width={804}
+                height={448}
+                className="h-9 w-auto"
+              />
               <span className="text-lg">{SITE.name}</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm text-slate-600">{SITE.tagline}.</p>

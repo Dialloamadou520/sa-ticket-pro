@@ -29,7 +29,7 @@ const organisateurs: FaqItem[] = [
   },
   {
     q: "Quels sont les frais ? (tarifs)",
-    a: "La plateforme applique une commission de 10% sur les ventes de tickets payants. La création d'événements et les tickets gratuits sont sans frais.",
+    a: "Des frais de service sont ajoutés au prix du ticket et payés par l'acheteur ; vous percevez l'intégralité du prix que vous fixez. La création d'événements et les tickets gratuits sont sans frais. Selon l'événement, les frais peuvent être un barème fixe par palier de prix ou une commission de 1,5%.",
   },
   {
     q: "Comment contrôler les entrées le jour J ?",

@@ -1,19 +1,21 @@
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatDateShort, formatPrice } from "@/lib/format";
+import { Button, LinkButton } from "@/components/ui/button";
+import { countdownLabel, formatDateShort, formatPrice } from "@/lib/format";
 import type { Event } from "@/lib/types";
 
 export function EventCard({ event }: { event: Event }) {
   const remaining = event.capacity - event.tickets_sold;
   const almostSoldOut = remaining > 0 && remaining <= event.capacity * 0.1;
+  const soldOut = remaining <= 0;
+  const countdown = countdownLabel(event.starts_at);
+  const upcoming = countdown !== "Terminé";
 
   return (
-    <Link
-      href={`/evenements/${event.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-    >
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+      <Link href={`/evenements/${event.slug}`} className="block">
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
         {event.banner_url ? (
           <Image
@@ -32,6 +34,12 @@ export function EventCard({ event }: { event: Event }) {
           {event.category && <Badge tone="brand">{event.category.name}</Badge>}
           {almostSoldOut && <Badge tone="amber">Bientôt complet</Badge>}
         </div>
+        {upcoming && (
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+            <Timer className="h-3.5 w-3.5" />
+            {countdown}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-4">
@@ -60,6 +68,22 @@ export function EventCard({ event }: { event: Event }) {
           </span>
         </div>
       </div>
-    </Link>
+      </Link>
+      <div className="px-4 pb-4">
+        {soldOut ? (
+          <Button size="sm" className="w-full" disabled>
+            Complet
+          </Button>
+        ) : (
+          <LinkButton
+            href={`/evenements/${event.slug}/achat`}
+            size="sm"
+            className="w-full"
+          >
+            Acheter
+          </LinkButton>
+        )}
+      </div>
+    </div>
   );
 }

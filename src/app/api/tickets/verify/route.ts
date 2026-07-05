@@ -88,6 +88,16 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     allowed = Boolean(organizer && organizer.id === ticket.event?.organizer_id);
   }
+  // Contrôleur assigné à cet événement (par email).
+  if (!allowed && user.email) {
+    const { data: controller } = await admin
+      .from("event_controllers")
+      .select("id")
+      .eq("event_id", ticket.event_id)
+      .ilike("email", user.email)
+      .maybeSingle();
+    allowed = Boolean(controller);
+  }
   if (!allowed) {
     return NextResponse.json(
       {

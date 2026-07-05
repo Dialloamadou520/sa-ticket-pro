@@ -2,9 +2,56 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { slugify } from "@/lib/slug";
-import type { TicketType } from "@/lib/types";
+import type { FeeMode, TicketType } from "@/lib/types";
+
+interface TierInput {
+  name: string;
+  price: number;
+  capacity: number;
+}
+
+function parseTiers(formData: FormData): TierInput[] {
+  const raw = String(formData.get("tiers_json") || "");
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw) as Array<{
+      name?: string;
+      price?: number | string;
+      capacity?: number | string;
+    }>;
+    return arr
+      .map((t) => ({
+        name: String(t.name ?? "").trim(),
+        price: Math.max(0, Number(t.price) || 0),
+        capacity: Math.max(0, Number(t.capacity) || 0),
+      }))
+      .filter((t) => t.name.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Remplace les catégories de tickets d'un événement (delete + insert) via le
+ * client service-role (l'appelant a déjà été authentifié comme propriétaire).
+ */
+async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
+  const admin = createAdminClient();
+  await admin.from("ticket_tiers").delete().eq("event_id", eventId);
+  if (tiers.length === 0) return;
+  await admin.from("ticket_tiers").insert(
+    tiers.map((t, i) => ({
+      event_id: eventId,
+      name: t.name,
+      price: t.price,
+      capacity: t.capacity,
+      position: i,
+    }))
+  );
+}
 
 export interface EventFormState {
   error?: string;
@@ -44,9 +91,15 @@ async function ensureOrganizer(): Promise<{ id: string; userId: string } | null>
   return created ? { id: created.id, userId: user.id } : null;
 }
 
+const FEE_MODES: FeeMode[] = ["service_fee", "commission", "none"];
+
 function parseEvent(formData: FormData) {
   const date = String(formData.get("date"));
   const time = String(formData.get("time") || "20:00");
+  const feeModeRaw = String(formData.get("fee_mode") || "service_fee");
+  const fee_mode = (FEE_MODES.includes(feeModeRaw as FeeMode)
+    ? feeModeRaw
+    : "service_fee") as FeeMode;
   return {
     title: String(formData.get("title")).trim(),
     description: String(formData.get("description") || ""),
@@ -58,6 +111,7 @@ function parseEvent(formData: FormData) {
     capacity: Number(formData.get("capacity") || 0),
     price: Number(formData.get("price") || 0),
     ticket_type: String(formData.get("ticket_type") || "standard") as TicketType,
+    fee_mode,
     status: String(formData.get("status") || "pending"),
   };
 }
@@ -80,13 +134,26 @@ export async function createEvent(
     return { error: "Le titre et le lieu sont obligatoires." };
   }
 
+  const tiers = parseTiers(formData);
+  if (tiers.length > 0) {
+    values.price = Math.min(...tiers.map((t) => t.price));
+    const totalCapacity = tiers.reduce((s, t) => s + t.capacity, 0);
+    if (totalCapacity > 0) values.capacity = totalCapacity;
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.from("events").insert({
-    ...values,
-    slug: slugify(values.title),
-    organizer_id: organizer.id,
-  });
-  if (error) return { error: error.message };
+  const { data: created, error } = await supabase
+    .from("events")
+    .insert({
+      ...values,
+      slug: slugify(values.title),
+      organizer_id: organizer.id,
+    })
+    .select("id")
+    .single();
+  if (error || !created) return { error: error?.message ?? "Erreur." };
+
+  await syncTiers(created.id, tiers);
 
   revalidatePath("/dashboard/evenements");
   return { success: true };
@@ -104,9 +171,18 @@ export async function updateEvent(
   if (!organizer) return { error: "Vous devez être connecté." };
 
   const values = parseEvent(formData);
+  const tiers = parseTiers(formData);
+  if (tiers.length > 0) {
+    values.price = Math.min(...tiers.map((t) => t.price));
+    const totalCapacity = tiers.reduce((s, t) => s + t.capacity, 0);
+    if (totalCapacity > 0) values.capacity = totalCapacity;
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("events").update(values).eq("id", id);
   if (error) return { error: error.message };
+
+  await syncTiers(id, tiers);
 
   revalidatePath("/dashboard/evenements");
   return { success: true };
@@ -117,4 +193,81 @@ export async function deleteEvent(id: string): Promise<void> {
   const supabase = await createClient();
   await supabase.from("events").delete().eq("id", id);
   revalidatePath("/dashboard/evenements");
+}
+
+// -- Contrôleurs d'événement ---------------------------------------------------
+
+export interface ControllerFormState {
+  error?: string;
+  success?: boolean;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Vrai si l'utilisateur courant possède l'événement (ou est admin). */
+async function canManageEvent(eventId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.role === "admin") return true;
+
+  const { data: organizer } = await admin
+    .from("organizers")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!organizer) return false;
+
+  const { data: event } = await admin
+    .from("events")
+    .select("organizer_id")
+    .eq("id", eventId)
+    .maybeSingle();
+  return Boolean(event && event.organizer_id === organizer.id);
+}
+
+export async function addController(
+  eventId: string,
+  _prev: ControllerFormState,
+  formData: FormData
+): Promise<ControllerFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Adresse email invalide." };
+
+  if (!(await canManageEvent(eventId))) {
+    return { error: "Action non autorisée." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("event_controllers")
+    .upsert({ event_id: eventId, email }, { onConflict: "event_id,email" });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/evenements/${eventId}/controleurs`);
+  return { success: true };
+}
+
+export async function removeController(
+  eventId: string,
+  controllerId: string
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (!(await canManageEvent(eventId))) return;
+  const admin = createAdminClient();
+  await admin.from("event_controllers").delete().eq("id", controllerId);
+  revalidatePath(`/dashboard/evenements/${eventId}/controleurs`);
 }

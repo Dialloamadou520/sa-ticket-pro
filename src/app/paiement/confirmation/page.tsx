@@ -3,14 +3,21 @@ import { CheckCircle2, Clock } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 import { TicketView, type TicketViewData } from "@/components/tickets/ticket-view";
+import { AutoRefresh } from "@/components/payments/auto-refresh";
 import { getEventBySlug } from "@/lib/data/events";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  getDexpayCheckoutStatus,
+  isDexpayConfigured,
+} from "@/lib/payments/dexpay";
+import { fulfillPaidPayment } from "@/lib/payments/fulfill";
 import { formatDate } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
-import type { Ticket } from "@/lib/types";
+import type { Payment, Ticket } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Confirmation de paiement" };
+export const dynamic = "force-dynamic";
 
 export default async function ConfirmationPage({
   searchParams,
@@ -29,14 +36,14 @@ export default async function ConfirmationPage({
   if (tickets === "pending") {
     return (
       <Container className="flex max-w-xl flex-col items-center py-20 text-center">
+        {sp.ref ? <AutoRefresh /> : null}
         <Clock className="h-14 w-14 text-amber-500" />
         <h1 className="mt-4 text-2xl font-bold text-slate-900">
           Paiement en cours de traitement
         </h1>
         <p className="mt-2 text-slate-500">
           Votre paiement est en attente de confirmation. Vos tickets
-          s&apos;afficheront ici dès validation —
-          actualisez la page dans quelques instants.
+          s&apos;afficheront ici automatiquement dès validation.
         </p>
         <LinkButton href="/explorer" className="mt-6">
           Découvrir d&apos;autres événements
@@ -104,11 +111,22 @@ async function resolveTickets(sp: {
   const supabase = createAdminClient();
   const { data: payment } = await supabase
     .from("payments")
-    .select("status")
+    .select("*")
     .eq("id", sp.ref)
     .maybeSingle();
 
-  if (!payment || payment.status !== "paid") return "pending";
+  if (!payment) return "pending";
+
+  // Le ticket d'un événement payant est normalement généré par le webhook.
+  // En secours (webhook non reçu/différé), on vérifie l'état directement
+  // auprès de DexPay et on génère le ticket à la volée — il s'affiche donc
+  // dès le retour sur cette page, sans attendre le webhook.
+  if ((payment as Payment).status !== "paid") {
+    if (!isDexpayConfigured()) return "pending";
+    const status = await getDexpayCheckoutStatus(sp.ref);
+    if (!status?.paid) return "pending";
+    await fulfillPaidPayment(supabase, payment as Payment);
+  }
 
   const { data } = await supabase
     .from("tickets")
@@ -126,7 +144,7 @@ async function resolveTickets(sp: {
       ? `${t.event.location}${t.event.city ? `, ${t.event.city}` : ""}`
       : "",
     holderName: t.holder_name ?? "",
-    ticketType: TICKET_TYPE_LABELS[t.ticket_type],
+    ticketType: t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type],
     qrToken: t.qr_token,
   }));
 }
