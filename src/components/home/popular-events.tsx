@@ -12,7 +12,10 @@ export function PopularEvents({ events }: { events: Event[] }) {
       <Container>
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+            <p className="text-sm font-semibold uppercase tracking-widest text-brand-600">
+              À l&apos;affiche
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
               Événements populaires
             </h2>
             <p className="mt-2 text-slate-500">
