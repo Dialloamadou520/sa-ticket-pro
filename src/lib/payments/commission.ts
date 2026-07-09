@@ -5,7 +5,7 @@
  *
  * Deux modes possibles, résolus par événement :
  *   - `service_fee` : barème fixe par palier de prix unitaire (FCFA)
- *       100 – 500    → 25
+ *       100 – 500    → 50
  *       501 – 1 000  → 50
  *       1 001 – 1 999 → 150
  *       2 000 – 4 999 → 200
@@ -24,7 +24,7 @@ export const COMMISSION_RATE = 0.015; // 1,5 %
 /** Barème fixe des frais de service par prix unitaire (FCFA). */
 export function flatServiceFee(unitPrice: number): number {
   if (!unitPrice || unitPrice <= 0) return 0;
-  if (unitPrice <= 500) return 25;
+  if (unitPrice <= 500) return 50;
   if (unitPrice <= 1000) return 50;
   if (unitPrice <= 1999) return 150;
   if (unitPrice <= 4999) return 200;
