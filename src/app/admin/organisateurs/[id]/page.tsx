@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
+import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { getOrganizerActivity } from "@/lib/data/admin";
 import { EVENT_STATUS_LABELS } from "@/lib/constants";
 import { formatDateShort, formatPrice } from "@/lib/format";
@@ -131,6 +132,7 @@ export default async function OrganizerDetailPage({
                   <th className="px-5 py-3">Statut</th>
                   <th className="px-5 py-3">Prix</th>
                   <th className="px-5 py-3">Vendus</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -146,6 +148,11 @@ export default async function OrganizerDetailPage({
                     <td className="px-5 py-3 text-slate-500">{formatPrice(e.price)}</td>
                     <td className="px-5 py-3 text-slate-500">
                       {e.tickets_sold} / {e.capacity}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end">
+                        <AdminDeleteEventButton id={e.id} title={e.title} />
+                      </div>
                     </td>
                   </tr>
                 ))}
