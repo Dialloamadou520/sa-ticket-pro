@@ -172,7 +172,7 @@ export function ScannerClient() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="relative aspect-square overflow-hidden bg-slate-950 sm:aspect-video">
           {/* L'élément vidéo reste monté en permanence : sinon videoRef est
@@ -198,19 +198,19 @@ export function ScannerClient() {
             </div>
           )}
         </div>
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {cameraError && (
             <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
               {cameraError}
             </p>
           )}
           {cameraOn ? (
-            <Button variant="danger" className="w-full" onClick={stopCamera}>
+            <Button variant="danger" size="lg" className="w-full" onClick={stopCamera}>
               <CameraOff className="h-4 w-4" />
               Arrêter la caméra
             </Button>
           ) : (
-            <Button className="w-full" onClick={startCamera}>
+            <Button size="lg" className="w-full" onClick={startCamera}>
               <Camera className="h-4 w-4" />
               Scanner avec la caméra
             </Button>
@@ -230,7 +230,7 @@ export function ScannerClient() {
           const input = new FormData(e.currentTarget).get("token");
           verify(String(input));
         }}
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
       >
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
@@ -245,9 +245,14 @@ export function ScannerClient() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input name="token" placeholder="Référence ou lien du ticket" />
-          <Button type="submit" disabled={loading}>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={loading}
+            className="w-full sm:h-11 sm:w-auto"
+          >
             {loading ? "..." : "Vérifier"}
           </Button>
         </div>
@@ -305,7 +310,7 @@ function ResultCard({ result }: { result: Result }) {
 
   return (
     <div
-      className={`animate-pop-in flex items-center gap-4 rounded-2xl border p-5 shadow-sm ${config.bg}`}
+      className={`animate-pop-in flex items-center gap-3 rounded-2xl border p-4 shadow-sm sm:gap-4 sm:p-5 ${config.bg}`}
     >
       <span
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${config.tile}`}
