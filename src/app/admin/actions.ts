@@ -36,6 +36,18 @@ async function assertAdmin() {
 }
 
 /**
+ * Supprime définitivement un événement (et, par cascade, ses tickets, paliers,
+ * paiements, contrôleurs et scans). Réservé aux administrateurs.
+ */
+export async function deleteEventAsAdmin(id: string) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const admin = createAdminClient();
+  await admin.from("events").delete().eq("id", id);
+  revalidatePath("/admin");
+}
+
+/**
  * Désactive un organisateur (soft-delete) : ses événements publiés sont annulés
  * pour disparaître du public, mais aucune donnée n'est supprimée.
  */

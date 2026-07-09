@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
+import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
@@ -126,7 +127,10 @@ export default async function AdminPage() {
                     {formatDateShort(event.starts_at)} · {formatPrice(event.price)}
                   </p>
                 </div>
-                <EventModeration id={event.id} />
+                <div className="flex items-center gap-2">
+                  <EventModeration id={event.id} />
+                  <AdminDeleteEventButton id={event.id} title={event.title} />
+                </div>
               </li>
             ))}
           </ul>
