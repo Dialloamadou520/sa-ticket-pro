@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Input, Label } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -40,11 +41,11 @@ export function ResetPasswordForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <Label htmlFor="password">Nouveau mot de passe</Label>
-        <Input id="password" name="password" type="password" required minLength={6} />
+        <PasswordInput id="password" name="password" required minLength={6} />
       </div>
       <div>
         <Label htmlFor="confirm">Confirmer le mot de passe</Label>
-        <Input id="confirm" name="confirm" type="password" required minLength={6} />
+        <PasswordInput id="confirm" name="confirm" required minLength={6} />
       </div>
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
         {loading ? "Mise à jour..." : "Réinitialiser"}
