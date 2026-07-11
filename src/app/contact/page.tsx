@@ -5,7 +5,7 @@ import { ContactForm } from "@/components/contact/contact-form";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contactez l'équipe Sa Ticket Pro.",
+  description: "Contactez l'équipe kaypass.",
 };
 
 const infos = [

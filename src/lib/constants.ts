@@ -1,5 +1,5 @@
 export const SITE = {
-  name: "Sa Ticket Pro",
+  name: "kaypass",
   tagline: "La billetterie intelligente du Sénégal et de l'Afrique",
   description:
     "Créez, gérez et vendez vos tickets d'événements en ligne avec QR code et paiement mobile (Wave, Orange Money).",

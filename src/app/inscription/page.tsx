@@ -8,7 +8,7 @@ export default function InscriptionPage() {
   return (
     <AuthShell
       title="Créer un compte"
-      subtitle="Rejoignez Sa Ticket Pro et lancez votre billetterie en quelques minutes."
+      subtitle="Rejoignez kaypass et lancez votre billetterie en quelques minutes."
     >
       <RegisterForm />
     </AuthShell>

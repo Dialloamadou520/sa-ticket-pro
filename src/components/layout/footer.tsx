@@ -37,15 +37,14 @@ export function Footer() {
       <Container className="py-14">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2 font-bold text-slate-900">
+            <Link href="/" className="flex items-center" aria-label={SITE.name}>
               <Image
-                src="/logo-mark.png"
+                src="/logo-kaypass.png"
                 alt={SITE.name}
-                width={804}
-                height={448}
+                width={2086}
+                height={520}
                 className="h-9 w-auto"
               />
-              <span className="text-lg">{SITE.name}</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm text-slate-600">{SITE.tagline}.</p>
             <div className="mt-5 flex gap-3">
