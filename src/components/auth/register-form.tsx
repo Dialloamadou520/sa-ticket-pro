@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Input, Label, Select } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -79,10 +80,9 @@ export function RegisterForm() {
         </div>
         <div>
           <Label htmlFor="password">Mot de passe</Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             required
             minLength={6}
             placeholder="Au moins 6 caractères"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -54,7 +55,7 @@ export function LoginForm() {
               Mot de passe oublié ?
             </Link>
           </div>
-          <Input id="password" name="password" type="password" required placeholder="••••••••" />
+          <PasswordInput id="password" name="password" required placeholder="••••••••" />
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={loading}>
           {loading ? "Connexion..." : "Se connecter"}
