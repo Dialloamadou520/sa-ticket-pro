@@ -20,15 +20,14 @@ export function AuthShell({
   return (
     <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-2">
       <div className="gradient-hero hidden flex-col justify-between p-12 text-white lg:flex">
-        <Link href="/" className="flex items-center gap-2 font-bold">
+        <Link href="/" className="flex items-center" aria-label={SITE.name}>
           <Image
-            src="/logo-mark.png"
+            src="/logo-kaypass-white.png"
             alt={SITE.name}
-            width={804}
-            height={448}
-            className="h-10 w-auto"
+            width={2086}
+            height={520}
+            className="h-9 w-auto"
           />
-          <span className="text-lg">{SITE.name}</span>
         </Link>
         <div>
           <h2 className="max-w-sm text-3xl font-bold leading-tight">

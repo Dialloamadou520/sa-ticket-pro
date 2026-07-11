@@ -1,5 +1,5 @@
 /**
- * Domain types for Sa Ticket Pro.
+ * Domain types for kaypass.
  * These mirror the Supabase schema in `supabase/migrations`.
  */
 

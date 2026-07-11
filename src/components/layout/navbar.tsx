@@ -25,16 +25,15 @@ export async function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
       <Container className="flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-slate-900">
+        <Link href="/" className="flex items-center" aria-label={SITE.name}>
           <Image
-            src="/logo-mark.png"
+            src="/logo-kaypass.png"
             alt={SITE.name}
-            width={804}
-            height={448}
+            width={2086}
+            height={520}
             priority
-            className="h-9 w-auto"
+            className="h-8 w-auto"
           />
-          <span className="text-lg tracking-tight">{SITE.name}</span>
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">

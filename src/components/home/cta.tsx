@@ -11,7 +11,7 @@ export function CtaSection() {
             Prêt à organiser votre prochain événement ?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-slate-200">
-            Rejoignez les organisateurs qui font confiance à Sa Ticket Pro pour
+            Rejoignez les organisateurs qui font confiance à kaypass pour
             vendre leurs tickets partout au Sénégal et en Afrique.
           </p>
           <Link

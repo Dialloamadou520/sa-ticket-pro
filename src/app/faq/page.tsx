@@ -4,13 +4,13 @@ import { FaqAccordion, type FaqItem } from "@/components/faq/faq-accordion";
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description: "Questions fréquentes sur Sa Ticket Pro.",
+  description: "Questions fréquentes sur kaypass.",
 };
 
 const generales: FaqItem[] = [
   {
-    q: "Qu'est-ce que Sa Ticket Pro ?",
-    a: "Sa Ticket Pro est une plateforme de billetterie en ligne adaptée au Sénégal et à l'Afrique. Elle permet de créer des événements, vendre des tickets avec QR code et encaisser via Wave et Orange Money.",
+    q: "Qu'est-ce que kaypass ?",
+    a: "kaypass est une plateforme de billetterie en ligne adaptée au Sénégal et à l'Afrique. Elle permet de créer des événements, vendre des tickets avec QR code et encaisser via Wave et Orange Money.",
   },
   {
     q: "Comment acheter un ticket ?",
@@ -47,7 +47,7 @@ export default function FaqPage() {
       <div className="text-center">
         <h1 className="text-3xl font-bold text-slate-900">Foire aux questions</h1>
         <p className="mt-2 text-slate-500">
-          Tout ce qu&apos;il faut savoir sur Sa Ticket Pro.
+          Tout ce qu&apos;il faut savoir sur kaypass.
         </p>
       </div>
 

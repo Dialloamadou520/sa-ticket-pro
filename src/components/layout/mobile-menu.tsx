@@ -75,16 +75,16 @@ export function MobileMenu({
           <Link
             href="/"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 font-bold text-slate-900"
+            className="flex items-center"
+            aria-label={SITE.name}
           >
             <Image
-              src="/logo-mark.png"
+              src="/logo-kaypass.png"
               alt={SITE.name}
-              width={804}
-              height={448}
-              className="h-8 w-auto"
+              width={2086}
+              height={520}
+              className="h-7 w-auto"
             />
-            <span className="text-base">{SITE.name}</span>
           </Link>
           <button
             onClick={() => setOpen(false)}

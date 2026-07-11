@@ -5,7 +5,7 @@ const testimonials = [
   {
     name: "Awa Ndiaye",
     role: "Organisatrice de concerts, Dakar",
-    text: "Sa Ticket Pro a transformé ma billetterie. Les paiements Wave arrivent instantanément et le scan à l'entrée est ultra rapide.",
+    text: "kaypass a transformé ma billetterie. Les paiements Wave arrivent instantanément et le scan à l'entrée est ultra rapide.",
   },
   {
     name: "Moussa Sow",

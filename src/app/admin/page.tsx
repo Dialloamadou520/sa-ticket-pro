@@ -49,7 +49,7 @@ export default async function AdminPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Administration</h1>
             <p className="text-sm text-white/70">
-              Pilotez la plateforme Sa Ticket Pro.
+              Pilotez la plateforme kaypass.
             </p>
           </div>
         </div>
