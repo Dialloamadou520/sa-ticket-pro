@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const infos = [
-  { icon: Mail, label: "Email", value: "contact@saticketpro.sn" },
+  { icon: Mail, label: "Email", value: "contact@kaypass.com" },
   { icon: Phone, label: "Téléphone", value: "+221 77 000 00 00" },
   { icon: MapPin, label: "Adresse", value: "Dakar, Sénégal" },
 ];
