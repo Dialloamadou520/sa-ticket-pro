@@ -65,6 +65,19 @@ export async function removeOrganizer(id: string) {
   revalidatePath(`/admin/organisateurs/${id}`);
 }
 
+/**
+ * Supprime définitivement un organisateur ainsi que toutes ses données par
+ * cascade DB (événements, tickets, paliers, paiements, contrôleurs et scans).
+ * Le compte utilisateur (profil/connexion) n'est pas supprimé. Réservé aux admins.
+ */
+export async function deleteOrganizer(id: string) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const admin = createAdminClient();
+  await admin.from("organizers").delete().eq("id", id);
+  revalidatePath("/admin");
+}
+
 /** Réactive un organisateur précédemment désactivé. */
 export async function restoreOrganizer(id: string) {
   if (!isSupabaseConfigured) return;

@@ -1,9 +1,11 @@
 "use client";
 
 import { useTransition } from "react";
-import { Ban, RotateCcw, ShieldCheck, ShieldX } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Ban, RotateCcw, ShieldCheck, ShieldX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  deleteOrganizer,
   removeOrganizer,
   restoreOrganizer,
   setOrganizerVerified,
@@ -20,6 +22,7 @@ interface Props {
 
 export function OrganizerActions({ id, disabled, verified, showVerify }: Props) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function guard(): boolean {
     if (!isSupabaseConfigured) {
@@ -50,6 +53,26 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
         }
       } catch {
         toast.error("Action impossible. Réessayez.");
+      }
+    });
+  }
+
+  function onDelete() {
+    if (!guard()) return;
+    if (
+      !window.confirm(
+        "Supprimer définitivement cet organisateur ? Tous ses événements, tickets, paiements, contrôleurs et scans seront aussi supprimés. Cette action est irréversible.",
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await deleteOrganizer(id);
+        toast.success("Organisateur supprimé.");
+        if (showVerify) router.push("/admin");
+      } catch {
+        toast.error("Suppression impossible. Réessayez.");
       }
     });
   }
@@ -106,6 +129,14 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
           Retirer
         </button>
       )}
+      <button
+        onClick={onDelete}
+        disabled={pending}
+        className="flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+      >
+        <Trash2 className="h-4 w-4" />
+        Supprimer
+      </button>
     </div>
   );
 }
