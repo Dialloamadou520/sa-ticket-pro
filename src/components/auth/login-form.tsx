@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { Mail } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,17 @@ export function LoginForm() {
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" required placeholder="vous@exemple.com" />
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              placeholder="vous@exemple.com"
+              className="pl-10"
+            />
+          </div>
         </div>
         <div>
           <div className="flex items-center justify-between">
