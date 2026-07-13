@@ -10,6 +10,7 @@ import {
   Receipt,
   Clock,
   Building2,
+  TrendingUp,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
@@ -21,6 +22,7 @@ import {
   getAllEvents,
   getAllOrganizers,
   getAllUsers,
+  getMonthlyRevenue,
   getPendingEvents,
 } from "@/lib/data/admin";
 import type { EventStatus } from "@/lib/types";
@@ -38,15 +40,23 @@ const STATUS_BADGE: Record<EventStatus, { label: string; className: string }> = 
 };
 
 export default async function AdminPage() {
-  const [stats, pending, allEvents, organizers, users, serviceFeesEnabled] =
-    await Promise.all([
-      getAdminStats(),
-      getPendingEvents(),
-      getAllEvents(),
-      getAllOrganizers(),
-      getAllUsers(),
-      getServiceFeesEnabled(),
-    ]);
+  const [
+    stats,
+    pending,
+    allEvents,
+    monthlyRevenue,
+    organizers,
+    users,
+    serviceFeesEnabled,
+  ] = await Promise.all([
+    getAdminStats(),
+    getPendingEvents(),
+    getAllEvents(),
+    getMonthlyRevenue(),
+    getAllOrganizers(),
+    getAllUsers(),
+    getServiceFeesEnabled(),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -77,6 +87,60 @@ export default async function AdminPage() {
           accent="amber"
         />
       </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="flex items-center font-semibold text-slate-900">
+              Revenus par mois
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {monthlyRevenue.length}
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Revenus encaissés par mois (paiements confirmés), du plus récent au
+              plus ancien.
+            </p>
+          </div>
+        </div>
+        {monthlyRevenue.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            Aucun revenu enregistré pour le moment.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Mois</th>
+                  <th className="px-5 py-3">Tickets vendus</th>
+                  <th className="px-5 py-3">Revenus</th>
+                  <th className="px-5 py-3">Commission (10%)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {monthlyRevenue.map((m) => (
+                  <tr key={m.key} className="transition-colors hover:bg-slate-50">
+                    <td className="px-5 py-3 font-medium capitalize text-slate-900">
+                      {m.label}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">{m.ticketsSold}</td>
+                    <td className="px-5 py-3 font-medium text-slate-900">
+                      {formatPrice(m.revenue)}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {formatPrice(m.commission)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 p-5">
