@@ -10,7 +10,11 @@ export const metadata: Metadata = {
 
 const infos = [
   { icon: Mail, label: "Email", value: "contact@kaypass.com" },
-  { icon: Phone, label: "Téléphone", value: "+221 77 000 00 00" },
+  {
+    icon: Phone,
+    label: "Service client",
+    value: "+221 77 352 53 82 / +221 71 117 93 93",
+  },
   { icon: MapPin, label: "Adresse", value: "Dakar, Sénégal" },
 ];
 
