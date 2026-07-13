@@ -39,7 +39,7 @@ export function ContactForm() {
         <Label htmlFor="message">Message</Label>
         <Textarea id="message" name="message" required placeholder="Comment pouvons-nous vous aider ?" />
       </div>
-      <Button type="submit" size="lg" disabled={loading}>
+      <Button type="submit" size="lg" disabled={loading} className="w-full sm:w-auto">
         {loading ? "Envoi..." : "Envoyer le message"}
       </Button>
     </form>
