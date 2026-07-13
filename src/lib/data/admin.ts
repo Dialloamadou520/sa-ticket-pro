@@ -61,17 +61,40 @@ export async function getPendingEvents(): Promise<Event[]> {
 
 export interface AdminEvent extends Event {
   organizer: Pick<Organizer, "id" | "company_name"> | null;
+  revenue: number;
+  commission: number;
 }
 
 /** Liste tous les événements de la plateforme (tous statuts, tous organisateurs). */
 export async function getAllEvents(): Promise<AdminEvent[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("events")
-    .select("*, category:categories(*), organizer:organizers(id, company_name)")
-    .order("created_at", { ascending: false });
-  return (data as AdminEvent[]) ?? [];
+  const [{ data: events }, { data: payments }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("*, category:categories(*), organizer:organizers(id, company_name)")
+      .order("created_at", { ascending: false }),
+    supabase.from("payments").select("event_id, amount").eq("status", "paid"),
+  ]);
+
+  const paymentRows = (payments ?? []) as Pick<Payment, "event_id" | "amount">[];
+  const revenueByEvent = new Map<string, number>();
+  for (const p of paymentRows) {
+    revenueByEvent.set(
+      p.event_id,
+      (revenueByEvent.get(p.event_id) ?? 0) + (p.amount ?? 0),
+    );
+  }
+
+  return ((events as (Event & { organizer: Pick<Organizer, "id" | "company_name"> | null })[]) ?? []).map((e) => {
+    const revenue = revenueByEvent.get(e.id) ?? 0;
+    return {
+      ...e,
+      organizer: e.organizer ?? null,
+      revenue,
+      commission: Math.round(revenue * PLATFORM_COMMISSION_RATE),
+    };
+  });
 }
 
 export async function getAllUsers(): Promise<Profile[]> {
