@@ -97,6 +97,58 @@ export async function getAllEvents(): Promise<AdminEvent[]> {
   });
 }
 
+export interface MonthlyRevenue {
+  /** Clé triable au format `YYYY-MM`. */
+  key: string;
+  /** Libellé lisible, ex. « juin 2026 ». */
+  label: string;
+  revenue: number;
+  commission: number;
+  ticketsSold: number;
+}
+
+/** Revenus encaissés (paiements « paid ») agrégés par mois, du plus récent au plus ancien. */
+export async function getMonthlyRevenue(): Promise<MonthlyRevenue[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("payments")
+    .select("amount, quantity, created_at")
+    .eq("status", "paid");
+
+  const rows = (data ?? []) as Pick<
+    Payment,
+    "amount" | "quantity" | "created_at"
+  >[];
+
+  const byMonth = new Map<string, { revenue: number; ticketsSold: number }>();
+  for (const p of rows) {
+    const d = new Date(p.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const acc = byMonth.get(key) ?? { revenue: 0, ticketsSold: 0 };
+    acc.revenue += p.amount ?? 0;
+    acc.ticketsSold += p.quantity ?? 0;
+    byMonth.set(key, acc);
+  }
+
+  return Array.from(byMonth.entries())
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([key, v]) => {
+      const [year, month] = key.split("-").map(Number);
+      const label = new Date(year, month - 1, 1).toLocaleDateString("fr-FR", {
+        month: "long",
+        year: "numeric",
+      });
+      return {
+        key,
+        label,
+        revenue: v.revenue,
+        commission: Math.round(v.revenue * PLATFORM_COMMISSION_RATE),
+        ticketsSold: v.ticketsSold,
+      };
+    });
+}
+
 export async function getAllUsers(): Promise<Profile[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
