@@ -178,6 +178,9 @@ export default async function AdminPage() {
                   <th className="px-5 py-3">Événement</th>
                   <th className="px-5 py-3">Organisateur</th>
                   <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Tickets</th>
+                  <th className="px-5 py-3">Revenus</th>
+                  <th className="px-5 py-3">Commission</th>
                   <th className="px-5 py-3">Statut</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
@@ -207,6 +210,15 @@ export default async function AdminPage() {
                       </td>
                       <td className="px-5 py-3 text-slate-600">
                         {formatDateShort(event.starts_at)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {event.tickets_sold}/{event.capacity}
+                      </td>
+                      <td className="px-5 py-3 font-medium text-slate-900">
+                        {formatPrice(event.revenue)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatPrice(event.commission)}
                       </td>
                       <td className="px-5 py-3">
                         <span
