@@ -59,6 +59,21 @@ export async function getPendingEvents(): Promise<Event[]> {
   return (data as Event[]) ?? [];
 }
 
+export interface AdminEvent extends Event {
+  organizer: Pick<Organizer, "id" | "company_name"> | null;
+}
+
+/** Liste tous les événements de la plateforme (tous statuts, tous organisateurs). */
+export async function getAllEvents(): Promise<AdminEvent[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("*, category:categories(*), organizer:organizers(id, company_name)")
+    .order("created_at", { ascending: false });
+  return (data as AdminEvent[]) ?? [];
+}
+
 export async function getAllUsers(): Promise<Profile[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
