@@ -18,20 +18,31 @@ import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
   getAdminStats,
+  getAllEvents,
   getAllOrganizers,
   getAllUsers,
   getPendingEvents,
 } from "@/lib/data/admin";
+import type { EventStatus } from "@/lib/types";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Administration" };
 
+const STATUS_BADGE: Record<EventStatus, { label: string; className: string }> = {
+  draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
+  pending: { label: "En attente", className: "bg-amber-100 text-amber-700" },
+  published: { label: "Publié", className: "bg-emerald-100 text-emerald-700" },
+  rejected: { label: "Rejeté", className: "bg-red-100 text-red-700" },
+  cancelled: { label: "Annulé", className: "bg-slate-100 text-slate-500" },
+};
+
 export default async function AdminPage() {
-  const [stats, pending, organizers, users, serviceFeesEnabled] =
+  const [stats, pending, allEvents, organizers, users, serviceFeesEnabled] =
     await Promise.all([
       getAdminStats(),
       getPendingEvents(),
+      getAllEvents(),
       getAllOrganizers(),
       getAllUsers(),
       getServiceFeesEnabled(),
@@ -134,6 +145,87 @@ export default async function AdminPage() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <CalendarDays className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="flex items-center font-semibold text-slate-900">
+              Tous les événements
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {allEvents.length}
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Tous les événements de la plateforme, quel que soit leur statut.
+              Vous pouvez en supprimer définitivement n&apos;importe lequel.
+            </p>
+          </div>
+        </div>
+        {allEvents.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            Aucun événement.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Événement</th>
+                  <th className="px-5 py-3">Organisateur</th>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Statut</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {allEvents.map((event) => {
+                  const badge = STATUS_BADGE[event.status];
+                  return (
+                    <tr key={event.id} className="transition-colors hover:bg-slate-50">
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-slate-900">{event.title}</p>
+                        <p className="text-xs text-slate-500">
+                          {event.city ?? event.location} · {formatPrice(event.price)}
+                        </p>
+                      </td>
+                      <td className="px-5 py-3">
+                        {event.organizer ? (
+                          <Link
+                            href={`/admin/organisateurs/${event.organizer.id}`}
+                            className="text-slate-600 hover:text-brand-700"
+                          >
+                            {event.organizer.company_name}
+                          </Link>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatDateShort(event.starts_at)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end">
+                          <AdminDeleteEventButton id={event.id} title={event.title} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
