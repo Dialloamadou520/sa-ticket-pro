@@ -15,7 +15,7 @@ const infos = [
     label: "Service client",
     value: "+221 77 352 53 82 / +221 71 117 93 93",
   },
-  { icon: MapPin, label: "Adresse", value: "Dakar, Sénégal" },
+  { icon: MapPin, label: "Adresse", value: "Saint-Louis, Sénégal" },
 ];
 
 export default function ContactPage() {
