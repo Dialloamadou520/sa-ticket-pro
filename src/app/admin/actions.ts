@@ -48,6 +48,25 @@ export async function deleteEventAsAdmin(id: string) {
 }
 
 /**
+ * Définit le taux de commission plateforme d'un événement (0–1, ex. 0.1 = 10 %).
+ * Réservé aux administrateurs. Le taux sert au calcul des commissions affichées
+ * dans l'administration (par événement, par organisateur, par mois et au global).
+ */
+export async function setEventCommission(id: string, rate: number) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1) {
+    throw new Error("Taux de commission invalide (doit être entre 0 et 1).");
+  }
+  const admin = createAdminClient();
+  await admin
+    .from("events")
+    .update({ commission_rate: Math.round(rate * 10000) / 10000 })
+    .eq("id", id);
+  revalidatePath("/admin");
+}
+
+/**
  * Désactive un organisateur (soft-delete) : ses événements publiés sont annulés
  * pour disparaître du public, mais aucune donnée n'est supprimée.
  */
