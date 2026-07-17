@@ -76,6 +76,8 @@ export interface Event {
   status: EventStatus;
   tickets_sold: number;
   fee_mode?: FeeMode;
+  /** Taux de commission plateforme par événement (0–1). Défaut : 0.10. */
+  commission_rate?: number;
   created_at: string;
   tiers?: TicketTier[];
 }

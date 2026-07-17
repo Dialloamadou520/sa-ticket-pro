@@ -11,8 +11,13 @@ export interface AdminStats {
   platformCommission: number;
 }
 
-/** Commission de la plateforme (10%). */
+/** Commission de la plateforme par défaut (10%), quand un événement n'a pas de taux défini. */
 export const PLATFORM_COMMISSION_RATE = 0.1;
+
+/** Taux de commission effectif d'un événement (défaut plateforme si non défini). */
+export function eventCommissionRate(rate: number | null | undefined): number {
+  return rate ?? PLATFORM_COMMISSION_RATE;
+}
 
 export async function getAdminStats(): Promise<AdminStats> {
   if (!isSupabaseConfigured) {
@@ -30,19 +35,32 @@ export async function getAdminStats(): Promise<AdminStats> {
   const [{ count: users }, { data: events }, { data: payments }] =
     await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
-      supabase.from("events").select("status, tickets_sold, price"),
-      supabase.from("payments").select("amount").eq("status", "paid"),
+      // `*` (plutôt que colonnes explicites) pour rester tolérant si la
+      // colonne `commission_rate` n'est pas encore migrée (fallback 10 %).
+      supabase.from("events").select("*"),
+      supabase.from("payments").select("event_id, amount").eq("status", "paid"),
     ]);
 
-  const revenue = (payments ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
-  const eventRows = events ?? [];
+  const eventRows = (events ?? []) as Pick<
+    Event,
+    "id" | "status" | "tickets_sold" | "price" | "commission_rate"
+  >[];
+  const rateByEvent = new Map<string, number>();
+  for (const e of eventRows) rateByEvent.set(e.id, eventCommissionRate(e.commission_rate));
+
+  const paymentRows = (payments ?? []) as Pick<Payment, "event_id" | "amount">[];
+  const revenue = paymentRows.reduce((s, p) => s + (p.amount ?? 0), 0);
+  const platformCommission = paymentRows.reduce(
+    (s, p) => s + (p.amount ?? 0) * (rateByEvent.get(p.event_id) ?? PLATFORM_COMMISSION_RATE),
+    0,
+  );
 
   return {
     totalUsers: users ?? 0,
     totalEvents: eventRows.length,
     pendingEvents: eventRows.filter((e) => e.status === "pending").length,
     totalRevenue: revenue,
-    platformCommission: Math.round(revenue * PLATFORM_COMMISSION_RATE),
+    platformCommission: Math.round(platformCommission),
   };
 }
 
@@ -63,6 +81,8 @@ export interface AdminEvent extends Event {
   organizer: Pick<Organizer, "id" | "company_name"> | null;
   revenue: number;
   commission: number;
+  /** Taux effectif appliqué (0–1). */
+  commissionRate: number;
 }
 
 /** Liste tous les événements de la plateforme (tous statuts, tous organisateurs). */
@@ -88,11 +108,13 @@ export async function getAllEvents(): Promise<AdminEvent[]> {
 
   return ((events as (Event & { organizer: Pick<Organizer, "id" | "company_name"> | null })[]) ?? []).map((e) => {
     const revenue = revenueByEvent.get(e.id) ?? 0;
+    const rate = eventCommissionRate(e.commission_rate);
     return {
       ...e,
       organizer: e.organizer ?? null,
       revenue,
-      commission: Math.round(revenue * PLATFORM_COMMISSION_RATE),
+      commission: Math.round(revenue * rate),
+      commissionRate: rate,
     };
   });
 }
@@ -111,22 +133,35 @@ export interface MonthlyRevenue {
 export async function getMonthlyRevenue(): Promise<MonthlyRevenue[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("payments")
-    .select("amount, quantity, created_at")
-    .eq("status", "paid");
+  const [{ data }, { data: events }] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("event_id, amount, quantity, created_at")
+      .eq("status", "paid"),
+    supabase.from("events").select("*"),
+  ]);
 
   const rows = (data ?? []) as Pick<
     Payment,
-    "amount" | "quantity" | "created_at"
+    "event_id" | "amount" | "quantity" | "created_at"
   >[];
+  const rateByEvent = new Map<string, number>();
+  for (const e of (events ?? []) as Pick<Event, "id" | "commission_rate">[]) {
+    rateByEvent.set(e.id, eventCommissionRate(e.commission_rate));
+  }
 
-  const byMonth = new Map<string, { revenue: number; ticketsSold: number }>();
+  const byMonth = new Map<
+    string,
+    { revenue: number; commission: number; ticketsSold: number }
+  >();
   for (const p of rows) {
     const d = new Date(p.created_at);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const acc = byMonth.get(key) ?? { revenue: 0, ticketsSold: 0 };
-    acc.revenue += p.amount ?? 0;
+    const acc = byMonth.get(key) ?? { revenue: 0, commission: 0, ticketsSold: 0 };
+    const amount = p.amount ?? 0;
+    acc.revenue += amount;
+    acc.commission +=
+      amount * (rateByEvent.get(p.event_id) ?? PLATFORM_COMMISSION_RATE);
     acc.ticketsSold += p.quantity ?? 0;
     byMonth.set(key, acc);
   }
@@ -143,7 +178,7 @@ export async function getMonthlyRevenue(): Promise<MonthlyRevenue[]> {
         key,
         label,
         revenue: v.revenue,
-        commission: Math.round(v.revenue * PLATFORM_COMMISSION_RATE),
+        commission: Math.round(v.commission),
         ticketsSold: v.ticketsSold,
       };
     });
@@ -184,28 +219,40 @@ export async function getAllOrganizers(): Promise<OrganizerWithStats[]> {
         .from("organizers")
         .select("*, owner:profiles(full_name, email, phone)")
         .order("created_at", { ascending: false }),
-      supabase.from("events").select("id, organizer_id, status, tickets_sold, price"),
+      // `*` pour rester tolérant si `commission_rate` n'est pas encore migré.
+      supabase.from("events").select("*"),
       supabase.from("payments").select("event_id, amount").eq("status", "paid"),
     ]);
 
   const eventRows = (events ?? []) as Pick<
     Event,
-    "id" | "organizer_id" | "status" | "tickets_sold" | "price"
+    "id" | "organizer_id" | "status" | "tickets_sold" | "price" | "commission_rate"
   >[];
   const paymentRows = (payments ?? []) as Pick<Payment, "event_id" | "amount">[];
 
   // event_id -> organizer_id (pour rattacher les paiements à un organisateur).
   const eventToOrganizer = new Map<string, string>();
-  for (const e of eventRows) eventToOrganizer.set(e.id, e.organizer_id);
+  const rateByEvent = new Map<string, number>();
+  for (const e of eventRows) {
+    eventToOrganizer.set(e.id, e.organizer_id);
+    rateByEvent.set(e.id, eventCommissionRate(e.commission_rate));
+  }
 
-  // organizer_id -> revenus encaissés (somme des paiements "paid").
+  // organizer_id -> revenus encaissés et commission (somme des paiements "paid").
   const revenueByOrganizer = new Map<string, number>();
+  const commissionByOrganizer = new Map<string, number>();
   for (const p of paymentRows) {
     const organizerId = eventToOrganizer.get(p.event_id);
     if (!organizerId) continue;
+    const amount = p.amount ?? 0;
     revenueByOrganizer.set(
       organizerId,
-      (revenueByOrganizer.get(organizerId) ?? 0) + (p.amount ?? 0),
+      (revenueByOrganizer.get(organizerId) ?? 0) + amount,
+    );
+    commissionByOrganizer.set(
+      organizerId,
+      (commissionByOrganizer.get(organizerId) ?? 0) +
+        amount * (rateByEvent.get(p.event_id) ?? PLATFORM_COMMISSION_RATE),
     );
   }
 
@@ -219,7 +266,7 @@ export async function getAllOrganizers(): Promise<OrganizerWithStats[]> {
       publishedEvents: own.filter((e) => e.status === "published").length,
       ticketsSold: own.reduce((s, e) => s + (e.tickets_sold ?? 0), 0),
       revenue,
-      commission: Math.round(revenue * PLATFORM_COMMISSION_RATE),
+      commission: Math.round(commissionByOrganizer.get(o.id) ?? 0),
     };
   });
 }
@@ -275,9 +322,15 @@ export async function getOrganizerActivity(
     scansCount = count ?? 0;
   }
 
-  const revenue = paymentRows
-    .filter((p) => p.status === "paid")
-    .reduce((s, p) => s + (p.amount ?? 0), 0);
+  const rateByEvent = new Map<string, number>();
+  for (const e of eventRows) rateByEvent.set(e.id, eventCommissionRate(e.commission_rate));
+
+  const paidPayments = paymentRows.filter((p) => p.status === "paid");
+  const revenue = paidPayments.reduce((s, p) => s + (p.amount ?? 0), 0);
+  const commission = paidPayments.reduce(
+    (s, p) => s + (p.amount ?? 0) * (rateByEvent.get(p.event_id) ?? PLATFORM_COMMISSION_RATE),
+    0,
+  );
 
   return {
     organizer: {
@@ -287,7 +340,7 @@ export async function getOrganizerActivity(
       publishedEvents: eventRows.filter((e) => e.status === "published").length,
       ticketsSold: eventRows.reduce((s, e) => s + (e.tickets_sold ?? 0), 0),
       revenue,
-      commission: Math.round(revenue * PLATFORM_COMMISSION_RATE),
+      commission: Math.round(commission),
     },
     events: eventRows,
     payments: paymentRows,

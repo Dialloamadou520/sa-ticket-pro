@@ -15,6 +15,7 @@ import {
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
+import { EventCommissionEditor } from "@/components/admin/event-commission-editor";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
@@ -81,7 +82,7 @@ export default async function AdminPage() {
         <AdminStatCard label="Événements" value={String(stats.totalEvents)} icon={CalendarDays} accent="violet" />
         <AdminStatCard label="Revenus plateforme" value={formatPrice(stats.totalRevenue)} icon={Wallet} accent="emerald" />
         <AdminStatCard
-          label="Commissions (10%)"
+          label="Commissions"
           value={formatPrice(stats.platformCommission)}
           icon={Percent}
           accent="amber"
@@ -118,7 +119,7 @@ export default async function AdminPage() {
                   <th className="px-5 py-3">Mois</th>
                   <th className="px-5 py-3">Tickets vendus</th>
                   <th className="px-5 py-3">Revenus</th>
-                  <th className="px-5 py-3">Commission (10%)</th>
+                  <th className="px-5 py-3">Commission</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -226,7 +227,8 @@ export default async function AdminPage() {
             </h2>
             <p className="text-xs text-slate-500">
               Tous les événements de la plateforme, quel que soit leur statut.
-              Vous pouvez en supprimer définitivement n&apos;importe lequel.
+              Ajustez la commission (%) par événement ou supprimez-en
+              définitivement n&apos;importe lequel.
             </p>
           </div>
         </div>
@@ -244,6 +246,7 @@ export default async function AdminPage() {
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Tickets</th>
                   <th className="px-5 py-3">Revenus</th>
+                  <th className="px-5 py-3">Taux</th>
                   <th className="px-5 py-3">Commission</th>
                   <th className="px-5 py-3">Statut</th>
                   <th className="px-5 py-3 text-right">Actions</th>
@@ -280,6 +283,12 @@ export default async function AdminPage() {
                       </td>
                       <td className="px-5 py-3 font-medium text-slate-900">
                         {formatPrice(event.revenue)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <EventCommissionEditor
+                          id={event.id}
+                          rate={event.commissionRate}
+                        />
                       </td>
                       <td className="px-5 py-3 text-slate-600">
                         {formatPrice(event.commission)}
