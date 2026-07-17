@@ -14,7 +14,7 @@ import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { getOrganizerActivity } from "@/lib/data/admin";
 import { EVENT_STATUS_LABELS } from "@/lib/constants";
-import { formatDateShort, formatPrice } from "@/lib/format";
+import { formatAmount, formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Organisateur" };
 
@@ -93,13 +93,13 @@ export default async function OrganizerDetailPage({
         />
         <AdminStatCard
           label="Revenus"
-          value={formatPrice(organizer.revenue)}
+          value={formatAmount(organizer.revenue)}
           icon={Wallet}
           accent="emerald"
         />
         <AdminStatCard
           label="Commission (10%)"
-          value={formatPrice(organizer.commission)}
+          value={formatAmount(organizer.commission)}
           icon={Percent}
           accent="amber"
         />
@@ -175,7 +175,7 @@ export default async function OrganizerDetailPage({
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              {paidPayments.length} payé(s) · {formatPrice(organizer.revenue)} encaissés
+              {paidPayments.length} payé(s) · {formatAmount(organizer.revenue)} encaissés
             </p>
           </div>
         </div>

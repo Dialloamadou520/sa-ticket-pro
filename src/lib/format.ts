@@ -8,6 +8,11 @@ export function formatPrice(amount: number): string {
   return `${amount.toLocaleString("fr-FR")} ${CURRENCY_LABEL}`;
 }
 
+/** Format a monetary amount (revenue, commission…) as `12 000 FCFA`; zero shows `0 FCFA`. */
+export function formatAmount(amount: number): string {
+  return `${(amount || 0).toLocaleString("fr-FR")} ${CURRENCY_LABEL}`;
+}
+
 export function formatDate(date: string | Date, pattern = "EEEE d MMMM yyyy"): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return format(d, pattern, { locale: fr });
