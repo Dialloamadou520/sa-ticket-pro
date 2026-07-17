@@ -31,7 +31,7 @@ import {
 import { getVisitStats } from "@/lib/data/analytics";
 import type { EventStatus } from "@/lib/types";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
-import { formatDateShort, formatPrice } from "@/lib/format";
+import { formatAmount, formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Administration" };
 
@@ -87,10 +87,10 @@ export default async function AdminPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AdminStatCard label="Utilisateurs" value={stats.totalUsers.toLocaleString("fr-FR")} icon={Users} accent="blue" />
         <AdminStatCard label="Événements" value={String(stats.totalEvents)} icon={CalendarDays} accent="violet" />
-        <AdminStatCard label="Revenus plateforme" value={formatPrice(stats.totalRevenue)} icon={Wallet} accent="emerald" />
+        <AdminStatCard label="Revenus plateforme" value={formatAmount(stats.totalRevenue)} icon={Wallet} accent="emerald" />
         <AdminStatCard
           label="Commissions"
-          value={formatPrice(stats.platformCommission)}
+          value={formatAmount(stats.platformCommission)}
           icon={Percent}
           accent="amber"
         />
@@ -243,10 +243,10 @@ export default async function AdminPage() {
                     </td>
                     <td className="px-5 py-3 text-slate-600">{m.ticketsSold}</td>
                     <td className="px-5 py-3 font-medium text-slate-900">
-                      {formatPrice(m.revenue)}
+                      {formatAmount(m.revenue)}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
-                      {formatPrice(m.commission)}
+                      {formatAmount(m.commission)}
                     </td>
                   </tr>
                 ))}
@@ -395,7 +395,7 @@ export default async function AdminPage() {
                         {event.tickets_sold}/{event.capacity}
                       </td>
                       <td className="px-5 py-3 font-medium text-slate-900">
-                        {formatPrice(event.revenue)}
+                        {formatAmount(event.revenue)}
                       </td>
                       <td className="px-5 py-3">
                         <EventCommissionEditor
@@ -404,7 +404,7 @@ export default async function AdminPage() {
                         />
                       </td>
                       <td className="px-5 py-3 text-slate-600">
-                        {formatPrice(event.commission)}
+                        {formatAmount(event.commission)}
                       </td>
                       <td className="px-5 py-3">
                         <span
@@ -492,10 +492,10 @@ export default async function AdminPage() {
                     </td>
                     <td className="px-5 py-3 text-slate-600">{o.ticketsSold}</td>
                     <td className="px-5 py-3 text-slate-600">
-                      {formatPrice(o.revenue)}
+                      {formatAmount(o.revenue)}
                     </td>
                     <td className="px-5 py-3 text-slate-600">
-                      {formatPrice(o.commission)}
+                      {formatAmount(o.commission)}
                     </td>
                     <td className="px-5 py-3">
                       {o.disabled ? (
