@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { SITE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -47,6 +48,7 @@ export default function RootLayout({
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
+        <PageViewTracker />
         <Toaster position="top-center" richColors />
       </body>
     </html>

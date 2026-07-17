@@ -11,6 +11,8 @@ import {
   Clock,
   Building2,
   TrendingUp,
+  MousePointerClick,
+  BarChart3,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
@@ -26,6 +28,7 @@ import {
   getMonthlyRevenue,
   getPendingEvents,
 } from "@/lib/data/admin";
+import { getVisitStats } from "@/lib/data/analytics";
 import type { EventStatus } from "@/lib/types";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { formatDateShort, formatPrice } from "@/lib/format";
@@ -43,6 +46,7 @@ const STATUS_BADGE: Record<EventStatus, { label: string; className: string }> = 
 export default async function AdminPage() {
   const [
     stats,
+    visits,
     pending,
     allEvents,
     monthlyRevenue,
@@ -51,6 +55,7 @@ export default async function AdminPage() {
     serviceFeesEnabled,
   ] = await Promise.all([
     getAdminStats(),
+    getVisitStats(),
     getPendingEvents(),
     getAllEvents(),
     getMonthlyRevenue(),
@@ -58,6 +63,8 @@ export default async function AdminPage() {
     getAllUsers(),
     getServiceFeesEnabled(),
   ]);
+
+  const maxDaily = Math.max(1, ...visits.daily.map((d) => d.count));
 
   return (
     <div className="space-y-8">
@@ -88,6 +95,112 @@ export default async function AdminPage() {
           accent="amber"
         />
       </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+            <BarChart3 className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-slate-900">
+              Fréquentation de la plateforme
+            </h2>
+            <p className="text-xs text-slate-500">
+              Nombre de visites de pages (« clics ») sur la plateforme. Les pages
+              d&apos;administration ne sont pas comptées.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <AdminStatCard
+            label="Visites totales"
+            value={visits.total.toLocaleString("fr-FR")}
+            icon={MousePointerClick}
+            accent="rose"
+          />
+          <AdminStatCard
+            label="Aujourd'hui"
+            value={visits.today.toLocaleString("fr-FR")}
+            icon={TrendingUp}
+            accent="emerald"
+          />
+          <AdminStatCard
+            label="7 derniers jours"
+            value={visits.last7Days.toLocaleString("fr-FR")}
+            icon={CalendarDays}
+            accent="blue"
+          />
+          <AdminStatCard
+            label="Visiteurs uniques (30 j)"
+            value={visits.uniqueVisitors30.toLocaleString("fr-FR")}
+            icon={Users}
+            accent="violet"
+          />
+        </div>
+
+        <div className="grid gap-6 border-t border-slate-100 p-5 lg:grid-cols-2">
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">
+              Visites par jour (14 derniers jours)
+            </h3>
+            {visits.total === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-500">
+                Aucune visite enregistrée pour le moment.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {visits.daily.map((d) => (
+                  <li key={d.key} className="flex items-center gap-3">
+                    <span className="w-14 shrink-0 text-xs text-slate-500">
+                      {d.label}
+                    </span>
+                    <div className="h-4 flex-1 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600"
+                        style={{ width: `${Math.round((d.count / maxDaily) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-right text-xs font-medium text-slate-700">
+                      {d.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">
+              Pages les plus visitées (30 derniers jours)
+            </h3>
+            {visits.topPages.length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-500">
+                Aucune donnée pour le moment.
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {visits.topPages.map((p) => (
+                  <li
+                    key={p.path}
+                    className="flex items-center justify-between gap-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-800">
+                        {p.label}
+                      </p>
+                      <p className="truncate text-xs text-slate-400">{p.path}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                      {p.count.toLocaleString("fr-FR")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-slate-100 p-5">
