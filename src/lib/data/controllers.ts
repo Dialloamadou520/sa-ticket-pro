@@ -17,6 +17,43 @@ export async function getEventControllers(
   return (data as EventController[]) ?? [];
 }
 
+/**
+ * Nombre d'entrées validées (scans « valid ») par contrôleur pour un événement,
+ * indexé par email en minuscules. Lecture via le client service-role : on doit
+ * relier les scans aux profils (email) d'autres utilisateurs.
+ */
+export async function getEventControllerScanCounts(
+  eventId: string
+): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured) return {};
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("scans")
+    .select("scanned_by, ticket:tickets!inner(event_id)")
+    .eq("result", "valid")
+    .eq("ticket.event_id", eventId);
+
+  const rows = (data as { scanned_by: string | null }[] | null) ?? [];
+  const byUser = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.scanned_by) continue;
+    byUser.set(row.scanned_by, (byUser.get(row.scanned_by) ?? 0) + 1);
+  }
+  if (byUser.size === 0) return {};
+
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select("id, email")
+    .in("id", [...byUser.keys()]);
+
+  const counts: Record<string, number> = {};
+  for (const p of (profiles as { id: string; email: string | null }[] | null) ?? []) {
+    if (!p.email) continue;
+    counts[p.email.toLowerCase()] = byUser.get(p.id) ?? 0;
+  }
+  return counts;
+}
+
 /** Identifiants des événements où l'utilisateur courant est contrôleur. */
 export async function getControllerEventIds(): Promise<string[]> {
   if (!isSupabaseConfigured) return [];

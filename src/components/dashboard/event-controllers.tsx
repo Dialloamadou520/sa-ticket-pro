@@ -15,9 +15,10 @@ import type { EventController } from "@/lib/types";
 interface Props {
   eventId: string;
   controllers: EventController[];
+  scanCounts: Record<string, number>;
 }
 
-export function EventControllers({ eventId, controllers }: Props) {
+export function EventControllers({ eventId, controllers, scanCounts }: Props) {
   const action = addController.bind(null, eventId);
   const [state, formAction, pending] = useActionState<
     ControllerFormState,
@@ -98,7 +99,9 @@ export function EventControllers({ eventId, controllers }: Props) {
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {controllers.map((c) => (
+            {controllers.map((c) => {
+              const count = scanCounts[c.email.toLowerCase()] ?? 0;
+              return (
               <li
                 key={c.id}
                 className="flex items-center justify-between gap-3 px-5 py-3"
@@ -107,9 +110,15 @@ export function EventControllers({ eventId, controllers }: Props) {
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
                     <ShieldCheck className="h-4 w-4" />
                   </span>
-                  <span className="truncate text-sm font-medium text-slate-800">
-                    {c.email}
-                  </span>
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-slate-800">
+                      {c.email}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {count} entrée{count > 1 ? "s" : ""} validée
+                      {count > 1 ? "s" : ""}
+                    </span>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -125,7 +134,8 @@ export function EventControllers({ eventId, controllers }: Props) {
                   )}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>
