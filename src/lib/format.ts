@@ -13,6 +13,15 @@ export function formatAmount(amount: number): string {
   return `${(amount || 0).toLocaleString("fr-FR")} ${CURRENCY_LABEL}`;
 }
 
+/** Un événement est terminé lorsque sa fin (ou son début à défaut) est passée. */
+export function isEventPast(
+  event: { starts_at: string; ends_at: string | null },
+  now: Date = new Date()
+): boolean {
+  const end = new Date(event.ends_at ?? event.starts_at);
+  return end.getTime() < now.getTime();
+}
+
 export function formatDate(date: string | Date, pattern = "EEEE d MMMM yyyy"): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return format(d, pattern, { locale: fr });

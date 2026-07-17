@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import {
   ChevronRight,
   CalendarDays,
+  CalendarX,
   Clock,
   MapPin,
   ShieldCheck,
@@ -18,7 +19,7 @@ import { PurchaseForm } from "@/components/events/purchase-form";
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { resolveFeeMode } from "@/lib/payments/commission";
-import { formatDate, formatPrice, formatTime } from "@/lib/format";
+import { formatDate, formatPrice, formatTime, isEventPast } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Achat de ticket" };
@@ -33,6 +34,7 @@ export default async function AchatPage({
   if (!event) notFound();
 
   const feeMode = resolveFeeMode(event.fee_mode, await getServiceFeesEnabled());
+  const past = isEventPast(event);
 
   return (
     <div className="bg-slate-50">
@@ -84,25 +86,45 @@ export default async function AchatPage({
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
           {/* Formulaire */}
           <div className="lg:col-span-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30 sm:h-11 sm:w-11">
-                  <TicketIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+            {past ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-10">
+                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                  <CalendarX className="h-7 w-7" />
                 </span>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">
-                    Réserver vos tickets
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Quelques infos et c&apos;est réglé — votre billet s&apos;affiche aussitôt.
-                  </p>
+                <h2 className="mt-4 text-xl font-bold text-slate-900">
+                  Événement terminé
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  Cet événement est passé. La vente de tickets est clôturée.
+                </p>
+                <Link
+                  href="/explorer"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+                >
+                  Découvrir d&apos;autres événements
+                </Link>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30 sm:h-11 sm:w-11">
+                    <TicketIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </span>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">
+                      Réserver vos tickets
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Quelques infos et c&apos;est réglé — votre billet s&apos;affiche aussitôt.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <PurchaseForm event={event} feeMode={feeMode} />
                 </div>
               </div>
-
-              <div className="mt-6">
-                <PurchaseForm event={event} feeMode={feeMode} />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Récapitulatif */}

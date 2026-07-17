@@ -13,7 +13,7 @@ import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
 import { getEventBySlug } from "@/lib/data/events";
-import { formatDate, formatPrice, formatTime } from "@/lib/format";
+import { formatDate, formatPrice, formatTime, isEventPast } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
 import { EventCountdown } from "@/components/events/event-countdown";
@@ -48,6 +48,7 @@ export default async function EventDetailPage({
 
   const remaining = event.capacity - event.tickets_sold;
   const soldOut = remaining <= 0;
+  const past = isEventPast(event);
 
   return (
     <div>
@@ -154,7 +155,14 @@ export default async function EventDetailPage({
                 </div>
               </div>
 
-              {soldOut ? (
+              {past ? (
+                <button
+                  disabled
+                  className="mt-6 w-full cursor-not-allowed rounded-xl bg-slate-200 py-3 font-medium text-slate-500"
+                >
+                  Événement terminé
+                </button>
+              ) : soldOut ? (
                 <button
                   disabled
                   className="mt-6 w-full cursor-not-allowed rounded-xl bg-slate-200 py-3 font-medium text-slate-500"
