@@ -12,6 +12,7 @@ import {
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { feeForUnitPrice, resolveFeeMode } from "@/lib/payments/commission";
+import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
 import type { PaymentProvider, TicketType } from "@/lib/types";
 
@@ -30,6 +31,13 @@ export async function POST(request: NextRequest) {
   const event = await getEventBySlug(body.eventSlug);
   if (!event) {
     return NextResponse.json({ error: "Événement introuvable." }, { status: 404 });
+  }
+
+  if (isEventPast(event)) {
+    return NextResponse.json(
+      { error: "Cet événement est terminé. La vente de tickets est clôturée." },
+      { status: 400 }
+    );
   }
 
   const quantity = Math.max(1, Math.min(10, Number(body.quantity) || 1));
