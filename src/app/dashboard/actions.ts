@@ -167,8 +167,9 @@ export async function updateEvent(
   if (!isSupabaseConfigured) {
     return { error: "Mode démo : configurez Supabase." };
   }
-  const organizer = await ensureOrganizer();
-  if (!organizer) return { error: "Vous devez être connecté." };
+  if (!(await canManageEvent(id))) {
+    return { error: "Action non autorisée." };
+  }
 
   const values = parseEvent(formData);
   const tiers = parseTiers(formData);
@@ -178,8 +179,10 @@ export async function updateEvent(
     if (totalCapacity > 0) values.capacity = totalCapacity;
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("events").update(values).eq("id", id);
+  // Client service-role : un co-organisateur n'est pas propriétaire, le RLS
+  // « events » bloquerait sa mise à jour. L'accès est déjà vérifié ci-dessus.
+  const admin = createAdminClient();
+  const { error } = await admin.from("events").update(values).eq("id", id);
   if (error) return { error: error.message };
 
   await syncTiers(id, tiers);
@@ -190,8 +193,10 @@ export async function updateEvent(
 
 export async function deleteEvent(id: string): Promise<void> {
   if (!isSupabaseConfigured) return;
-  const supabase = await createClient();
-  await supabase.from("events").delete().eq("id", id);
+  // Seul le propriétaire (ou l'admin) peut supprimer, pas un co-organisateur.
+  if (!(await canOwnEvent(id))) return;
+  const admin = createAdminClient();
+  await admin.from("events").delete().eq("id", id);
   revalidatePath("/dashboard/evenements");
 }
 
@@ -205,7 +210,7 @@ export interface ControllerFormState {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Vrai si l'utilisateur courant possède l'événement (ou est admin). */
-async function canManageEvent(eventId: string): Promise<boolean> {
+async function canOwnEvent(eventId: string): Promise<boolean> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -233,6 +238,29 @@ async function canManageEvent(eventId: string): Promise<boolean> {
     .eq("id", eventId)
     .maybeSingle();
   return Boolean(event && event.organizer_id === organizer.id);
+}
+
+/**
+ * Vrai si l'utilisateur courant peut gérer l'événement : propriétaire, admin,
+ * ou co-organisateur (par email). Ne donne pas accès aux revenus.
+ */
+async function canManageEvent(eventId: string): Promise<boolean> {
+  if (await canOwnEvent(eventId)) return true;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return false;
+
+  const admin = createAdminClient();
+  const { data: collab } = await admin
+    .from("event_collaborators")
+    .select("id")
+    .eq("event_id", eventId)
+    .ilike("email", user.email)
+    .maybeSingle();
+  return Boolean(collab);
 }
 
 export async function addController(
@@ -270,4 +298,49 @@ export async function removeController(
   const admin = createAdminClient();
   await admin.from("event_controllers").delete().eq("id", controllerId);
   revalidatePath(`/dashboard/evenements/${eventId}/controleurs`);
+}
+
+// -- Co-organisateurs d'événement ---------------------------------------------
+
+export interface CollaboratorFormState {
+  error?: string;
+  success?: boolean;
+}
+
+export async function addCollaborator(
+  eventId: string,
+  _prev: CollaboratorFormState,
+  formData: FormData
+): Promise<CollaboratorFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Adresse email invalide." };
+
+  // Seul le propriétaire (ou l'admin) peut ajouter un co-organisateur.
+  if (!(await canOwnEvent(eventId))) {
+    return { error: "Action non autorisée." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("event_collaborators")
+    .upsert({ event_id: eventId, email }, { onConflict: "event_id,email" });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/evenements/${eventId}/co-organisateurs`);
+  return { success: true };
+}
+
+export async function removeCollaborator(
+  eventId: string,
+  collaboratorId: string
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (!(await canOwnEvent(eventId))) return;
+  const admin = createAdminClient();
+  await admin.from("event_collaborators").delete().eq("id", collaboratorId);
+  revalidatePath(`/dashboard/evenements/${eventId}/co-organisateurs`);
 }

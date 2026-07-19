@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { EventForm } from "@/components/dashboard/event-form";
 import { updateEvent } from "@/app/dashboard/actions";
 import { getCategories } from "@/lib/data/events";
-import { getMyEvents } from "@/lib/data/dashboard";
+import { getManageableEventById } from "@/lib/data/dashboard";
 
 export const metadata: Metadata = { title: "Modifier l'événement" };
 
@@ -13,12 +13,12 @@ export default async function ModifierEvenementPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [categories, events] = await Promise.all([
+  const [categories, manageable] = await Promise.all([
     getCategories(),
-    getMyEvents(),
+    getManageableEventById(id),
   ]);
-  const event = events.find((e) => e.id === id);
-  if (!event) notFound();
+  if (!manageable) notFound();
+  const { event } = manageable;
 
   const action = updateEvent.bind(null, id);
 

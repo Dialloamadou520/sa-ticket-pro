@@ -3,13 +3,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Event, EventController } from "@/lib/types";
 
-/** Contrôleurs assignés à un événement (lecture réservée à l'organisateur). */
+/**
+ * Contrôleurs assignés à un événement. L'accès est contrôlé en amont par la
+ * page (propriétaire ou co-organisateur) ; on lit via le client service-role
+ * pour que les co-organisateurs voient aussi la liste.
+ */
 export async function getEventControllers(
   eventId: string
 ): Promise<EventController[]> {
   if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
-  const { data } = await supabase
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("event_controllers")
     .select("*")
     .eq("event_id", eventId)

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { EventControllers } from "@/components/dashboard/event-controllers";
-import { getMyEvents } from "@/lib/data/dashboard";
+import { getManageableEventById } from "@/lib/data/dashboard";
 import { getEventControllers } from "@/lib/data/controllers";
 
 export const metadata: Metadata = { title: "Contrôleurs" };
@@ -14,9 +14,9 @@ export default async function ControleursPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const events = await getMyEvents();
-  const event = events.find((e) => e.id === id);
-  if (!event) notFound();
+  const manageable = await getManageableEventById(id);
+  if (!manageable) notFound();
+  const { event } = manageable;
 
   const controllers = await getEventControllers(id);
 

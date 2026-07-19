@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Pencil, Plus, ShieldCheck, Users } from "lucide-react";
+import { Pencil, Plus, ShieldCheck, Users, UserCog } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { EventStatusBadge } from "@/components/dashboard/event-status-badge";
 import { DeleteEventButton } from "@/components/dashboard/delete-event-button";
-import { getMyEvents } from "@/lib/data/dashboard";
+import { getManageableEvents } from "@/lib/data/dashboard";
 import { formatDateShort, formatPrice } from "@/lib/format";
+import type { Event } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Mes événements" };
 
 export default async function MesEvenementsPage() {
-  const events = await getMyEvents();
+  const { owned, collaborated } = await getManageableEvents();
+  const rows: Array<{ event: Event; isOwner: boolean }> = [
+    ...owned.map((event) => ({ event, isOwner: true })),
+    ...collaborated.map((event) => ({ event, isOwner: false })),
+  ];
 
   return (
     <div className="space-y-6">
@@ -22,7 +27,7 @@ export default async function MesEvenementsPage() {
         </LinkButton>
       </div>
 
-      {events.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center">
           <p className="font-medium text-slate-700">Aucun événement</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -46,10 +51,17 @@ export default async function MesEvenementsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {events.map((event) => (
+              {rows.map(({ event, isOwner }) => (
                 <tr key={event.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 font-medium text-slate-900">
-                    {event.title}
+                    <div className="flex items-center gap-2">
+                      {event.title}
+                      {!isOwner && (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                          Co-organisation
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-slate-500">
                     {formatDateShort(event.starts_at)}
@@ -79,6 +91,15 @@ export default async function MesEvenementsPage() {
                         <ShieldCheck className="h-4 w-4" />
                         Contrôleurs
                       </Link>
+                      {isOwner && (
+                        <Link
+                          href={`/dashboard/evenements/${event.id}/co-organisateurs`}
+                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100"
+                        >
+                          <UserCog className="h-4 w-4" />
+                          Co-organisateurs
+                        </Link>
+                      )}
                       <Link
                         href={`/dashboard/evenements/${event.id}/modifier`}
                         className="flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100"
@@ -86,7 +107,7 @@ export default async function MesEvenementsPage() {
                         <Pencil className="h-4 w-4" />
                         Modifier
                       </Link>
-                      <DeleteEventButton id={event.id} />
+                      {isOwner && <DeleteEventButton id={event.id} />}
                     </div>
                   </td>
                 </tr>
