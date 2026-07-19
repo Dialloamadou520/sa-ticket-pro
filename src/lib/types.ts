@@ -131,3 +131,10 @@ export interface EventController {
   email: string;
   created_at: string;
 }
+
+export interface EventCollaborator {
+  id: string;
+  event_id: string;
+  email: string;
+  created_at: string;
+}

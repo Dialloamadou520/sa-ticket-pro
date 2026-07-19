@@ -6,7 +6,7 @@ import {
   DownloadParticipants,
   type ParticipantRow,
 } from "@/components/dashboard/download-participants";
-import { getEventParticipants, getMyEvents } from "@/lib/data/dashboard";
+import { getEventParticipants, getManageableEventById } from "@/lib/data/dashboard";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 import { formatDateShort } from "@/lib/format";
 
@@ -18,9 +18,9 @@ export default async function ParticipantsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const events = await getMyEvents();
-  const event = events.find((e) => e.id === id);
-  if (!event) notFound();
+  const manageable = await getManageableEventById(id);
+  if (!manageable) notFound();
+  const { event } = manageable;
 
   const tickets = await getEventParticipants(id);
   const rows: ParticipantRow[] = tickets.map((t) => ({
