@@ -10,6 +10,7 @@ import {
   Clock,
   Keyboard,
   CameraOff,
+  Ticket as TicketIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,16 @@ type Result = {
   holder?: string;
   event?: string;
   message?: string;
+  ticketsTotal?: number;
+  ticketsScanned?: number;
+  ticketsRemaining?: number;
+};
+
+type Counter = {
+  event: string;
+  total: number;
+  scanned: number;
+  remaining: number;
 };
 
 function extractToken(value: string): string {
@@ -47,6 +58,7 @@ function cameraErrorMessage(err: unknown): string {
 
 export function ScannerClient() {
   const [result, setResult] = useState<Result | null>(null);
+  const [counter, setCounter] = useState<Counter | null>(null);
   const [loading, setLoading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -68,6 +80,19 @@ export function ScannerClient() {
         setResult({ result: "invalid", message: data.error ?? "Vérification impossible." });
       } else {
         setResult(data);
+        if (
+          data.event &&
+          typeof data.ticketsTotal === "number" &&
+          typeof data.ticketsScanned === "number" &&
+          typeof data.ticketsRemaining === "number"
+        ) {
+          setCounter({
+            event: data.event,
+            total: data.ticketsTotal,
+            scanned: data.ticketsScanned,
+            remaining: data.ticketsRemaining,
+          });
+        }
       }
     } catch {
       setResult({ result: "invalid", message: "Erreur réseau." });
@@ -173,6 +198,8 @@ export function ScannerClient() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      {counter && <CounterCard counter={counter} />}
+
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="relative aspect-square overflow-hidden bg-slate-950 sm:aspect-video">
           {/* L'élément vidéo reste monté en permanence : sinon videoRef est
@@ -259,6 +286,41 @@ export function ScannerClient() {
       </form>
 
       {result && <ResultCard result={result} />}
+    </div>
+  );
+}
+
+function CounterCard({ counter }: { counter: Counter }) {
+  const { event, total, scanned, remaining } = counter;
+  const pct = total > 0 ? Math.round((scanned / total) * 100) : 0;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-2 text-slate-800">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+          <TicketIcon className="h-4 w-4" />
+        </span>
+        <p className="truncate text-sm font-medium">{event}</p>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-xl bg-brand-50 py-3">
+          <p className="text-2xl font-bold text-brand-700">{remaining}</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">Restants</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 py-3">
+          <p className="text-2xl font-bold text-slate-900">{scanned}</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">Scannés</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 py-3">
+          <p className="text-2xl font-bold text-slate-900">{total}</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">Total</p>
+        </div>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-brand-500 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

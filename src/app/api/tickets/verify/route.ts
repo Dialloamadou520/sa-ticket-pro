@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
       holder: ticket.holder_name,
       event: ticket.event?.title,
       message: "Ce ticket a déjà été utilisé.",
+      ...(await eventCounts(admin, ticket.event_id)),
     });
   }
 
@@ -137,5 +138,36 @@ export async function POST(request: NextRequest) {
     holder: ticket.holder_name,
     event: ticket.event?.title,
     message: "Entrée autorisée.",
+    ...(await eventCounts(admin, ticket.event_id)),
   });
+}
+
+/**
+ * Compteurs d'entrées pour un événement : total de tickets émis, nombre déjà
+ * scanné (used) et restant à scanner (valid). Sert au compteur du scanner qui
+ * se décrémente à chaque entrée validée.
+ */
+async function eventCounts(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string
+): Promise<{ ticketsTotal: number; ticketsScanned: number; ticketsRemaining: number }> {
+  const [{ count: total }, { count: scanned }] = await Promise.all([
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .in("status", ["valid", "used"]),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("status", "used"),
+  ]);
+  const ticketsTotal = total ?? 0;
+  const ticketsScanned = scanned ?? 0;
+  return {
+    ticketsTotal,
+    ticketsScanned,
+    ticketsRemaining: Math.max(0, ticketsTotal - ticketsScanned),
+  };
 }
