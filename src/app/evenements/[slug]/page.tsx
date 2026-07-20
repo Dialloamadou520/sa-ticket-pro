@@ -137,6 +137,12 @@ export default async function EventDetailPage({
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
                 <div className="flex items-center justify-between">
+                  <span>Tickets vendus</span>
+                  <span className="font-medium">
+                    {event.tickets_sold.toLocaleString("fr-FR")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span>Places restantes</span>
                   <span className="font-medium">
                     {soldOut ? "Complet" : remaining.toLocaleString("fr-FR")}
