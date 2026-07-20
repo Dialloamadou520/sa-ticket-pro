@@ -63,9 +63,6 @@ export function EventCard({ event }: { event: Event }) {
           <span className="font-bold text-brand-700">
             {formatPrice(event.price)}
           </span>
-          <span className="text-xs font-medium text-slate-400">
-            {event.tickets_sold.toLocaleString("fr-FR")} vendus
-          </span>
         </div>
       </div>
       </Link>
