@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { slugify } from "@/lib/slug";
-import type { FeeMode, TicketType } from "@/lib/types";
+import type { TicketType } from "@/lib/types";
 
 interface TierInput {
   name: string;
@@ -91,15 +91,9 @@ async function ensureOrganizer(): Promise<{ id: string; userId: string } | null>
   return created ? { id: created.id, userId: user.id } : null;
 }
 
-const FEE_MODES: FeeMode[] = ["service_fee", "commission", "none"];
-
 function parseEvent(formData: FormData) {
   const date = String(formData.get("date"));
   const time = String(formData.get("time") || "20:00");
-  const feeModeRaw = String(formData.get("fee_mode") || "service_fee");
-  const fee_mode = (FEE_MODES.includes(feeModeRaw as FeeMode)
-    ? feeModeRaw
-    : "service_fee") as FeeMode;
   return {
     title: String(formData.get("title")).trim(),
     description: String(formData.get("description") || ""),
@@ -111,7 +105,6 @@ function parseEvent(formData: FormData) {
     capacity: Number(formData.get("capacity") || 0),
     price: Number(formData.get("price") || 0),
     ticket_type: String(formData.get("ticket_type") || "standard") as TicketType,
-    fee_mode,
     status: String(formData.get("status") || "pending"),
   };
 }
