@@ -19,6 +19,7 @@ import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { EventCommissionEditor } from "@/components/admin/event-commission-editor";
 import { EventFeeModeEditor } from "@/components/admin/event-fee-mode-editor";
+import { VisitsChart } from "@/components/admin/visits-chart";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
@@ -65,7 +66,7 @@ export default async function AdminPage() {
     getServiceFeesEnabled(),
   ]);
 
-  const maxDaily = Math.max(1, ...visits.daily.map((d) => d.count));
+  const maxTopPage = Math.max(1, ...visits.topPages.map((p) => p.count));
 
   return (
     <div className="space-y-8">
@@ -141,62 +142,71 @@ export default async function AdminPage() {
         </div>
 
         <div className="grid gap-6 border-t border-slate-100 p-5 lg:grid-cols-2">
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">
-              Visites par jour (14 derniers jours)
-            </h3>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">
+                Visites par jour
+              </h3>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 shadow-sm">
+                14 derniers jours
+              </span>
+            </div>
             {visits.total === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-500">
+              <p className="py-12 text-center text-sm text-slate-500">
                 Aucune visite enregistrée pour le moment.
               </p>
             ) : (
-              <ul className="space-y-1.5">
-                {visits.daily.map((d) => (
-                  <li key={d.key} className="flex items-center gap-3">
-                    <span className="w-14 shrink-0 text-xs text-slate-500">
-                      {d.label}
-                    </span>
-                    <div className="h-4 flex-1 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600"
-                        style={{ width: `${Math.round((d.count / maxDaily) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="w-8 shrink-0 text-right text-xs font-medium text-slate-700">
-                      {d.count}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <VisitsChart daily={visits.daily} />
             )}
           </div>
 
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">
-              Pages les plus visitées (30 derniers jours)
-            </h3>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">
+                Pages les plus visitées
+              </h3>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 shadow-sm">
+                30 derniers jours
+              </span>
+            </div>
             {visits.topPages.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-500">
+              <p className="py-12 text-center text-sm text-slate-500">
                 Aucune donnée pour le moment.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100">
-                {visits.topPages.map((p) => (
-                  <li
-                    key={p.path}
-                    className="flex items-center justify-between gap-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800">
-                        {p.label}
-                      </p>
-                      <p className="truncate text-xs text-slate-400">{p.path}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                      {p.count.toLocaleString("fr-FR")}
-                    </span>
-                  </li>
-                ))}
+              <ul className="space-y-2">
+                {visits.topPages.map((p, i) => {
+                  const pct = Math.round((p.count / maxTopPage) * 100);
+                  return (
+                    <li key={p.path} className="flex items-center gap-3">
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                          i === 0
+                            ? "bg-brand-100 text-brand-700"
+                            : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="truncate text-sm font-medium text-slate-800">
+                            {p.label}
+                          </p>
+                          <span className="shrink-0 text-xs font-semibold text-slate-700">
+                            {p.count.toLocaleString("fr-FR")}
+                          </span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
