@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import type { FeeMode } from "@/lib/types";
+
+const FEE_MODES: FeeMode[] = ["service_fee", "commission", "none"];
 
 async function setEventStatus(id: string, status: "published" | "rejected") {
   if (!isSupabaseConfigured) return;
@@ -63,6 +66,22 @@ export async function setEventCommission(id: string, rate: number) {
     .from("events")
     .update({ commission_rate: Math.round(rate * 10000) / 10000 })
     .eq("id", id);
+  revalidatePath("/admin");
+}
+
+/**
+ * Définit le mode de frais de service d'un événement (barème standard,
+ * commission 1,5 % ou aucun frais). Réservé aux administrateurs : les
+ * organisateurs ne choisissent plus ce réglage.
+ */
+export async function setEventFeeMode(id: string, mode: FeeMode) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  if (!FEE_MODES.includes(mode)) {
+    throw new Error("Mode de frais invalide.");
+  }
+  const admin = createAdminClient();
+  await admin.from("events").update({ fee_mode: mode }).eq("id", id);
   revalidatePath("/admin");
 }
 

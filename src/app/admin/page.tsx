@@ -18,6 +18,7 @@ import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { EventCommissionEditor } from "@/components/admin/event-commission-editor";
+import { EventFeeModeEditor } from "@/components/admin/event-fee-mode-editor";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
@@ -340,8 +341,8 @@ export default async function AdminPage() {
             </h2>
             <p className="text-xs text-slate-500">
               Tous les événements de la plateforme, quel que soit leur statut.
-              Ajustez la commission (%) par événement ou supprimez-en
-              définitivement n&apos;importe lequel.
+              Réglez les frais de service et la commission (%) par événement, ou
+              supprimez-en définitivement n&apos;importe lequel.
             </p>
           </div>
         </div>
@@ -359,6 +360,7 @@ export default async function AdminPage() {
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Tickets</th>
                   <th className="px-5 py-3">Revenus</th>
+                  <th className="px-5 py-3">Frais</th>
                   <th className="px-5 py-3">Taux</th>
                   <th className="px-5 py-3">Commission</th>
                   <th className="px-5 py-3">Statut</th>
@@ -396,6 +398,12 @@ export default async function AdminPage() {
                       </td>
                       <td className="px-5 py-3 font-medium text-slate-900">
                         {formatAmount(event.revenue)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <EventFeeModeEditor
+                          id={event.id}
+                          mode={event.fee_mode ?? "service_fee"}
+                        />
                       </td>
                       <td className="px-5 py-3">
                         <EventCommissionEditor
