@@ -76,19 +76,36 @@ export async function getVisitStats(): Promise<VisitStats> {
   const now = new Date();
   const since30 = new Date(now.getTime() - 30 * DAY_MS);
 
-  const [{ count: total }, { data: rows }] = await Promise.all([
-    supabase.from("page_views").select("*", { count: "exact", head: true }),
-    supabase
-      .from("page_views")
-      .select("path, visitor_id, created_at")
-      .gte("created_at", since30.toISOString()),
-  ]);
-
-  const recent = (rows ?? []) as {
+  type ViewRow = {
     path: string;
     visitor_id: string | null;
     created_at: string;
-  }[];
+  };
+
+  // PostgREST plafonne une réponse à 1000 lignes : on pagine, sinon les
+  // statistiques sont tronquées dès que la plateforme dépasse ce volume.
+  async function fetchRecent(): Promise<ViewRow[]> {
+    const PAGE = 1000;
+    const MAX_ROWS = 100_000;
+    const all: ViewRow[] = [];
+    for (let from = 0; from < MAX_ROWS; from += PAGE) {
+      const { data } = await supabase
+        .from("page_views")
+        .select("path, visitor_id, created_at")
+        .gte("created_at", since30.toISOString())
+        .order("created_at", { ascending: true })
+        .range(from, from + PAGE - 1);
+      const page = (data ?? []) as ViewRow[];
+      all.push(...page);
+      if (page.length < PAGE) break;
+    }
+    return all;
+  }
+
+  const [{ count: total }, recent] = await Promise.all([
+    supabase.from("page_views").select("*", { count: "exact", head: true }),
+    fetchRecent(),
+  ]);
 
   const startOfToday = new Date(
     now.getFullYear(),
