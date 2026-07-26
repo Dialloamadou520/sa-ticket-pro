@@ -6,7 +6,13 @@ export interface DailyViews {
   key: string;
   /** Libellé lisible, ex. « 6 juin ». */
   label: string;
+  /** Jour de la semaine abrégé, ex. « lun ». */
+  weekday: string;
+  /** Samedi ou dimanche. */
+  weekend: boolean;
   count: number;
+  /** Visiteurs uniques ce jour-là. */
+  visitors: number;
 }
 
 export interface TopPage {
@@ -22,7 +28,7 @@ export interface VisitStats {
   last30Days: number;
   /** Visiteurs uniques sur les 30 derniers jours. */
   uniqueVisitors30: number;
-  /** Visites par jour, sur les 14 derniers jours (du plus ancien au plus récent). */
+  /** Visites par jour, sur les 30 derniers jours (du plus ancien au plus récent). */
   daily: DailyViews[];
   /** Pages les plus visitées (30 derniers jours). */
   topPages: TopPage[];
@@ -96,6 +102,7 @@ export async function getVisitStats(): Promise<VisitStats> {
   const visitors = new Set<string>();
   const pathCounts = new Map<string, number>();
   const dayCounts = new Map<string, number>();
+  const dayVisitors = new Map<string, Set<string>>();
 
   for (const r of recent) {
     const t = new Date(r.created_at).getTime();
@@ -105,17 +112,25 @@ export async function getVisitStats(): Promise<VisitStats> {
     pathCounts.set(r.path, (pathCounts.get(r.path) ?? 0) + 1);
     const key = dayKey(new Date(r.created_at));
     dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+    if (r.visitor_id) {
+      const set = dayVisitors.get(key) ?? new Set<string>();
+      set.add(r.visitor_id);
+      dayVisitors.set(key, set);
+    }
   }
 
-  // 14 derniers jours, y compris les jours sans visite (0).
+  // 30 derniers jours, y compris les jours sans visite (0).
   const daily: DailyViews[] = [];
-  for (let i = 13; i >= 0; i--) {
+  for (let i = 29; i >= 0; i--) {
     const d = new Date(startOfToday - i * DAY_MS);
     const key = dayKey(d);
     daily.push({
       key,
       label: d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+      weekday: d.toLocaleDateString("fr-FR", { weekday: "short" }),
+      weekend: d.getDay() === 0 || d.getDay() === 6,
       count: dayCounts.get(key) ?? 0,
+      visitors: dayVisitors.get(key)?.size ?? 0,
     });
   }
 
