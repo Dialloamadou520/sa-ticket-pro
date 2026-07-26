@@ -94,6 +94,13 @@ async function ensureOrganizer(): Promise<{ id: string; userId: string } | null>
 function parseEvent(formData: FormData) {
   const date = String(formData.get("date"));
   const time = String(formData.get("time") || "20:00");
+  const startsAt = new Date(`${date}T${time}`);
+  const endTime = String(formData.get("end_time") || "");
+  let endsAt: Date | null = endTime ? new Date(`${date}T${endTime}`) : null;
+  // Une fin antérieure au début signifie que l'événement se termine après minuit.
+  if (endsAt && endsAt.getTime() <= startsAt.getTime()) {
+    endsAt = new Date(endsAt.getTime() + 86_400_000);
+  }
   return {
     title: String(formData.get("title")).trim(),
     description: String(formData.get("description") || ""),
@@ -101,7 +108,8 @@ function parseEvent(formData: FormData) {
     category_id: String(formData.get("category_id") || "") || null,
     location: String(formData.get("location")).trim(),
     city: String(formData.get("city") || "") || null,
-    starts_at: new Date(`${date}T${time}`).toISOString(),
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt ? endsAt.toISOString() : null,
     capacity: Number(formData.get("capacity") || 0),
     price: Number(formData.get("price") || 0),
     ticket_type: String(formData.get("ticket_type") || "standard") as TicketType,

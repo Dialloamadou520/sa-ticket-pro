@@ -13,13 +13,41 @@ export function formatAmount(amount: number): string {
   return `${(amount || 0).toLocaleString("fr-FR")} ${CURRENCY_LABEL}`;
 }
 
-/** Un événement est terminé lorsque sa fin (ou son début à défaut) est passée. */
+/**
+ * Durée par défaut d'un événement (heures) quand aucune heure de fin n'est
+ * renseignée : l'événement reste « en cours » pendant ce délai après son début.
+ */
+export const DEFAULT_EVENT_DURATION_HOURS = 6;
+
+/** Fin effective d'un événement (`ends_at`, ou début + durée par défaut). */
+export function eventEndsAt(event: {
+  starts_at: string;
+  ends_at: string | null;
+}): Date {
+  if (event.ends_at) return new Date(event.ends_at);
+  return new Date(
+    new Date(event.starts_at).getTime() +
+      DEFAULT_EVENT_DURATION_HOURS * 3_600_000
+  );
+}
+
+/** Un événement est terminé lorsque sa fin effective est passée. */
 export function isEventPast(
   event: { starts_at: string; ends_at: string | null },
   now: Date = new Date()
 ): boolean {
-  const end = new Date(event.ends_at ?? event.starts_at);
-  return end.getTime() < now.getTime();
+  return eventEndsAt(event).getTime() < now.getTime();
+}
+
+/** Un événement est en cours entre son début et sa fin effective. */
+export function isEventOngoing(
+  event: { starts_at: string; ends_at: string | null },
+  now: Date = new Date()
+): boolean {
+  return (
+    new Date(event.starts_at).getTime() <= now.getTime() &&
+    !isEventPast(event, now)
+  );
 }
 
 export function formatDate(date: string | Date, pattern = "EEEE d MMMM yyyy"): string {
@@ -39,11 +67,15 @@ export function formatDateShort(date: string | Date): string {
 
 /**
  * Étiquette de compte à rebours basée sur les jours calendaires :
- * "Terminé", "Aujourd'hui", "Demain" ou "J-5".
+ * "Terminé", "En cours", "Aujourd'hui", "Demain" ou "J-5".
  */
-export function countdownLabel(date: string | Date, now: Date = new Date()): string {
-  const target = typeof date === "string" ? new Date(date) : date;
-  if (target.getTime() <= now.getTime()) return "Terminé";
+export function countdownLabel(
+  event: { starts_at: string; ends_at: string | null },
+  now: Date = new Date()
+): string {
+  if (isEventPast(event, now)) return "Terminé";
+  const target = new Date(event.starts_at);
+  if (target.getTime() <= now.getTime()) return "En cours";
   const startOfDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOfDay(target) - startOfDay(now)) / 86_400_000);
