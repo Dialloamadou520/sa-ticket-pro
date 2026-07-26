@@ -155,9 +155,6 @@ export default async function AdminPage() {
               <h3 className="text-sm font-semibold text-slate-700">
                 Visites par jour
               </h3>
-              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 shadow-sm">
-                14 derniers jours
-              </span>
             </div>
             {visits.total === 0 ? (
               <p className="py-12 text-center text-sm text-slate-500">
