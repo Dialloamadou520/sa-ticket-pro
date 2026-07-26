@@ -1,7 +1,30 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sampleEvents } from "@/lib/sample-data";
-import type { Event, Organizer, Payment, Profile } from "@/lib/types";
+import type { Event, Organizer, Payment, Profile, Ticket } from "@/lib/types";
+
+/**
+ * Recherche des tickets pour la récupération d'un billet perdu (admin).
+ * Cherche par nom/email du participant ou par référence (début du `qr_token`).
+ * Réservé à l'administration (page protégée par le layout admin).
+ */
+export async function searchTickets(query: string): Promise<Ticket[]> {
+  if (!isSupabaseConfigured) return [];
+  const q = query.trim().replace(/[%,()]/g, "");
+  if (!q) return [];
+  const admin = createAdminClient();
+  const like = `%${q}%`;
+  const { data } = await admin
+    .from("tickets")
+    .select("*, event:events(*)")
+    .or(
+      `holder_email.ilike.${like},holder_name.ilike.${like},qr_token.ilike.${like}`,
+    )
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return (data as Ticket[]) ?? [];
+}
 
 export interface AdminStats {
   totalUsers: number;

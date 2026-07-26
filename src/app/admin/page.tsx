@@ -13,6 +13,7 @@ import {
   TrendingUp,
   MousePointerClick,
   BarChart3,
+  TicketCheck,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
@@ -73,7 +74,7 @@ export default async function AdminPage() {
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-brand-800 px-6 py-7 text-white shadow-sm">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-500/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-accent-500/10 blur-2xl" />
-        <div className="relative flex items-center gap-4">
+        <div className="relative flex flex-wrap items-center gap-4">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 backdrop-blur">
             <ShieldCheck className="h-6 w-6" />
           </span>
@@ -83,6 +84,13 @@ export default async function AdminPage() {
               Pilotez la plateforme kaypass.
             </p>
           </div>
+          <Link
+            href="/admin/tickets"
+            className="ml-auto inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
+          >
+            <TicketCheck className="h-4 w-4" />
+            Récupérer un ticket perdu
+          </Link>
         </div>
       </div>
 
