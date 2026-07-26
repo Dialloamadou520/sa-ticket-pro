@@ -69,8 +69,9 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
   const capacity = event.capacity || 0;
   const sold = event.tickets_sold || 0;
   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0;
-  const countdown = countdownLabel(event.starts_at);
+  const countdown = countdownLabel(event);
   const upcoming = countdown !== "Terminé";
+  const ongoing = countdown === "En cours";
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
@@ -91,7 +92,11 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
           <EventStatusBadge status={event.status} />
           {upcoming && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-white backdrop-blur ${
+                ongoing ? "bg-emerald-600/90" : "bg-slate-900/80"
+              }`}
+            >
               <Timer className="h-3.5 w-3.5" />
               {countdown}
             </span>

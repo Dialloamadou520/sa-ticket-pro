@@ -109,7 +109,7 @@ export default async function EventDetailPage({
 
           <aside className="lg:col-span-1">
             <div className="sticky top-20 space-y-4">
-            <EventCountdown startsAt={event.starts_at} />
+            <EventCountdown startsAt={event.starts_at} endsAt={event.ends_at} />
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">À partir de</p>
               <p className="mt-1 text-3xl font-bold text-brand-700">

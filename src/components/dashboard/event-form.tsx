@@ -8,6 +8,7 @@ import { ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { EventFormState } from "@/app/dashboard/actions";
+import { DEFAULT_EVENT_DURATION_HOURS } from "@/lib/format";
 import type { Category, Event } from "@/lib/types";
 
 interface TierRow {
@@ -98,6 +99,9 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
   const startDate = event ? new Date(event.starts_at) : null;
   const dateValue = startDate ? startDate.toISOString().slice(0, 10) : "";
   const timeValue = startDate ? startDate.toISOString().slice(11, 16) : "20:00";
+  const endTimeValue = event?.ends_at
+    ? new Date(event.ends_at).toISOString().slice(11, 16)
+    : "";
 
   return (
     <form action={formAction} className="space-y-6">
@@ -195,14 +199,22 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <Label htmlFor="date">Date *</Label>
           <Input id="date" name="date" type="date" required defaultValue={dateValue} />
         </div>
         <div>
-          <Label htmlFor="time">Heure</Label>
+          <Label htmlFor="time">Heure de début</Label>
           <Input id="time" name="time" type="time" defaultValue={timeValue} />
+        </div>
+        <div>
+          <Label htmlFor="end_time">Heure de fin</Label>
+          <Input id="end_time" name="end_time" type="time" defaultValue={endTimeValue} />
+          <p className="mt-1 text-xs text-slate-500">
+            La vente de tickets reste ouverte jusqu&apos;à cette heure. Sans
+            heure de fin : {DEFAULT_EVENT_DURATION_HOURS} h après le début.
+          </p>
         </div>
       </div>
 

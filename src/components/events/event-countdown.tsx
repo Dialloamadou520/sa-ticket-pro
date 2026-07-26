@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { Timer } from "lucide-react";
+import { eventEndsAt } from "@/lib/format";
 
 type Parts = { days: number; hours: number; minutes: number; seconds: number };
 
@@ -32,8 +33,15 @@ function useNow(): number | null {
 }
 
 /** Compte à rebours dynamique (jours / heures / minutes / secondes) jusqu'au début de l'événement. */
-export function EventCountdown({ startsAt }: { startsAt: string }) {
+export function EventCountdown({
+  startsAt,
+  endsAt,
+}: {
+  startsAt: string;
+  endsAt: string | null;
+}) {
   const target = new Date(startsAt).getTime();
+  const end = eventEndsAt({ starts_at: startsAt, ends_at: endsAt }).getTime();
   const now = useNow();
 
   // Pendant le rendu serveur / avant hydratation, on n'affiche rien (évite les écarts d'hydratation).
@@ -42,6 +50,17 @@ export function EventCountdown({ startsAt }: { startsAt: string }) {
   const parts = diffParts(target, now);
 
   if (!parts) {
+    if (now <= end) {
+      return (
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+          </span>
+          Événement en cours — billetterie ouverte
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
         <Timer className="h-4 w-4" />
