@@ -50,6 +50,19 @@ export function isEventOngoing(
   );
 }
 
+/**
+ * Jauge de remplissage à afficher au public : pourcentage choisi par
+ * l'organisateur, ou `null` si aucune jauge n'est configurée. Les ventes
+ * réelles ne sont jamais exposées à l'acheteur.
+ */
+export function displayFillPercent(event: {
+  display_fill_percent?: number | null;
+}): number | null {
+  const value = event.display_fill_percent;
+  if (value === null || value === undefined) return null;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
 export function formatDate(date: string | Date, pattern = "EEEE d MMMM yyyy"): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return format(d, pattern, { locale: fr });

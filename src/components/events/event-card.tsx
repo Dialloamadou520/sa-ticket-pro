@@ -3,13 +3,19 @@ import Image from "next/image";
 import { CalendarDays, MapPin, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
-import { countdownLabel, formatDateShort, formatPrice } from "@/lib/format";
+import {
+  countdownLabel,
+  displayFillPercent,
+  formatDateShort,
+  formatPrice,
+} from "@/lib/format";
 import type { Event } from "@/lib/types";
 
 export function EventCard({ event }: { event: Event }) {
   const remaining = event.capacity - event.tickets_sold;
   const almostSoldOut = remaining > 0 && remaining <= event.capacity * 0.1;
   const soldOut = remaining <= 0;
+  const fillPercent = displayFillPercent(event);
   const countdown = countdownLabel(event);
   const upcoming = countdown !== "Terminé";
   const ongoing = countdown === "En cours";
@@ -33,7 +39,11 @@ export function EventCard({ event }: { event: Event }) {
         )}
         <div className="absolute left-3 top-3 flex gap-2">
           {event.category && <Badge tone="brand">{event.category.name}</Badge>}
-          {almostSoldOut && <Badge tone="amber">Bientôt complet</Badge>}
+          {fillPercent !== null && !soldOut ? (
+            <Badge tone="amber">{fillPercent} % vendu</Badge>
+          ) : (
+            almostSoldOut && <Badge tone="amber">Bientôt complet</Badge>
+          )}
         </div>
         {upcoming && (
           <span

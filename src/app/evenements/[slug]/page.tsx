@@ -13,7 +13,13 @@ import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
 import { getEventBySlug } from "@/lib/data/events";
-import { formatDate, formatPrice, formatTime, isEventPast } from "@/lib/format";
+import {
+  displayFillPercent,
+  formatDate,
+  formatPrice,
+  formatTime,
+  isEventPast,
+} from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
 import { EventCountdown } from "@/components/events/event-countdown";
@@ -50,6 +56,7 @@ export default async function EventDetailPage({
   // l'admin : côté acheteur on n'expose que l'état « complet ».
   const soldOut = event.tickets_sold >= event.capacity;
   const past = isEventPast(event);
+  const fillPercent = displayFillPercent(event);
 
   return (
     <div>
@@ -134,6 +141,23 @@ export default async function EventDetailPage({
                     );
                   })}
                 </ul>
+              )}
+
+              {fillPercent !== null && (
+                <div className="mt-4 space-y-2 text-sm text-slate-600">
+                  <div className="flex items-center justify-between">
+                    <span>Remplissage</span>
+                    <span className="font-medium text-slate-900">
+                      {soldOut ? "Complet" : `${fillPercent} % vendu`}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-brand-500"
+                      style={{ width: `${soldOut ? 100 : fillPercent}%` }}
+                    />
+                  </div>
+                </div>
               )}
 
               {past ? (

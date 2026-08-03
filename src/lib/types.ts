@@ -78,6 +78,11 @@ export interface Event {
   fee_mode?: FeeMode;
   /** Taux de commission plateforme par événement (0–1). Défaut : 0.10. */
   commission_rate?: number;
+  /**
+   * Jauge de remplissage affichée au public (0–100). Choisie par
+   * l'organisateur, indépendante des ventes réelles. `null` = rien d'affiché.
+   */
+  display_fill_percent?: number | null;
   created_at: string;
   tiers?: TicketTier[];
 }
