@@ -22,6 +22,7 @@ import { EventCommissionEditor } from "@/components/admin/event-commission-edito
 import { EventFeeModeEditor } from "@/components/admin/event-fee-mode-editor";
 import { VisitsChart } from "@/components/admin/visits-chart";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
+import { OrganizersExport } from "@/components/admin/organizers-export";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
 import {
   getAdminStats,
@@ -451,11 +452,11 @@ export default async function AdminPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
             <Building2 className="h-5 w-5" />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="flex items-center font-semibold text-slate-900">
               Organisateurs
               <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
@@ -463,10 +464,11 @@ export default async function AdminPage() {
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Activité par organisateur. Retirez un organisateur pour annuler et
-              masquer ses événements (réversible).
+              Coordonnées et activité par organisateur. Retirez un organisateur
+              pour annuler et masquer ses événements (réversible).
             </p>
           </div>
+          <OrganizersExport organizers={organizers} />
         </div>
         {organizers.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-500">
@@ -478,6 +480,7 @@ export default async function AdminPage() {
               <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-3">Organisateur</th>
+                  <th className="px-5 py-3">Contact</th>
                   <th className="px-5 py-3">Événements</th>
                   <th className="px-5 py-3">Tickets</th>
                   <th className="px-5 py-3">Revenus</th>
@@ -503,7 +506,22 @@ export default async function AdminPage() {
                         <ChevronRight className="h-4 w-4 text-slate-400" />
                       </Link>
                       <p className="text-xs text-slate-500">
-                        {o.owner?.full_name || "—"} · {o.owner?.email ?? "—"}
+                        {o.owner?.full_name || "—"}
+                      </p>
+                    </td>
+                    <td className="px-5 py-3">
+                      {o.owner?.phone ? (
+                        <a
+                          href={`tel:${o.owner.phone.replace(/\s/g, "")}`}
+                          className="font-medium text-slate-900 hover:text-brand-700"
+                        >
+                          {o.owner.phone}
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">Non renseigné</span>
+                      )}
+                      <p className="text-xs text-slate-500">
+                        {o.owner?.email ?? "—"}
                       </p>
                     </td>
                     <td className="px-5 py-3 text-slate-600">
@@ -570,6 +588,7 @@ export default async function AdminPage() {
                 <tr>
                   <th className="px-5 py-3">Nom</th>
                   <th className="px-5 py-3">Email</th>
+                  <th className="px-5 py-3">Téléphone</th>
                   <th className="px-5 py-3">Rôle</th>
                   <th className="px-5 py-3">Inscrit le</th>
                 </tr>
@@ -581,6 +600,18 @@ export default async function AdminPage() {
                       {u.full_name || "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-500">{u.email}</td>
+                    <td className="px-5 py-3 text-slate-500">
+                      {u.phone ? (
+                        <a
+                          href={`tel:${u.phone.replace(/\s/g, "")}`}
+                          className="hover:text-brand-700"
+                        >
+                          {u.phone}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="px-5 py-3 capitalize text-slate-500">{u.role}</td>
                     <td className="px-5 py-3 text-slate-500">
                       {formatDateShort(u.created_at)}

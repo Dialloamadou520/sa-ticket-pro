@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { normalizeSenegalPhone } from "@/lib/payments/dexpay";
 import type { UserRole } from "@/lib/types";
 
 interface Body {
   email: string;
   password: string;
   fullName: string;
+  phone?: string;
   role: UserRole;
 }
 
@@ -32,6 +34,9 @@ export async function POST(request: NextRequest) {
   const password = body.password ?? "";
   const fullName = (body.fullName ?? "").trim();
   const role: UserRole = body.role === "organizer" ? "organizer" : "participant";
+  const rawPhone = (body.phone ?? "").trim();
+  const localPhone = normalizeSenegalPhone(rawPhone);
+  const phone = localPhone ? `+221${localPhone}` : rawPhone || null;
 
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "Email invalide." }, { status: 400 });
@@ -42,13 +47,22 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  if (role === "organizer" && !localPhone) {
+    return NextResponse.json(
+      {
+        error:
+          "Numéro de téléphone valide requis pour un organisateur (9 chiffres).",
+      },
+      { status: 400 }
+    );
+  }
 
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.createUser({
+  const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: fullName, role },
+    user_metadata: { full_name: fullName, phone, role },
   });
 
   if (error) {
@@ -63,6 +77,12 @@ export async function POST(request: NextRequest) {
       },
       { status: already ? 409 : 400 }
     );
+  }
+
+  // Le trigger `handle_new_user` ne recopie que le nom et le rôle : on écrit le
+  // numéro séparément pour qu'il soit disponible dans l'espace admin.
+  if (phone && data.user) {
+    await admin.from("profiles").update({ phone }).eq("id", data.user.id);
   }
 
   return NextResponse.json({ ok: true, role });
