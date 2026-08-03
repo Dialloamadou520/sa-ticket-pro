@@ -46,8 +46,9 @@ export default async function EventDetailPage({
   const event = await getEventBySlug(slug);
   if (!event) notFound();
 
-  const remaining = event.capacity - event.tickets_sold;
-  const soldOut = remaining <= 0;
+  // Le nombre de tickets vendus/restants reste réservé à l'organisateur et à
+  // l'admin : côté acheteur on n'expose que l'état « complet ».
+  const soldOut = event.tickets_sold >= event.capacity;
   const past = isEventPast(event);
 
   return (
@@ -134,26 +135,6 @@ export default async function EventDetailPage({
                   })}
                 </ul>
               )}
-
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span>Places restantes</span>
-                  <span className="font-medium">
-                    {soldOut ? "Complet" : remaining.toLocaleString("fr-FR")}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-brand-500"
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        (event.tickets_sold / event.capacity) * 100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
 
               {past ? (
                 <button
