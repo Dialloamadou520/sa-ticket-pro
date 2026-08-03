@@ -91,6 +91,35 @@ async function ensureOrganizer(): Promise<{ id: string; userId: string } | null>
   return created ? { id: created.id, userId: user.id } : null;
 }
 
+/**
+ * Jauge « marketing » affichée au public : entier 0–100, ou null si le champ
+ * est laissé vide (aucune jauge affichée).
+ */
+function parseFillPercent(formData: FormData): number | null {
+  const raw = String(formData.get("display_fill_percent") || "").trim();
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+/**
+ * Vrai si l'erreur vient de la colonne `display_fill_percent` absente : la
+ * migration 0010 n'est pas encore appliquée, on réessaie sans ce champ pour ne
+ * pas bloquer la création/modification d'événements.
+ */
+function isMissingFillColumn(message: string): boolean {
+  return message.includes("display_fill_percent");
+}
+
+function withoutFillPercent<T extends { display_fill_percent: number | null }>(
+  values: T,
+): Omit<T, "display_fill_percent"> {
+  const copy = { ...values };
+  delete (copy as { display_fill_percent?: number | null }).display_fill_percent;
+  return copy;
+}
+
 function parseEvent(formData: FormData) {
   const date = String(formData.get("date"));
   const time = String(formData.get("time") || "20:00");
@@ -114,6 +143,7 @@ function parseEvent(formData: FormData) {
     price: Number(formData.get("price") || 0),
     ticket_type: String(formData.get("ticket_type") || "standard") as TicketType,
     status: String(formData.get("status") || "pending"),
+    display_fill_percent: parseFillPercent(formData),
   };
 }
 
@@ -143,15 +173,23 @@ export async function createEvent(
   }
 
   const supabase = await createClient();
-  const { data: created, error } = await supabase
+  const row = {
+    ...values,
+    slug: slugify(values.title),
+    organizer_id: organizer.id,
+  };
+  let { data: created, error } = await supabase
     .from("events")
-    .insert({
-      ...values,
-      slug: slugify(values.title),
-      organizer_id: organizer.id,
-    })
+    .insert(row)
     .select("id")
     .single();
+  if (error && isMissingFillColumn(error.message)) {
+    ({ data: created, error } = await supabase
+      .from("events")
+      .insert(withoutFillPercent(row))
+      .select("id")
+      .single());
+  }
   if (error || !created) return { error: error?.message ?? "Erreur." };
 
   await syncTiers(created.id, tiers);
@@ -183,7 +221,13 @@ export async function updateEvent(
   // Client service-role : un co-organisateur n'est pas propriétaire, le RLS
   // « events » bloquerait sa mise à jour. L'accès est déjà vérifié ci-dessus.
   const admin = createAdminClient();
-  const { error } = await admin.from("events").update(values).eq("id", id);
+  let { error } = await admin.from("events").update(values).eq("id", id);
+  if (error && isMissingFillColumn(error.message)) {
+    ({ error } = await admin
+      .from("events")
+      .update(withoutFillPercent(values))
+      .eq("id", id));
+  }
   if (error) return { error: error.message };
 
   await syncTiers(id, tiers);

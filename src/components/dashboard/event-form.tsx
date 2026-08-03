@@ -250,6 +250,27 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
         </div>
       </div>
 
+      <div>
+        <Label htmlFor="display_fill_percent">
+          Jauge de remplissage affichée (optionnel)
+        </Label>
+        <Input
+          id="display_fill_percent"
+          name="display_fill_percent"
+          type="number"
+          min={0}
+          max={100}
+          defaultValue={event?.display_fill_percent ?? ""}
+          placeholder="Ex : 75"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Affiche « X % vendu » sur la page publique pour créer un effet
+          d&apos;urgence. Laissez vide pour ne rien afficher. Vos ventes réelles
+          ne sont pas modifiées et restent visibles uniquement par vous et
+          l&apos;administrateur.
+        </p>
+      </div>
+
       <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
         <div className="flex items-center justify-between">
           <div>

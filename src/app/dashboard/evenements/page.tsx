@@ -15,7 +15,12 @@ import { LinkButton } from "@/components/ui/button";
 import { EventStatusBadge } from "@/components/dashboard/event-status-badge";
 import { DeleteEventButton } from "@/components/dashboard/delete-event-button";
 import { getManageableEvents } from "@/lib/data/dashboard";
-import { countdownLabel, formatDateShort, formatPrice } from "@/lib/format";
+import {
+  countdownLabel,
+  displayFillPercent,
+  formatDateShort,
+  formatPrice,
+} from "@/lib/format";
 import type { Event } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Mes événements" };
@@ -69,6 +74,7 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
   const capacity = event.capacity || 0;
   const sold = event.tickets_sold || 0;
   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0;
+  const fillPercent = displayFillPercent(event);
   const countdown = countdownLabel(event);
   const upcoming = countdown !== "Terminé";
   const ongoing = countdown === "En cours";
@@ -141,6 +147,12 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
               style={{ width: `${pct}%` }}
             />
           </div>
+          {fillPercent !== null && (
+            <p className="mt-1.5 text-xs text-amber-600">
+              Jauge affichée au public : {fillPercent} % (vos chiffres réels
+              restent privés)
+            </p>
+          )}
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-3">
