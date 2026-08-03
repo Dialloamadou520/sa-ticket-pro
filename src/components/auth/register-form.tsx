@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 export function RegisterForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState("participant");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,7 +24,6 @@ export function RegisterForm() {
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email"));
     const password = String(form.get("password"));
-    const role = String(form.get("role"));
     setLoading(true);
 
     const res = await fetch("/api/auth/signup", {
@@ -33,6 +33,7 @@ export function RegisterForm() {
         email,
         password,
         fullName: String(form.get("full_name")),
+        phone: String(form.get("phone") || ""),
         role,
       }),
     });
@@ -73,10 +74,34 @@ export function RegisterForm() {
         </div>
         <div>
           <Label htmlFor="role">Je suis</Label>
-          <Select id="role" name="role" defaultValue="participant">
+          <Select
+            id="role"
+            name="role"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+          >
             <option value="participant">Participant (j&apos;achète des tickets)</option>
             <option value="organizer">Organisateur (je vends des tickets)</option>
           </Select>
+        </div>
+        <div>
+          <Label htmlFor="phone">
+            Téléphone {role === "organizer" ? "" : "(facultatif)"}
+          </Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            required={role === "organizer"}
+            placeholder="77 123 45 67"
+          />
+          {role === "organizer" && (
+            <p className="mt-1 text-xs text-slate-500">
+              Nécessaire pour vous joindre au sujet de vos événements et de vos
+              reversements.
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="password">Mot de passe</Label>
