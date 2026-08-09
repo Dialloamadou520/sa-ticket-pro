@@ -24,6 +24,8 @@ import { VisitsChart } from "@/components/admin/visits-chart";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { OrganizersExport } from "@/components/admin/organizers-export";
 import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
+import { UserRoleEditor } from "@/components/admin/user-role-editor";
+import { AddAdminForm } from "@/components/admin/add-admin-form";
 import {
   getAdminStats,
   getAllEvents,
@@ -33,6 +35,7 @@ import {
   getPendingEvents,
 } from "@/lib/data/admin";
 import { getVisitStats } from "@/lib/data/analytics";
+import { getCurrentUser } from "@/lib/data/auth";
 import type { EventStatus } from "@/lib/types";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { formatAmount, formatDateShort, formatPrice } from "@/lib/format";
@@ -57,6 +60,7 @@ export default async function AdminPage() {
     organizers,
     users,
     serviceFeesEnabled,
+    currentUser,
   ] = await Promise.all([
     getAdminStats(),
     getVisitStats(),
@@ -66,6 +70,7 @@ export default async function AdminPage() {
     getAllOrganizers(),
     getAllUsers(),
     getServiceFeesEnabled(),
+    getCurrentUser(),
   ]);
 
   const maxTopPage = Math.max(1, ...visits.topPages.map((p) => p.count));
@@ -575,7 +580,15 @@ export default async function AdminPage() {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
             <Users className="h-5 w-5" />
           </span>
-          <h2 className="font-semibold text-slate-900">Utilisateurs récents</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold text-slate-900">Utilisateurs récents</h2>
+            <p className="text-xs text-slate-500">
+              {`Attribuez un rôle à un compte existant. Un administrateur a accès à tout : événements, organisateurs, revenus et rôles.`}
+            </p>
+          </div>
+        </div>
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
+          <AddAdminForm />
         </div>
         {users.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-500">
@@ -612,7 +625,13 @@ export default async function AdminPage() {
                         "—"
                       )}
                     </td>
-                    <td className="px-5 py-3 capitalize text-slate-500">{u.role}</td>
+                    <td className="px-5 py-3">
+                      <UserRoleEditor
+                        userId={u.id}
+                        role={u.role}
+                        self={u.id === currentUser?.id}
+                      />
+                    </td>
                     <td className="px-5 py-3 text-slate-500">
                       {formatDateShort(u.created_at)}
                     </td>

@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { FeeMode } from "@/lib/types";
+import type { FeeMode, UserRole } from "@/lib/types";
 
 const FEE_MODES: FeeMode[] = ["service_fee", "commission", "none"];
+
+const USER_ROLES: UserRole[] = ["participant", "organizer", "admin"];
 
 async function setEventStatus(id: string, status: "published" | "rejected") {
   if (!isSupabaseConfigured) return;
@@ -23,8 +25,11 @@ export async function rejectEvent(id: string) {
   await setEventStatus(id, "rejected");
 }
 
-/** Vérifie que l'appelant est bien administrateur avant toute mutation. */
-async function assertAdmin() {
+/**
+ * Vérifie que l'appelant est bien administrateur avant toute mutation.
+ * Renvoie son identifiant, utile pour les garde-fous « pas sur soi-même ».
+ */
+async function assertAdmin(): Promise<string> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -36,6 +41,7 @@ async function assertAdmin() {
     .eq("id", user.id)
     .maybeSingle();
   if (profile?.role !== "admin") throw new Error("Accès réservé aux administrateurs.");
+  return user.id;
 }
 
 /**
@@ -134,6 +140,50 @@ export async function setOrganizerVerified(id: string, verified: boolean) {
   await admin.from("organizers").update({ verified }).eq("id", id);
   revalidatePath("/admin");
   revalidatePath(`/admin/organisateurs/${id}`);
+}
+
+/**
+ * Change le rôle d'un utilisateur (participant / organisateur / administrateur).
+ * Réservé aux administrateurs. Un admin ne peut pas modifier son propre rôle,
+ * pour éviter de se retirer l'accès par mégarde.
+ */
+export async function setUserRole(userId: string, role: UserRole) {
+  if (!isSupabaseConfigured) return;
+  const callerId = await assertAdmin();
+  if (!USER_ROLES.includes(role)) throw new Error("Rôle invalide.");
+  if (userId === callerId) {
+    throw new Error("Vous ne pouvez pas modifier votre propre rôle.");
+  }
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ role })
+    .eq("id", userId);
+  if (error) throw new Error("Mise à jour du rôle impossible.");
+  await admin.auth.admin.updateUserById(userId, { user_metadata: { role } });
+  revalidatePath("/admin");
+}
+
+/**
+ * Donne un rôle à un utilisateur désigné par son email (il doit déjà avoir un
+ * compte). Renvoie le nom/email de la personne pour confirmation côté UI.
+ */
+export async function setUserRoleByEmail(email: string, role: UserRole) {
+  if (!isSupabaseConfigured) return null;
+  await assertAdmin();
+  const clean = email.trim().toLowerCase();
+  if (!clean) throw new Error("Email requis.");
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, full_name, email")
+    .ilike("email", clean)
+    .maybeSingle();
+  if (!profile) {
+    throw new Error("Aucun compte avec cet email. La personne doit d'abord s'inscrire.");
+  }
+  await setUserRole(profile.id, role);
+  return { name: profile.full_name ?? profile.email ?? clean };
 }
 
 /** Active ou désactive globalement les frais de service de la plateforme. */
