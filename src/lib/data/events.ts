@@ -41,7 +41,7 @@ export async function getPublishedEvents(
     .from("events")
     .select(EVENT_SELECT)
     .eq("status", "published")
-    .order("starts_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (filters.category) {
     const cat = sampleCategories.find((c) => c.slug === filters.category);
@@ -54,10 +54,13 @@ export async function getPublishedEvents(
   return (data as Event[]) ?? [];
 }
 
-export async function getPopularEvents(limit = 6): Promise<Event[]> {
+export async function getRecentEvents(limit = 6): Promise<Event[]> {
   if (!isSupabaseConfigured) {
     return [...sampleEvents]
-      .sort((a, b) => b.tickets_sold - a.tickets_sold)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
       .slice(0, limit);
   }
   const supabase = await createClient();
@@ -65,7 +68,7 @@ export async function getPopularEvents(limit = 6): Promise<Event[]> {
     .from("events")
     .select(EVENT_SELECT)
     .eq("status", "published")
-    .order("tickets_sold", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(limit);
   return (data as Event[]) ?? [];
 }
@@ -84,7 +87,11 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 }
 
 function filterSampleEvents(filters: EventFilters): Event[] {
-  return sampleEvents.filter((e) => {
+  const sorted = [...sampleEvents].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  return sorted.filter((e) => {
     if (filters.category && e.category?.slug !== filters.category) return false;
     if (
       filters.city &&
