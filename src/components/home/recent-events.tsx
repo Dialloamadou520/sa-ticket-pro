@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/container";
 import { EventCard } from "@/components/events/event-card";
 import type { Event } from "@/lib/types";
 
-export function PopularEvents({ events }: { events: Event[] }) {
+export function RecentEvents({ events }: { events: Event[] }) {
   if (events.length === 0) return null;
 
   return (
@@ -12,10 +12,10 @@ export function PopularEvents({ events }: { events: Event[] }) {
       <Container>
         <div className="mb-8 text-center">
           <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-            Événements populaires
+            Événements récents
           </h2>
           <p className="mt-2 text-slate-500">
-            Les rendez-vous à ne pas manquer
+            Les derniers rendez-vous publiés
           </p>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
