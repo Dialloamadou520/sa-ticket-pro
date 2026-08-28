@@ -18,6 +18,7 @@ import {
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
+import { AdminPublishEventButton } from "@/components/admin/publish-event-button";
 import { EventCommissionEditor } from "@/components/admin/event-commission-editor";
 import { EventFeeModeEditor } from "@/components/admin/event-fee-mode-editor";
 import { VisitsChart } from "@/components/admin/visits-chart";
@@ -362,8 +363,9 @@ export default async function AdminPage() {
             </h2>
             <p className="text-xs text-slate-500">
               Tous les événements de la plateforme, quel que soit leur statut.
-              Réglez les frais de service et la commission (%) par événement, ou
-              supprimez-en définitivement n&apos;importe lequel.
+              Publiez directement un brouillon, réglez les frais de service et la
+              commission (%) par événement, ou supprimez-en définitivement
+              n&apos;importe lequel.
             </p>
           </div>
         </div>
@@ -443,7 +445,13 @@ export default async function AdminPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end">
+                        <div className="flex items-center justify-end gap-2">
+                          {event.status !== "published" && (
+                            <AdminPublishEventButton
+                              id={event.id}
+                              title={event.title}
+                            />
+                          )}
                           <AdminDeleteEventButton id={event.id} title={event.title} />
                         </div>
                       </td>

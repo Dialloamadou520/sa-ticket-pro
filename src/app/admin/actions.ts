@@ -45,6 +45,23 @@ async function assertAdmin(): Promise<string> {
 }
 
 /**
+ * Publie un événement quel que soit son statut de départ (brouillon, refusé,
+ * annulé…), sans attendre que l'organisateur le soumette. Réservé aux admins :
+ * passe par le service-role car les RLS de `events` ciblent le propriétaire.
+ */
+export async function publishEventAsAdmin(id: string) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("events")
+    .update({ status: "published" })
+    .eq("id", id);
+  if (error) throw new Error("Publication impossible.");
+  revalidatePath("/admin");
+}
+
+/**
  * Supprime définitivement un événement (et, par cascade, ses tickets, paliers,
  * paiements, contrôleurs et scans). Réservé aux administrateurs.
  */
