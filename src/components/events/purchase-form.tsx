@@ -1,21 +1,51 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Loader2, Smartphone, ShieldCheck } from "lucide-react";
+import { Minus, Plus, Loader2, Smartphone, ShieldCheck, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { feeForUnitPrice } from "@/lib/payments/commission";
+import { discountFor } from "@/lib/payments/promo-discount";
 import { getTierTheme } from "@/lib/tier-theme";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
-import type { Event, FeeMode, PaymentProvider } from "@/lib/types";
+import type {
+  DiscountType,
+  Event,
+  FeeMode,
+  PaymentProvider,
+} from "@/lib/types";
 
 interface Pending {
   provider: PaymentProvider;
   paymentId: string;
   cashoutUrl: string | null;
   confirmUrl: string;
+}
+
+interface PromoResult {
+  code: string;
+  ownerName: string;
+  discountType: DiscountType;
+  discountValue: number;
+}
+
+/** Valide un code promo côté serveur ; `null` si le code n'est pas utilisable. */
+async function lookupPromo(
+  code: string,
+  slug: string,
+): Promise<PromoResult | null> {
+  try {
+    const res = await fetch(
+      `/api/promo/validate?code=${encodeURIComponent(code)}&event=${encodeURIComponent(slug)}`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as PromoResult;
+  } catch {
+    return null;
+  }
 }
 
 export function PurchaseForm({
@@ -31,6 +61,9 @@ export function PurchaseForm({
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [tierId, setTierId] = useState<string>(tiers[0]?.id ?? "");
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState<PromoResult | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
   const unitPrice = selectedTier ? selectedTier.price : event.price;
@@ -38,7 +71,37 @@ export function PurchaseForm({
   const unitFee = feeForUnitPrice(unitPrice, feeMode);
   const subtotal = unitPrice * quantity;
   const fee = unitFee * quantity;
-  const total = subtotal + fee;
+  // La réduction suit le sous-total : elle se recalcule quand la quantité ou la
+  // catégorie change. Le serveur la revalide au paiement.
+  const discount = promo
+    ? discountFor(
+        { discount_type: promo.discountType, discount_value: promo.discountValue },
+        subtotal,
+      )
+    : 0;
+  const total = Math.max(0, subtotal - discount) + fee;
+
+  async function applyPromo() {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoLoading(true);
+    const result = await lookupPromo(code, event.slug);
+    setPromoLoading(false);
+    if (!result) {
+      toast.error("Code invalide pour cet événement.");
+      return;
+    }
+    setPromo(result);
+    const value = discountFor(
+      { discount_type: result.discountType, discount_value: result.discountValue },
+      subtotal,
+    );
+    toast.success(
+      value > 0
+        ? `Code ${result.code} appliqué : -${formatPrice(value)}.`
+        : `Code ${result.code} appliqué.`,
+    );
+  }
 
   useEffect(() => {
     if (!pending) return;
@@ -89,6 +152,7 @@ export function PurchaseForm({
           phone: String(form.get("phone")),
           provider,
           tierId: tierId || undefined,
+          promoCode: promo?.code,
         }),
       });
       const data = await res.json();
@@ -268,6 +332,54 @@ export function PurchaseForm({
         </div>
       )}
 
+      <div>
+        <Label htmlFor="promo">Code promo (optionnel)</Label>
+        {promo ? (
+          <div className="flex items-center justify-between rounded-xl border-2 border-brand-200 bg-brand-50 px-4 py-2.5 text-sm">
+            <span className="flex items-center gap-2 font-medium text-brand-700">
+              <Tag className="h-4 w-4" />
+              {promo.code}
+              <span className="font-normal text-brand-600/80">
+                · {promo.ownerName}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setPromo(null);
+                setPromoInput("");
+              }}
+              className="text-brand-600 hover:text-brand-800"
+              aria-label="Retirer le code promo"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              id="promo"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              placeholder="Ex. AMBA10"
+              autoComplete="off"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={applyPromo}
+              disabled={promoLoading || !promoInput.trim()}
+            >
+              {promoLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Appliquer"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* Total + CTA — épinglé en bas de l'écran sur mobile pour rester accessible. */}
       <div className="sticky bottom-0 z-10 -mx-5 space-y-3 border-t border-slate-100 bg-white/95 px-5 pb-4 pt-3 backdrop-blur sm:-mx-8 sm:px-8 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
         <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100/60 px-5 py-3.5">
@@ -277,6 +389,11 @@ export function PurchaseForm({
             </span>
             {quantity > 1 && (
               <span className="text-xs text-brand-600/80">{quantity} tickets</span>
+            )}
+            {discount > 0 && (
+              <span className="block text-xs font-medium text-emerald-600">
+                Réduction {promo?.code} : -{formatPrice(discount)}
+              </span>
             )}
           </div>
           <span className="text-2xl font-bold text-brand-700">

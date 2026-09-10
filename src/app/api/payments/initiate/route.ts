@@ -12,6 +12,7 @@ import {
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeesEnabled } from "@/lib/data/settings";
 import { feeForUnitPrice, resolveFeeMode } from "@/lib/payments/commission";
+import { discountFor, findPromoCode } from "@/lib/payments/promo";
 import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
 import type { PaymentProvider, TicketType } from "@/lib/types";
@@ -24,6 +25,7 @@ interface Body {
   provider: PaymentProvider;
   phone?: string;
   tierId?: string;
+  promoCode?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -70,8 +72,25 @@ export async function POST(request: NextRequest) {
   // en tenant compte de l'interrupteur global (réglage admin).
   const feesEnabled = await getServiceFeesEnabled();
   const feeMode = resolveFeeMode(event.fee_mode, feesEnabled);
-  const amount = unitPrice * quantity;
+  const subtotal = unitPrice * quantity;
   const serviceFee = feeForUnitPrice(unitPrice, feeMode) * quantity;
+
+  // Code collaborateur/ambassadeur : sert au suivi des ventes, et peut porter
+  // une réduction (déduite du revenu organisateur, jamais des frais).
+  let promoId: string | null = null;
+  let promoLabel: string | null = null;
+  let discount = 0;
+  if (body.promoCode && isSupabaseConfigured) {
+    const promo = await findPromoCode(body.promoCode, event.id);
+    if (!promo) {
+      return NextResponse.json({ error: "Code promo invalide." }, { status: 400 });
+    }
+    promoId = promo.id;
+    promoLabel = promo.code;
+    discount = discountFor(promo, subtotal);
+  }
+
+  const amount = subtotal - discount;
   const chargeAmount = amount + serviceFee;
 
   // ---- Mode démo : aucun backend configuré -----------------------------------
@@ -115,6 +134,9 @@ export async function POST(request: NextRequest) {
       ticket_type: body.ticketType,
       tier_id: tierId,
       tier_name: tierName,
+      promo_code_id: promoId,
+      promo_code: promoLabel,
+      discount,
     })
     .select()
     .single();
@@ -126,8 +148,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Événement gratuit : générer les tickets immédiatement.
-  if (amount === 0) {
+  // Rien à débiter (événement gratuit ou code promo à 100 %) : tickets immédiats.
+  if (chargeAmount === 0) {
     const tickets = Array.from({ length: quantity }).map(() => ({
       event_id: event.id,
       user_id: user?.id ?? null,
