@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { FeeMode, UserRole } from "@/lib/types";
+import type { DiscountType, FeeMode, UserRole } from "@/lib/types";
 
 const FEE_MODES: FeeMode[] = ["service_fee", "commission", "none"];
 
 const USER_ROLES: UserRole[] = ["participant", "organizer", "admin"];
+
+const DISCOUNT_TYPES: DiscountType[] = ["percent", "amount"];
 
 async function setEventStatus(id: string, status: "published" | "rejected") {
   if (!isSupabaseConfigured) return;
@@ -42,6 +44,74 @@ async function assertAdmin(): Promise<string> {
     .maybeSingle();
   if (profile?.role !== "admin") throw new Error("Accès réservé aux administrateurs.");
   return user.id;
+}
+
+/**
+ * Crée un code de vente pour un collaborateur / ambassadeur.
+ * `eventId` vide = code valable sur tous les événements ; `discountValue` à 0 =
+ * code de simple suivi (aucune réduction pour l'acheteur).
+ */
+export async function createPromoCode(input: {
+  code: string;
+  ownerName: string;
+  eventId?: string;
+  discountType: DiscountType;
+  discountValue: number;
+}) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const code = input.code.trim().toUpperCase();
+  const ownerName = input.ownerName.trim();
+  if (!code || !ownerName) throw new Error("Code et nom du collaborateur requis.");
+  if (!/^[A-Z0-9_-]{3,20}$/.test(code)) {
+    throw new Error("Code invalide : 3 à 20 caractères (lettres, chiffres, - _).");
+  }
+  if (!DISCOUNT_TYPES.includes(input.discountType)) {
+    throw new Error("Type de réduction invalide.");
+  }
+  const value = Math.max(0, Math.round(input.discountValue) || 0);
+  if (input.discountType === "percent" && value > 100) {
+    throw new Error("Le pourcentage ne peut pas dépasser 100.");
+  }
+  const admin = createAdminClient();
+  const { error } = await admin.from("promo_codes").insert({
+    code,
+    owner_name: ownerName,
+    event_id: input.eventId || null,
+    discount_type: input.discountType,
+    discount_value: value,
+  });
+  if (error) {
+    throw new Error(
+      error.code === "23505"
+        ? "Ce code existe déjà."
+        : "Création du code impossible.",
+    );
+  }
+  revalidatePath("/admin/codes-promo");
+}
+
+/** Active / désactive un code de vente (les ventes déjà faites sont conservées). */
+export async function setPromoCodeActive(id: string, active: boolean) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("promo_codes")
+    .update({ active })
+    .eq("id", id);
+  if (error) throw new Error("Mise à jour du code impossible.");
+  revalidatePath("/admin/codes-promo");
+}
+
+/** Supprime un code de vente. Les paiements liés gardent le code en texte. */
+export async function deletePromoCode(id: string) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  const admin = createAdminClient();
+  const { error } = await admin.from("promo_codes").delete().eq("id", id);
+  if (error) throw new Error("Suppression impossible.");
+  revalidatePath("/admin/codes-promo");
 }
 
 /**

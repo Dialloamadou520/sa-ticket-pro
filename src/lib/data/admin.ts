@@ -2,7 +2,73 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sampleEvents } from "@/lib/sample-data";
-import type { Event, Organizer, Payment, Profile, Ticket } from "@/lib/types";
+import type {
+  Event,
+  Organizer,
+  Payment,
+  Profile,
+  PromoCode,
+  Ticket,
+} from "@/lib/types";
+
+/** Code promo enrichi des ventes réalisées avec ce code. */
+export interface PromoCodeStats extends PromoCode {
+  event: Pick<Event, "id" | "title"> | null;
+  /** Nombre de tickets vendus (paiements payés). */
+  ticketsSold: number;
+  /** Chiffre d'affaires encaissé, réduction déduite. */
+  revenue: number;
+  /** Total des réductions accordées. */
+  discountGiven: number;
+}
+
+/**
+ * Classement des codes promo par tickets vendus : sert à identifier le
+ * collaborateur/ambassadeur qui vend le plus. Service-role (table admin).
+ */
+export async function getPromoCodeStats(): Promise<PromoCodeStats[]> {
+  if (!isSupabaseConfigured) return [];
+  const admin = createAdminClient();
+  const [{ data: codes }, { data: payments }] = await Promise.all([
+    admin
+      .from("promo_codes")
+      .select("*, event:events(id, title)")
+      .order("created_at", { ascending: false }),
+    admin
+      .from("payments")
+      .select("promo_code_id, quantity, amount, discount")
+      .eq("status", "paid")
+      .not("promo_code_id", "is", null),
+  ]);
+
+  const rows = (payments ?? []) as Pick<
+    Payment,
+    "promo_code_id" | "quantity" | "amount" | "discount"
+  >[];
+  const byCode = new Map<
+    string,
+    { ticketsSold: number; revenue: number; discountGiven: number }
+  >();
+  for (const p of rows) {
+    if (!p.promo_code_id) continue;
+    const acc = byCode.get(p.promo_code_id) ?? {
+      ticketsSold: 0,
+      revenue: 0,
+      discountGiven: 0,
+    };
+    acc.ticketsSold += p.quantity ?? 0;
+    acc.revenue += p.amount ?? 0;
+    acc.discountGiven += p.discount ?? 0;
+    byCode.set(p.promo_code_id, acc);
+  }
+
+  return ((codes ?? []) as PromoCodeStats[])
+    .map((c) => ({
+      ...c,
+      ...(byCode.get(c.id) ?? { ticketsSold: 0, revenue: 0, discountGiven: 0 }),
+    }))
+    .sort((a, b) => b.ticketsSold - a.ticketsSold || b.revenue - a.revenue);
+}
 
 /**
  * Recherche des tickets pour la récupération d'un billet perdu (admin).

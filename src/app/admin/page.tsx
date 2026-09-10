@@ -14,6 +14,7 @@ import {
   MousePointerClick,
   BarChart3,
   TicketCheck,
+  Tag,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { EventModeration } from "@/components/admin/event-moderation";
@@ -91,13 +92,22 @@ export default async function AdminPage() {
               Pilotez la plateforme kaypass.
             </p>
           </div>
-          <Link
-            href="/admin/tickets"
-            className="ml-auto inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
-          >
-            <TicketCheck className="h-4 w-4" />
-            Récupérer un ticket perdu
-          </Link>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Link
+              href="/admin/codes-promo"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
+            >
+              <Tag className="h-4 w-4" />
+              Codes promo
+            </Link>
+            <Link
+              href="/admin/tickets"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
+            >
+              <TicketCheck className="h-4 w-4" />
+              Récupérer un ticket perdu
+            </Link>
+          </div>
         </div>
       </div>
 

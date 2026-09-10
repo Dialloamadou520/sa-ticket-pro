@@ -119,6 +119,25 @@ export interface Payment {
   tier_name: string | null;
   guest_email: string | null;
   guest_name: string | null;
+  promo_code_id: string | null;
+  promo_code: string | null;
+  discount: number;
+  created_at: string;
+}
+
+export type DiscountType = "percent" | "amount";
+
+/** Code de vente attribué à un collaborateur / ambassadeur (créé par l'admin). */
+export interface PromoCode {
+  id: string;
+  /** `null` = code valable sur tous les événements. */
+  event_id: string | null;
+  code: string;
+  owner_name: string;
+  discount_type: DiscountType;
+  /** Pourcentage (0–100) ou montant fixe en FCFA. `0` = simple suivi. */
+  discount_value: number;
+  active: boolean;
   created_at: string;
 }
 
