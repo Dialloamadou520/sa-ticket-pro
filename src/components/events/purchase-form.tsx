@@ -79,6 +79,7 @@ export function PurchaseForm({
     ? discountFor(
         { discount_type: promo.discountType, discount_value: promo.discountValue },
         subtotal,
+        quantity,
       )
     : 0;
   const total = Math.max(0, subtotal - discount) + fee;
@@ -97,6 +98,7 @@ export function PurchaseForm({
     const value = discountFor(
       { discount_type: result.discountType, discount_value: result.discountValue },
       subtotal,
+      quantity,
     );
     toast.success(
       value > 0

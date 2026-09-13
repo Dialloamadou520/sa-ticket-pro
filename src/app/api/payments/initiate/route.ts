@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
     promoId = promo.id;
     promoLabel = promo.code;
-    discount = discountFor(promo, subtotal);
+    discount = discountFor(promo, subtotal, quantity);
   }
 
   const amount = subtotal - discount;

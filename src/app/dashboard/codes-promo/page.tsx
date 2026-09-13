@@ -79,8 +79,8 @@ export default async function DashboardPromoCodesPage() {
                       {c.discount_value <= 0
                         ? "Suivi seul"
                         : c.discount_type === "percent"
-                          ? `-${c.discount_value} %`
-                          : `-${formatAmount(c.discount_value)}`}
+                          ? `-${c.discount_value} % par ticket`
+                          : `-${formatAmount(c.discount_value)} par ticket`}
                     </td>
                     <td className="px-5 py-3 font-medium text-slate-900">
                       {c.ticketsSold}
