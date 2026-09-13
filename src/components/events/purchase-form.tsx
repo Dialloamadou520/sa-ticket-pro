@@ -9,6 +9,7 @@ import { formatPrice } from "@/lib/format";
 import {
   DEFAULT_FEE_PERCENT,
   feeForUnitPrice,
+  resolveFeePercent,
 } from "@/lib/payments/commission";
 import { discountFor } from "@/lib/payments/promo-discount";
 import { getTierTheme } from "@/lib/tier-theme";
@@ -66,7 +67,10 @@ export function PurchaseForm({
   const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
   const unitPrice = selectedTier ? selectedTier.price : event.price;
   const isFree = unitPrice <= 0;
-  const unitFee = feeForUnitPrice(unitPrice, feePercent);
+  const unitFee = feeForUnitPrice(
+    unitPrice,
+    resolveFeePercent(selectedTier?.fee_percent, feePercent),
+  );
   const subtotal = unitPrice * quantity;
   const fee = unitFee * quantity;
   // La réduction suit le sous-total : elle se recalcule quand la quantité ou la
