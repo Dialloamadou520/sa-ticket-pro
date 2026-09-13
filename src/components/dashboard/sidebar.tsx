@@ -8,6 +8,7 @@ import {
   ScanLine,
   Tag,
   Ticket,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const defaultItems: Item[] = [
   { label: "Mes événements", href: "/dashboard/evenements", icon: Ticket },
   { label: "Créer un événement", href: "/dashboard/evenements/nouveau", icon: CalendarPlus },
   { label: "Codes promo", href: "/dashboard/codes-promo", icon: Tag },
+  { label: "Reversements", href: "/dashboard/reversements", icon: Wallet },
   { label: "Scanner les tickets", href: "/scanner", icon: ScanLine },
 ];
 

@@ -100,6 +100,13 @@ export default async function AdminPage() {
               Codes promo
             </Link>
             <Link
+              href="/admin/reversements"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
+            >
+              <Wallet className="h-4 w-4" />
+              Reversements
+            </Link>
+            <Link
               href="/admin/tickets"
               className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
             >
