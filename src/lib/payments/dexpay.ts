@@ -128,6 +128,111 @@ export function normalizeSenegalPhone(raw: string): string | null {
   return /^[0-9]{9}$/.test(local) ? local : null;
 }
 
+/** Providers de retrait DexPay (Sénégal). Voir GET /payouts-providers. */
+const PAYOUT_OPERATOR_MAP: Record<string, string> = {
+  wave: "wave_sn_payout",
+  orange_money: "om_sn_payout",
+};
+
+export function toDexpayPayoutOperator(provider: string): string | null {
+  return PAYOUT_OPERATOR_MAP[provider] ?? null;
+}
+
+/** Les payouts exigent la clé secrète en plus de la clé publique. */
+export function isDexpayPayoutConfigured(): boolean {
+  return Boolean(process.env.DEXPAY_PUBLIC_KEY && process.env.DEXPAY_SECRET_KEY);
+}
+
+function payoutHeaders(): Record<string, string> {
+  const apiKey = process.env.DEXPAY_PUBLIC_KEY;
+  const apiSecret = process.env.DEXPAY_SECRET_KEY;
+  if (!apiKey || !apiSecret) {
+    throw new Error("DEXPAY_PUBLIC_KEY / DEXPAY_SECRET_KEY manquants.");
+  }
+  return {
+    "Content-Type": "application/json",
+    "x-api-key": apiKey,
+    "x-api-secret": apiSecret,
+  };
+}
+
+export interface PayoutResult {
+  id: string;
+  reference: string | null;
+  /** PENDING | PROCESSING | COMPLETED | FAILED | CANCELLED (normalisé en minuscules). */
+  status: string;
+  failureReason: string | null;
+}
+
+interface PayoutResponse {
+  id?: string;
+  reference?: string | null;
+  status?: string;
+  failure_reason?: string | null;
+  data?: PayoutResponse;
+}
+
+function toPayoutResult(json: PayoutResponse): PayoutResult {
+  const data = json.data ?? json;
+  return {
+    id: String(data.id ?? ""),
+    reference: data.reference ?? null,
+    status: String(data.status ?? "pending").toLowerCase(),
+    failureReason: data.failure_reason ?? null,
+  };
+}
+
+/**
+ * Envoie de l'argent depuis le solde marchand vers un compte mobile money.
+ * Le destinataire reçoit exactement `amount` ; les frais DexPay sont débités
+ * en plus du solde marchand. Voir POST /payouts.
+ */
+export async function createDexpayPayout(input: {
+  amount: number;
+  currency: string;
+  /** Numéro local à 9 chiffres (normalisé en +221XXXXXXXXX). */
+  phone: string;
+  /** `wave` ou `orange_money`. */
+  provider: string;
+  recipientName?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<PayoutResult> {
+  const operator = toDexpayPayoutOperator(input.provider);
+  if (!operator) throw new Error("Opérateur de reversement non supporté.");
+
+  const res = await fetch(`${DEXPAY_BASE_URL}/payouts`, {
+    method: "POST",
+    headers: payoutHeaders(),
+    body: JSON.stringify({
+      amount: input.amount,
+      currency: input.currency,
+      destination_phone: `+221${input.phone}`,
+      destination_details: {
+        operator,
+        countryISO: "SN",
+        ...(input.recipientName ? { recipient_name: input.recipientName } : {}),
+      },
+      ...(input.metadata ? { metadata: input.metadata } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Échec du reversement DexPay : ${res.status} ${text}`);
+  }
+  return toPayoutResult((await res.json()) as PayoutResponse);
+}
+
+/** État d'un payout auprès de DexPay. Voir GET /payouts/{id}. */
+export async function getDexpayPayout(id: string): Promise<PayoutResult | null> {
+  const res = await fetch(`${DEXPAY_BASE_URL}/payouts/${id}`, {
+    headers: payoutHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return toPayoutResult((await res.json()) as PayoutResponse);
+}
+
 export interface PaymentAttemptResult {
   status: string;
   /** Lien de paiement opérateur (Wave) ; null pour un push USSD/OTP (OM). */

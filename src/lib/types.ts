@@ -41,7 +41,35 @@ export interface Organizer {
   logo_url: string | null;
   verified: boolean;
   disabled: boolean;
+  /** Numéro mobile money (9 chiffres) sur lequel l'organisateur est reversé. */
+  payout_phone?: string | null;
+  payout_operator?: PayoutOperator | null;
   created_at: string;
+}
+
+export type PayoutOperator = "wave" | "orange_money";
+
+export type PayoutStatus =
+  | "requested"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface Payout {
+  id: string;
+  organizer_id: string;
+  amount: number;
+  currency: string;
+  operator: PayoutOperator;
+  phone: string;
+  status: PayoutStatus;
+  provider_payout_id: string | null;
+  provider_reference: string | null;
+  failure_reason: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface TicketTier {
