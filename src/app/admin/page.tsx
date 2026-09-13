@@ -298,8 +298,8 @@ export default async function AdminPage() {
               <h2 className="font-semibold text-slate-900">Frais de service</h2>
               <p className="text-xs text-slate-500">
                 Pourcentage ajouté au prix de chaque ticket et payé par
-                l&apos;acheteur. S&apos;applique à tous les événements. Minimum
-                1,5 % — vous pouvez seulement l&apos;augmenter.{" "}
+                l&apos;acheteur. S&apos;applique à tous les événements. De 0 %
+                (aucun frais) à 100 %.{" "}
                 <Link
                   href="/admin/frais"
                   className="font-medium text-brand-700 hover:underline"

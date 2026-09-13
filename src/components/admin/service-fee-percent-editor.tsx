@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { setServiceFeePercent } from "@/app/admin/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { DEFAULT_FEE_PERCENT } from "@/lib/payments/commission";
+import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
 
 /** Réglage du pourcentage global des frais de service, réservé admin. */
 export function ServiceFeePercentEditor({ percent }: { percent: number }) {
@@ -17,15 +17,19 @@ export function ServiceFeePercentEditor({ percent }: { percent: number }) {
       return;
     }
     const next = Number(value.replace(",", "."));
-    if (!Number.isFinite(next) || next < DEFAULT_FEE_PERCENT || next > 100) {
-      toast.error(`Entrez un pourcentage entre ${DEFAULT_FEE_PERCENT} et 100.`);
+    if (!Number.isFinite(next) || next < MIN_FEE_PERCENT || next > 100) {
+      toast.error(`Entrez un pourcentage entre ${MIN_FEE_PERCENT} et 100.`);
       setValue(String(percent));
       return;
     }
     startTransition(async () => {
       try {
         await setServiceFeePercent(next);
-        toast.success(`Frais de service : ${next} %.`);
+        toast.success(
+          next === 0
+            ? "Frais de service désactivés (0 %)."
+            : `Frais de service : ${next} %.`,
+        );
       } catch (error) {
         setValue(String(percent));
         toast.error(
@@ -40,7 +44,7 @@ export function ServiceFeePercentEditor({ percent }: { percent: number }) {
       <div className="relative">
         <input
           type="number"
-          min={DEFAULT_FEE_PERCENT}
+          min={MIN_FEE_PERCENT}
           max={100}
           step={0.1}
           value={value}

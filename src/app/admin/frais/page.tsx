@@ -39,9 +39,8 @@ export default async function AdminFeesPage() {
               </h1>
               <p className="text-xs text-slate-500">
                 Pourcentage ajouté au prix de chaque ticket et payé par
-                l&apos;acheteur. Minimum 1,5 % — vous pouvez seulement
-                l&apos;augmenter. S&apos;applique à toutes les catégories qui
-                n&apos;ont pas de taux propre.
+                l&apos;acheteur. De 0 % (aucun frais) à 100 %. S&apos;applique à
+                toutes les catégories qui n&apos;ont pas de taux propre.
               </p>
             </div>
           </div>

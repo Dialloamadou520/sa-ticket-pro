@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { DiscountType, UserRole } from "@/lib/types";
-import { DEFAULT_FEE_PERCENT } from "@/lib/payments/commission";
+import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
 
 const USER_ROLES: UserRole[] = ["participant", "organizer", "admin"];
 
@@ -258,13 +258,13 @@ export async function setUserRoleByEmail(email: string, role: UserRole) {
 
 /**
  * Règle le pourcentage global des frais de service payés par l'acheteur.
- * Jamais en dessous de 1,5 % : l'admin peut seulement l'augmenter.
+ * De 0 % (aucun frais) à 100 %.
  */
 export async function setServiceFeePercent(percent: number) {
   if (!isSupabaseConfigured) return;
   await assertAdmin();
-  if (!Number.isFinite(percent) || percent < DEFAULT_FEE_PERCENT || percent > 100) {
-    throw new Error(`Pourcentage invalide (entre ${DEFAULT_FEE_PERCENT} et 100).`);
+  if (!Number.isFinite(percent) || percent < MIN_FEE_PERCENT || percent > 100) {
+    throw new Error(`Pourcentage invalide (entre ${MIN_FEE_PERCENT} et 100).`);
   }
   const admin = createAdminClient();
   await admin
@@ -287,9 +287,9 @@ export async function setTierFeePercent(tierId: string, percent: number | null) 
   await assertAdmin();
   if (
     percent !== null &&
-    (!Number.isFinite(percent) || percent < DEFAULT_FEE_PERCENT || percent > 100)
+    (!Number.isFinite(percent) || percent < MIN_FEE_PERCENT || percent > 100)
   ) {
-    throw new Error(`Pourcentage invalide (entre ${DEFAULT_FEE_PERCENT} et 100).`);
+    throw new Error(`Pourcentage invalide (entre ${MIN_FEE_PERCENT} et 100).`);
   }
   const admin = createAdminClient();
   await admin

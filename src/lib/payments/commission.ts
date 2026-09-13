@@ -4,22 +4,25 @@
  * l'organisateur reste le prix de base ; les frais reviennent à la plateforme.
  *
  * Un seul mode : un pourcentage du prix unitaire, réglé par l'administrateur
- * globalement (1,5 % par défaut, jamais en dessous) et, si besoin, affiné par
+ * globalement (1,5 % par défaut, 0 % possible) et, si besoin, affiné par
  * catégorie de ticket (Standard, VIP…).
  *
  * Source de vérité partagée entre l'affichage (achat) et le calcul serveur
  * (montant débité).
  */
 
-/** Pourcentage de frais par défaut et plancher autorisé. */
+/** Pourcentage de frais appliqué tant que l'admin n'a rien réglé. */
 export const DEFAULT_FEE_PERCENT = 1.5;
+
+/** Plancher autorisé : 0 % = aucun frais pour l'acheteur. */
+export const MIN_FEE_PERCENT = 0;
 
 /** Ramène un pourcentage saisi dans la plage autorisée. */
 export function normalizeFeePercent(percent: number | null | undefined): number {
   if (typeof percent !== "number" || !Number.isFinite(percent)) {
     return DEFAULT_FEE_PERCENT;
   }
-  return Math.min(100, Math.max(DEFAULT_FEE_PERCENT, percent));
+  return Math.min(100, Math.max(MIN_FEE_PERCENT, percent));
 }
 
 /**
