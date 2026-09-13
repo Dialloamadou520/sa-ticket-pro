@@ -81,7 +81,7 @@ export interface TicketTier {
   sold: number;
   position: number;
   /**
-   * Frais de service propres à cette catégorie (1,5–100). `null` = la
+   * Frais de service propres à cette catégorie (0–100). `null` = la
    * catégorie suit le pourcentage global de la plateforme. Réglé par l'admin.
    */
   fee_percent?: number | null;

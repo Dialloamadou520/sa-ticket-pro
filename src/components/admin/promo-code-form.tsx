@@ -90,7 +90,7 @@ export function PromoCodeForm({
         </Select>
       </div>
       <div>
-        <Label htmlFor="discount">Réduction (0 = suivi seul)</Label>
+        <Label htmlFor="discount">Réduction par ticket (0 = suivi seul)</Label>
         <div className="flex gap-2">
           <Input
             id="discount"
