@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { setTierFeePercent } from "@/app/admin/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { DEFAULT_FEE_PERCENT } from "@/lib/payments/commission";
+import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
 
 /**
  * Frais de service d'une catégorie de ticket, réservé admin. Champ vide = la
@@ -31,9 +31,9 @@ export function TierFeePercentEditor({
     const next = raw === "" ? null : Number(raw.replace(",", "."));
     if (
       next !== null &&
-      (!Number.isFinite(next) || next < DEFAULT_FEE_PERCENT || next > 100)
+      (!Number.isFinite(next) || next < MIN_FEE_PERCENT || next > 100)
     ) {
-      toast.error(`Entrez un pourcentage entre ${DEFAULT_FEE_PERCENT} et 100.`);
+      toast.error(`Entrez un pourcentage entre ${MIN_FEE_PERCENT} et 100.`);
       setValue(percent === null ? "" : String(percent));
       return;
     }
@@ -43,7 +43,9 @@ export function TierFeePercentEditor({
         toast.success(
           next === null
             ? `Catégorie alignée sur le taux global (${globalPercent} %).`
-            : `Frais de cette catégorie : ${next} %.`,
+            : next === 0
+              ? "Aucun frais sur cette catégorie (0 %)."
+              : `Frais de cette catégorie : ${next} %.`,
         );
       } catch (error) {
         setValue(percent === null ? "" : String(percent));
@@ -59,7 +61,7 @@ export function TierFeePercentEditor({
       <div className="relative">
         <input
           type="number"
-          min={DEFAULT_FEE_PERCENT}
+          min={MIN_FEE_PERCENT}
           max={100}
           step={0.1}
           value={value}
