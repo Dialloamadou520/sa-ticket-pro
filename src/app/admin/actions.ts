@@ -4,9 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { DiscountType, FeeMode, UserRole } from "@/lib/types";
-
-const FEE_MODES: FeeMode[] = ["service_fee", "commission", "none"];
+import type { DiscountType, UserRole } from "@/lib/types";
+import { DEFAULT_FEE_PERCENT } from "@/lib/payments/commission";
 
 const USER_ROLES: UserRole[] = ["participant", "organizer", "admin"];
 
@@ -163,22 +162,6 @@ export async function setEventCommission(id: string, rate: number) {
 }
 
 /**
- * Définit le mode de frais de service d'un événement (barème standard,
- * commission 1,5 % ou aucun frais). Réservé aux administrateurs : les
- * organisateurs ne choisissent plus ce réglage.
- */
-export async function setEventFeeMode(id: string, mode: FeeMode) {
-  if (!isSupabaseConfigured) return;
-  await assertAdmin();
-  if (!FEE_MODES.includes(mode)) {
-    throw new Error("Mode de frais invalide.");
-  }
-  const admin = createAdminClient();
-  await admin.from("events").update({ fee_mode: mode }).eq("id", id);
-  revalidatePath("/admin");
-}
-
-/**
  * Désactive un organisateur (soft-delete) : ses événements publiés sont annulés
  * pour disparaître du public, mais aucune donnée n'est supprimée.
  */
@@ -273,14 +256,23 @@ export async function setUserRoleByEmail(email: string, role: UserRole) {
   return { name: profile.full_name ?? profile.email ?? clean };
 }
 
-/** Active ou désactive globalement les frais de service de la plateforme. */
-export async function setServiceFeesEnabled(enabled: boolean) {
+/**
+ * Règle le pourcentage global des frais de service payés par l'acheteur.
+ * Jamais en dessous de 1,5 % : l'admin peut seulement l'augmenter.
+ */
+export async function setServiceFeePercent(percent: number) {
   if (!isSupabaseConfigured) return;
   await assertAdmin();
+  if (!Number.isFinite(percent) || percent < DEFAULT_FEE_PERCENT || percent > 100) {
+    throw new Error(`Pourcentage invalide (entre ${DEFAULT_FEE_PERCENT} et 100).`);
+  }
   const admin = createAdminClient();
   await admin
     .from("app_settings")
-    .update({ service_fees_enabled: enabled, updated_at: new Date().toISOString() })
+    .update({
+      service_fee_percent: Math.round(percent * 100) / 100,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", true);
   revalidatePath("/admin");
 }

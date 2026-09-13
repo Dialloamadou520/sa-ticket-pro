@@ -10,8 +10,8 @@ import {
   toDexpayOperator,
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
-import { getServiceFeesEnabled } from "@/lib/data/settings";
-import { feeForUnitPrice, resolveFeeMode } from "@/lib/payments/commission";
+import { getServiceFeePercent } from "@/lib/data/settings";
+import { feeForUnitPrice } from "@/lib/payments/commission";
 import { discountFor, findPromoCode } from "@/lib/payments/promo";
 import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
@@ -68,12 +68,10 @@ export async function POST(request: NextRequest) {
   }
   // `amount` = revenu de base (revient à l'organisateur). Les frais de service
   // (commission plateforme) sont ajoutés au montant débité côté opérateur, mais
-  // pas au revenu de l'organisateur. Le mode de frais est résolu par événement
-  // en tenant compte de l'interrupteur global (réglage admin).
-  const feesEnabled = await getServiceFeesEnabled();
-  const feeMode = resolveFeeMode(event.fee_mode, feesEnabled);
+  // pas au revenu de l'organisateur. Le pourcentage est un réglage global admin.
+  const feePercent = await getServiceFeePercent();
   const subtotal = unitPrice * quantity;
-  const serviceFee = feeForUnitPrice(unitPrice, feeMode) * quantity;
+  const serviceFee = feeForUnitPrice(unitPrice, feePercent) * quantity;
 
   // Code collaborateur/ambassadeur : sert au suivi des ventes, et peut porter
   // une réduction (déduite du revenu organisateur, jamais des frais).

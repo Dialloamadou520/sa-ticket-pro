@@ -21,11 +21,10 @@ import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { AdminPublishEventButton } from "@/components/admin/publish-event-button";
 import { EventCommissionEditor } from "@/components/admin/event-commission-editor";
-import { EventFeeModeEditor } from "@/components/admin/event-fee-mode-editor";
 import { VisitsChart } from "@/components/admin/visits-chart";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
 import { OrganizersExport } from "@/components/admin/organizers-export";
-import { ServiceFeesToggle } from "@/components/admin/service-fees-toggle";
+import { ServiceFeePercentEditor } from "@/components/admin/service-fee-percent-editor";
 import { UserRoleEditor } from "@/components/admin/user-role-editor";
 import { AddAdminForm } from "@/components/admin/add-admin-form";
 import {
@@ -39,7 +38,7 @@ import {
 import { getVisitStats } from "@/lib/data/analytics";
 import { getCurrentUser } from "@/lib/data/auth";
 import type { EventStatus } from "@/lib/types";
-import { getServiceFeesEnabled } from "@/lib/data/settings";
+import { getServiceFeePercent } from "@/lib/data/settings";
 import { formatAmount, formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Administration" };
@@ -61,7 +60,7 @@ export default async function AdminPage() {
     monthlyRevenue,
     organizers,
     users,
-    serviceFeesEnabled,
+    serviceFeePercent,
     currentUser,
   ] = await Promise.all([
     getAdminStats(),
@@ -71,7 +70,7 @@ export default async function AdminPage() {
     getMonthlyRevenue(),
     getAllOrganizers(),
     getAllUsers(),
-    getServiceFeesEnabled(),
+    getServiceFeePercent(),
     getCurrentUser(),
   ]);
 
@@ -298,23 +297,17 @@ export default async function AdminPage() {
             <div>
               <h2 className="font-semibold text-slate-900">Frais de service</h2>
               <p className="text-xs text-slate-500">
-                Activez ou désactivez globalement les frais de service ajoutés au
-                prix des tickets. Chaque événement peut aussi être réglé
-                individuellement (frais standard, commission 1,5 % ou aucun).
+                Pourcentage ajouté au prix de chaque ticket et payé par
+                l&apos;acheteur. S&apos;applique à tous les événements. Minimum
+                1,5 % — vous pouvez seulement l&apos;augmenter.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                serviceFeesEnabled
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              {serviceFeesEnabled ? "Activés" : "Désactivés"}
+            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+              {serviceFeePercent} % par ticket
             </span>
-            <ServiceFeesToggle enabled={serviceFeesEnabled} />
+            <ServiceFeePercentEditor percent={serviceFeePercent} />
           </div>
         </div>
       </section>
@@ -393,7 +386,6 @@ export default async function AdminPage() {
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Tickets</th>
                   <th className="px-5 py-3">Revenus</th>
-                  <th className="px-5 py-3">Frais</th>
                   <th className="px-5 py-3">Taux</th>
                   <th className="px-5 py-3">Commission</th>
                   <th className="px-5 py-3">Statut</th>
@@ -431,12 +423,6 @@ export default async function AdminPage() {
                       </td>
                       <td className="px-5 py-3 font-medium text-slate-900">
                         {formatAmount(event.revenue)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <EventFeeModeEditor
-                          id={event.id}
-                          mode={event.fee_mode ?? "service_fee"}
-                        />
                       </td>
                       <td className="px-5 py-3">
                         <EventCommissionEditor
