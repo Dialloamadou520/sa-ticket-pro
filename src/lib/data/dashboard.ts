@@ -3,7 +3,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sampleEvents } from "@/lib/sample-data";
 import { getCollaboratorEvents } from "@/lib/data/collaborators";
-import type { Event, Ticket } from "@/lib/types";
+import type {
+  DiscountType,
+  Event,
+  Payment,
+  PromoCode,
+  Ticket,
+} from "@/lib/types";
 
 export interface OrganizerStats {
   totalEvents: number;
@@ -80,6 +86,83 @@ export async function getOrganizerStats(): Promise<OrganizerStats> {
     totalTicketsSold: events.reduce((s, e) => s + e.tickets_sold, 0),
     totalRevenue: events.reduce((s, e) => s + e.tickets_sold * e.price, 0),
   };
+}
+
+/** Code promo enrichi des ventes réalisées sur les événements de l'organisateur. */
+export interface OrganizerPromoCodeStats {
+  id: string;
+  code: string;
+  owner_name: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  active: boolean;
+  eventTitle: string | null;
+  ticketsSold: number;
+  revenue: number;
+  discountGiven: number;
+}
+
+/**
+ * Classement, en lecture seule, des codes promo utilisables sur les événements
+ * dont l'utilisateur est propriétaire (codes dédiés + codes valables partout).
+ * Les ventes comptées sont uniquement celles de ses propres événements.
+ */
+export async function getMyPromoCodeStats(): Promise<OrganizerPromoCodeStats[]> {
+  if (!isSupabaseConfigured) return [];
+
+  const events = await getMyEvents();
+  if (events.length === 0) return [];
+  const eventIds = events.map((e) => e.id);
+  const titleById = new Map(events.map((e) => [e.id, e.title]));
+
+  const admin = createAdminClient();
+  const [{ data: codes }, { data: payments }] = await Promise.all([
+    admin
+      .from("promo_codes")
+      .select("*")
+      .or(`event_id.is.null,event_id.in.(${eventIds.join(",")})`)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("payments")
+      .select("promo_code_id, quantity, amount, discount")
+      .eq("status", "paid")
+      .in("event_id", eventIds)
+      .not("promo_code_id", "is", null),
+  ]);
+
+  const rows = (payments ?? []) as Pick<
+    Payment,
+    "promo_code_id" | "quantity" | "amount" | "discount"
+  >[];
+  const byCode = new Map<
+    string,
+    { ticketsSold: number; revenue: number; discountGiven: number }
+  >();
+  for (const p of rows) {
+    if (!p.promo_code_id) continue;
+    const acc = byCode.get(p.promo_code_id) ?? {
+      ticketsSold: 0,
+      revenue: 0,
+      discountGiven: 0,
+    };
+    acc.ticketsSold += p.quantity ?? 0;
+    acc.revenue += p.amount ?? 0;
+    acc.discountGiven += p.discount ?? 0;
+    byCode.set(p.promo_code_id, acc);
+  }
+
+  return ((codes ?? []) as PromoCode[])
+    .map((c) => ({
+      id: c.id,
+      code: c.code,
+      owner_name: c.owner_name,
+      discount_type: c.discount_type,
+      discount_value: c.discount_value,
+      active: c.active,
+      eventTitle: c.event_id ? (titleById.get(c.event_id) ?? null) : null,
+      ...(byCode.get(c.id) ?? { ticketsSold: 0, revenue: 0, discountGiven: 0 }),
+    }))
+    .sort((a, b) => b.ticketsSold - a.ticketsSold || b.revenue - a.revenue);
 }
 
 /**

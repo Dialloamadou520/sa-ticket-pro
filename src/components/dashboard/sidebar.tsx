@@ -6,6 +6,7 @@ import {
   CalendarPlus,
   LayoutDashboard,
   ScanLine,
+  Tag,
   Ticket,
   type LucideIcon,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const defaultItems: Item[] = [
   { label: "Vue d'ensemble", href: "/dashboard", icon: LayoutDashboard, exact: true },
   { label: "Mes événements", href: "/dashboard/evenements", icon: Ticket },
   { label: "Créer un événement", href: "/dashboard/evenements/nouveau", icon: CalendarPlus },
+  { label: "Codes promo", href: "/dashboard/codes-promo", icon: Tag },
   { label: "Scanner les tickets", href: "/scanner", icon: ScanLine },
 ];
 
