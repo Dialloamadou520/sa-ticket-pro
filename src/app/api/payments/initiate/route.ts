@@ -11,7 +11,7 @@ import {
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeePercent } from "@/lib/data/settings";
-import { feeForUnitPrice } from "@/lib/payments/commission";
+import { feeForUnitPrice, resolveFeePercent } from "@/lib/payments/commission";
 import { discountFor, findPromoCode } from "@/lib/payments/promo";
 import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
@@ -49,11 +49,12 @@ export async function POST(request: NextRequest) {
   let unitPrice = event.price;
   let tierId: string | null = null;
   let tierName: string | null = null;
+  let tierFeePercent: number | null = null;
   if (body.tierId && isSupabaseConfigured) {
     const lookup = createAdminClient();
     const { data: tier } = await lookup
       .from("ticket_tiers")
-      .select("id, name, price, event_id")
+      .select("id, name, price, event_id, fee_percent")
       .eq("id", body.tierId)
       .maybeSingle();
     if (!tier || tier.event_id !== event.id) {
@@ -65,11 +66,16 @@ export async function POST(request: NextRequest) {
     unitPrice = tier.price;
     tierId = tier.id;
     tierName = tier.name;
+    tierFeePercent = tier.fee_percent ?? null;
   }
   // `amount` = revenu de base (revient à l'organisateur). Les frais de service
   // (commission plateforme) sont ajoutés au montant débité côté opérateur, mais
-  // pas au revenu de l'organisateur. Le pourcentage est un réglage global admin.
-  const feePercent = await getServiceFeePercent();
+  // pas au revenu de l'organisateur. Le pourcentage vient de la catégorie de
+  // ticket si l'admin en a fixé un, sinon du réglage global.
+  const feePercent = resolveFeePercent(
+    tierFeePercent,
+    await getServiceFeePercent(),
+  );
   const subtotal = unitPrice * quantity;
   const serviceFee = feeForUnitPrice(unitPrice, feePercent) * quantity;
 

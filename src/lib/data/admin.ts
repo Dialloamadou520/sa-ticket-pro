@@ -9,6 +9,7 @@ import type {
   Profile,
   PromoCode,
   Ticket,
+  TicketTier,
 } from "@/lib/types";
 
 /** Code promo enrichi des ventes réalisées avec ce code. */
@@ -206,6 +207,32 @@ export async function getAllEvents(): Promise<AdminEvent[]> {
       commissionRate: rate,
     };
   });
+}
+
+/** Événement et ses catégories de tickets, pour le réglage des frais. */
+export interface EventWithTiers {
+  id: string;
+  title: string;
+  slug: string;
+  price: number;
+  tiers: TicketTier[];
+}
+
+/**
+ * Événements publiés ou à venir avec leurs catégories (Standard, VIP…) :
+ * support du réglage des frais de service par catégorie côté admin.
+ */
+export async function getEventsWithTiers(): Promise<EventWithTiers[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("id, title, slug, price, tiers:ticket_tiers(*)")
+    .order("created_at", { ascending: false });
+  return ((data as EventWithTiers[]) ?? []).map((e) => ({
+    ...e,
+    tiers: [...(e.tiers ?? [])].sort((a, b) => a.position - b.position),
+  }));
 }
 
 export interface MonthlyRevenue {

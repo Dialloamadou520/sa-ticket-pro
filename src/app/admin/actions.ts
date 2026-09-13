@@ -275,4 +275,28 @@ export async function setServiceFeePercent(percent: number) {
     })
     .eq("id", true);
   revalidatePath("/admin");
+  revalidatePath("/admin/frais");
+}
+
+/**
+ * Règle les frais d'une catégorie de ticket (Standard, VIP…). `null` remet la
+ * catégorie sur le pourcentage global.
+ */
+export async function setTierFeePercent(tierId: string, percent: number | null) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  if (
+    percent !== null &&
+    (!Number.isFinite(percent) || percent < DEFAULT_FEE_PERCENT || percent > 100)
+  ) {
+    throw new Error(`Pourcentage invalide (entre ${DEFAULT_FEE_PERCENT} et 100).`);
+  }
+  const admin = createAdminClient();
+  await admin
+    .from("ticket_tiers")
+    .update({
+      fee_percent: percent === null ? null : Math.round(percent * 100) / 100,
+    })
+    .eq("id", tierId);
+  revalidatePath("/admin/frais");
 }

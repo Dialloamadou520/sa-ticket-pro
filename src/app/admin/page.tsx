@@ -299,7 +299,13 @@ export default async function AdminPage() {
               <p className="text-xs text-slate-500">
                 Pourcentage ajouté au prix de chaque ticket et payé par
                 l&apos;acheteur. S&apos;applique à tous les événements. Minimum
-                1,5 % — vous pouvez seulement l&apos;augmenter.
+                1,5 % — vous pouvez seulement l&apos;augmenter.{" "}
+                <Link
+                  href="/admin/frais"
+                  className="font-medium text-brand-700 hover:underline"
+                >
+                  Régler par catégorie de ticket
+                </Link>
               </p>
             </div>
           </div>
