@@ -17,8 +17,7 @@ import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { PurchaseForm } from "@/components/events/purchase-form";
 import { getEventBySlug } from "@/lib/data/events";
-import { getServiceFeesEnabled } from "@/lib/data/settings";
-import { resolveFeeMode } from "@/lib/payments/commission";
+import { getServiceFeePercent } from "@/lib/data/settings";
 import { formatDate, formatPrice, formatTime, isEventPast } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 
@@ -33,7 +32,7 @@ export default async function AchatPage({
   const event = await getEventBySlug(slug);
   if (!event) notFound();
 
-  const feeMode = resolveFeeMode(event.fee_mode, await getServiceFeesEnabled());
+  const feePercent = await getServiceFeePercent();
   const past = isEventPast(event);
 
   return (
@@ -121,7 +120,7 @@ export default async function AchatPage({
                 </div>
 
                 <div className="mt-6">
-                  <PurchaseForm event={event} feeMode={feeMode} />
+                  <PurchaseForm event={event} feePercent={feePercent} />
                 </div>
               </div>
             )}

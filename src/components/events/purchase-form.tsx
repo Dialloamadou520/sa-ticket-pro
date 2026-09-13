@@ -6,16 +6,14 @@ import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
-import { feeForUnitPrice } from "@/lib/payments/commission";
+import {
+  DEFAULT_FEE_PERCENT,
+  feeForUnitPrice,
+} from "@/lib/payments/commission";
 import { discountFor } from "@/lib/payments/promo-discount";
 import { getTierTheme } from "@/lib/tier-theme";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
-import type {
-  DiscountType,
-  Event,
-  FeeMode,
-  PaymentProvider,
-} from "@/lib/types";
+import type { DiscountType, Event, PaymentProvider } from "@/lib/types";
 
 interface Pending {
   provider: PaymentProvider;
@@ -50,10 +48,10 @@ async function lookupPromo(
 
 export function PurchaseForm({
   event,
-  feeMode = "service_fee",
+  feePercent = DEFAULT_FEE_PERCENT,
 }: {
   event: Event;
-  feeMode?: FeeMode;
+  feePercent?: number;
 }) {
   const tiers = event.tiers ?? [];
   const [quantity, setQuantity] = useState(1);
@@ -68,7 +66,7 @@ export function PurchaseForm({
   const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
   const unitPrice = selectedTier ? selectedTier.price : event.price;
   const isFree = unitPrice <= 0;
-  const unitFee = feeForUnitPrice(unitPrice, feeMode);
+  const unitFee = feeForUnitPrice(unitPrice, feePercent);
   const subtotal = unitPrice * quantity;
   const fee = unitFee * quantity;
   // La réduction suit le sous-total : elle se recalcule quand la quantité ou la
