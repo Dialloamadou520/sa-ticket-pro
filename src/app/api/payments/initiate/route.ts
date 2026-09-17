@@ -15,7 +15,7 @@ import { feeForUnitPrice, resolveFeePercent } from "@/lib/payments/commission";
 import { discountFor, findPromoCode } from "@/lib/payments/promo";
 import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
-import type { PaymentProvider, TicketType } from "@/lib/types";
+import type { FeePayer, PaymentProvider, TicketType } from "@/lib/types";
 
 interface Body {
   eventSlug: string;
@@ -68,14 +68,16 @@ export async function POST(request: NextRequest) {
     tierName = tier.name;
     tierFeePercent = tier.fee_percent ?? null;
   }
-  // `amount` = revenu de base (revient à l'organisateur). Les frais de service
-  // (commission plateforme) sont ajoutés au montant débité côté opérateur, mais
-  // pas au revenu de l'organisateur. Le pourcentage vient de la catégorie de
-  // ticket si l'admin en a fixé un, sinon du réglage global.
+  // `amount` = revenu de base (revient à l'organisateur). Le pourcentage des
+  // frais vient de la catégorie de ticket, sinon de l'événement, sinon du
+  // réglage global. Selon l'événement, ces frais sont ajoutés au montant débité
+  // (acheteur) ou retenus plus tard sur les revenus de l'organisateur.
   const feePercent = resolveFeePercent(
     tierFeePercent,
+    event.fee_percent,
     await getServiceFeePercent(),
   );
+  const feePaidBy: FeePayer = event.fee_payer === "organizer" ? "organizer" : "buyer";
   const subtotal = unitPrice * quantity;
   const serviceFee = feeForUnitPrice(unitPrice, feePercent) * quantity;
 
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
   }
 
   const amount = subtotal - discount;
-  const chargeAmount = amount + serviceFee;
+  const chargeAmount = amount + (feePaidBy === "buyer" ? serviceFee : 0);
 
   // ---- Mode démo : aucun backend configuré -----------------------------------
   if (!isSupabaseConfigured) {
@@ -131,6 +133,7 @@ export async function POST(request: NextRequest) {
       event_id: event.id,
       amount,
       service_fee: serviceFee,
+      fee_paid_by: feePaidBy,
       currency: SITE.currency,
       provider: body.provider,
       status: "pending",

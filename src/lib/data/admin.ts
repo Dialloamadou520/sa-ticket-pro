@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sampleEvents } from "@/lib/sample-data";
 import type {
   Event,
+  FeePayer,
   Organizer,
   Payment,
   Profile,
@@ -215,6 +216,10 @@ export interface EventWithTiers {
   title: string;
   slug: string;
   price: number;
+  /** Taux propre à l'événement. `null` = taux global. */
+  fee_percent: number | null;
+  /** Qui supporte les frais de cet événement. */
+  fee_payer: FeePayer;
   tiers: TicketTier[];
 }
 
@@ -227,10 +232,12 @@ export async function getEventsWithTiers(): Promise<EventWithTiers[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("events")
-    .select("id, title, slug, price, tiers:ticket_tiers(*)")
+    .select("id, title, slug, price, fee_percent, fee_payer, tiers:ticket_tiers(*)")
     .order("created_at", { ascending: false });
   return ((data as EventWithTiers[]) ?? []).map((e) => ({
     ...e,
+    fee_percent: e.fee_percent ?? null,
+    fee_payer: e.fee_payer === "organizer" ? "organizer" : "buyer",
     tiers: [...(e.tiers ?? [])].sort((a, b) => a.position - b.position),
   }));
 }

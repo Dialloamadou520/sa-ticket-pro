@@ -67,10 +67,18 @@ export function PurchaseForm({
   const selectedTier = tiers.find((t) => t.id === tierId) ?? null;
   const unitPrice = selectedTier ? selectedTier.price : event.price;
   const isFree = unitPrice <= 0;
-  const unitFee = feeForUnitPrice(
-    unitPrice,
-    resolveFeePercent(selectedTier?.fee_percent, feePercent),
-  );
+  // Frais à la charge de l'organisateur : l'acheteur paie le prix affiché.
+  const unitFee =
+    event.fee_payer === "organizer"
+      ? 0
+      : feeForUnitPrice(
+          unitPrice,
+          resolveFeePercent(
+            selectedTier?.fee_percent,
+            event.fee_percent,
+            feePercent,
+          ),
+        );
   const subtotal = unitPrice * quantity;
   const fee = unitFee * quantity;
   // La réduction suit le sous-total : elle se recalcule quand la quantité ou la

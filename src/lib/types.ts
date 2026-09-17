@@ -109,6 +109,17 @@ export interface Event {
   /** Taux de commission plateforme par événement (0–1). Défaut : 0.10. */
   commission_rate?: number;
   /**
+   * Frais de service propres à cet événement (0–100). `null` = l'événement
+   * suit le taux global. Une catégorie de ticket peut encore l'affiner.
+   */
+  fee_percent?: number | null;
+  /**
+   * Qui supporte les frais de service de cet événement. `buyer` (défaut) :
+   * ajoutés au total payé par l'acheteur. `organizer` : l'acheteur paie le
+   * prix affiché et les frais sont retenus sur les revenus de l'organisateur.
+   */
+  fee_payer?: FeePayer;
+  /**
    * Jauge de remplissage affichée au public (0–100). Choisie par
    * l'organisateur, indépendante des ventes réelles. `null` = rien d'affiché.
    */
@@ -152,8 +163,15 @@ export interface Payment {
   promo_code_id: string | null;
   promo_code: string | null;
   discount: number;
+  /** Frais de service de la plateforme sur ce paiement. */
+  service_fee?: number;
+  /** Qui a supporté ces frais, figé au moment de l'achat. */
+  fee_paid_by?: FeePayer;
   created_at: string;
 }
+
+/** Partie qui supporte les frais de service d'un événement. */
+export type FeePayer = "buyer" | "organizer";
 
 export type DiscountType = "percent" | "amount";
 

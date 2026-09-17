@@ -26,15 +26,19 @@ export function normalizeFeePercent(percent: number | null | undefined): number 
 }
 
 /**
- * Taux appliqué à une catégorie de ticket : son propre pourcentage s'il est
- * défini, sinon le taux global de la plateforme.
+ * Taux appliqué à un achat, du plus précis au plus général :
+ * catégorie de ticket → événement → taux global de la plateforme.
  */
 export function resolveFeePercent(
   tierPercent: number | null | undefined,
+  eventPercent: number | null | undefined,
   globalPercent: number,
 ): number {
   if (typeof tierPercent === "number" && Number.isFinite(tierPercent)) {
     return normalizeFeePercent(tierPercent);
+  }
+  if (typeof eventPercent === "number" && Number.isFinite(eventPercent)) {
+    return normalizeFeePercent(eventPercent);
   }
   return normalizeFeePercent(globalPercent);
 }
