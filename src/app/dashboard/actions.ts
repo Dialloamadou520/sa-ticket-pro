@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { slugify } from "@/lib/slug";
-import type { TicketType } from "@/lib/types";
+import { normalizeSenegalPhone } from "@/lib/payments/dexpay";
+import { getMyPayoutPage } from "@/lib/data/payouts";
+import { MIN_PAYOUT_AMOUNT, PAYOUT_OPERATORS } from "@/lib/payments/payout";
+import type { PayoutOperator, TicketType } from "@/lib/types";
 
 interface TierInput {
   name: string;
@@ -388,4 +391,91 @@ export async function removeCollaborator(
   const admin = createAdminClient();
   await admin.from("event_collaborators").delete().eq("id", collaboratorId);
   revalidatePath(`/dashboard/evenements/${eventId}/co-organisateurs`);
+}
+
+/** Organisateur (propriétaire) de l'utilisateur connecté, sinon null. */
+async function currentOrganizerId(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("organizers")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+export interface PayoutFormState {
+  error?: string;
+  success?: string;
+}
+
+/** Enregistre le compte mobile money sur lequel l'organisateur sera reversé. */
+export async function savePayoutAccount(
+  _prev: PayoutFormState,
+  formData: FormData
+): Promise<PayoutFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démonstration." };
+  const organizerId = await currentOrganizerId();
+  if (!organizerId) return { error: "Compte organisateur introuvable." };
+
+  const operator = String(formData.get("operator") || "");
+  if (!PAYOUT_OPERATORS.includes(operator as PayoutOperator)) {
+    return { error: "Choisissez Wave ou Orange Money." };
+  }
+  const phone = normalizeSenegalPhone(String(formData.get("phone") || ""));
+  if (!phone) return { error: "Numéro invalide (9 chiffres)." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organizers")
+    .update({ payout_phone: phone, payout_operator: operator })
+    .eq("id", organizerId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/reversements");
+  return { success: "Compte de reversement enregistré." };
+}
+
+/**
+ * Demande de reversement. Le montant est plafonné côté serveur au solde
+ * réellement disponible (revenus − commission − reversements déjà pris).
+ */
+export async function requestPayout(
+  _prev: PayoutFormState,
+  formData: FormData
+): Promise<PayoutFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démonstration." };
+  const organizerId = await currentOrganizerId();
+  if (!organizerId) return { error: "Compte organisateur introuvable." };
+
+  const { organizer, balance } = await getMyPayoutPage();
+  if (!organizer?.payout_phone || !organizer.payout_operator) {
+    return { error: "Enregistrez d'abord votre numéro de reversement." };
+  }
+
+  const amount = Math.floor(Number(formData.get("amount")) || 0);
+  if (amount < MIN_PAYOUT_AMOUNT) {
+    return { error: `Montant minimum : ${MIN_PAYOUT_AMOUNT} FCFA.` };
+  }
+  if (amount > balance.available) {
+    return { error: `Solde disponible insuffisant (${balance.available} FCFA).` };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("payouts").insert({
+    organizer_id: organizerId,
+    amount,
+    operator: organizer.payout_operator,
+    phone: organizer.payout_phone,
+    status: "requested",
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/reversements");
+  revalidatePath("/admin/reversements");
+  return { success: "Demande envoyée. Le virement part dès validation." };
 }

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { DiscountType, UserRole } from "@/lib/types";
+import type { DiscountType, Payout, UserRole } from "@/lib/types";
+import { createDexpayPayout, getDexpayPayout } from "@/lib/payments/dexpay";
 import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
 
 const USER_ROLES: UserRole[] = ["participant", "organizer", "admin"];
@@ -299,4 +300,131 @@ export async function setTierFeePercent(tierId: string, percent: number | null) 
     })
     .eq("id", tierId);
   revalidatePath("/admin/frais");
+}
+
+/**
+ * Déclenche le virement mobile money d'une demande de reversement via DexPay.
+ * Le passage en `processing` est atomique (filtré sur `status = requested`)
+ * pour qu'un double clic ne puisse pas envoyer l'argent deux fois.
+ */
+export async function sendPayout(id: string): Promise<void> {
+  await assertAdmin();
+  if (!isSupabaseConfigured) return;
+
+  const admin = createAdminClient();
+  const { data: payout } = await admin
+    .from("payouts")
+    .update({ status: "processing", updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "requested")
+    .select("*, organizer:organizers(company_name)")
+    .maybeSingle();
+  if (!payout) return;
+
+  const row = payout as Payout & { organizer: { company_name: string } | null };
+
+  try {
+    const result = await createDexpayPayout({
+      amount: row.amount,
+      currency: row.currency,
+      phone: row.phone,
+      provider: row.operator,
+      recipientName: row.organizer?.company_name,
+      metadata: { payout_id: row.id, organizer_id: row.organizer_id },
+    });
+    await admin
+      .from("payouts")
+      .update({
+        provider_payout_id: result.id || null,
+        provider_reference: result.reference,
+        status: result.status === "completed" ? "completed" : "processing",
+        completed_at:
+          result.status === "completed" ? new Date().toISOString() : null,
+        failure_reason: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+  } catch (e) {
+    await admin
+      .from("payouts")
+      .update({
+        status: "failed",
+        failure_reason: e instanceof Error ? e.message : "Erreur inconnue.",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+  }
+
+  revalidatePath("/admin/reversements");
+  revalidatePath("/dashboard/reversements");
+}
+
+/** Rafraîchit l'état d'un reversement auprès de DexPay. */
+export async function refreshPayoutStatus(id: string): Promise<void> {
+  await assertAdmin();
+  if (!isSupabaseConfigured) return;
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("payouts")
+    .select("id, provider_payout_id, status")
+    .eq("id", id)
+    .maybeSingle();
+  const providerId = (data as Payout | null)?.provider_payout_id;
+  if (!providerId) return;
+
+  const result = await getDexpayPayout(providerId);
+  if (!result) return;
+
+  const status =
+    result.status === "completed"
+      ? "completed"
+      : result.status === "failed" || result.status === "cancelled"
+        ? result.status
+        : "processing";
+
+  await admin
+    .from("payouts")
+    .update({
+      status,
+      failure_reason: result.failureReason,
+      completed_at: status === "completed" ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  revalidatePath("/admin/reversements");
+  revalidatePath("/dashboard/reversements");
+}
+
+/** Marque un reversement payé à la main (virement fait hors plateforme). */
+export async function markPayoutPaid(id: string): Promise<void> {
+  await assertAdmin();
+  if (!isSupabaseConfigured) return;
+  const admin = createAdminClient();
+  await admin
+    .from("payouts")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .neq("status", "completed");
+  revalidatePath("/admin/reversements");
+  revalidatePath("/dashboard/reversements");
+}
+
+/** Annule une demande non envoyée : le montant redevient disponible. */
+export async function cancelPayout(id: string): Promise<void> {
+  await assertAdmin();
+  if (!isSupabaseConfigured) return;
+  const admin = createAdminClient();
+  await admin
+    .from("payouts")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .in("status", ["requested", "failed"]);
+  revalidatePath("/admin/reversements");
+  revalidatePath("/dashboard/reversements");
 }
