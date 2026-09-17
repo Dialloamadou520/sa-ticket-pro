@@ -10,7 +10,9 @@ export interface PayoutBalance {
   revenue: number;
   /** Commission de la plateforme retenue. */
   commission: number;
-  /** revenue − commission. */
+  /** Frais de service pris en charge par l'organisateur (événements négociés). */
+  serviceFee: number;
+  /** revenue − commission − serviceFee. */
   net: number;
   /** Reversements déjà envoyés (terminés). */
   paidOut: number;
@@ -24,6 +26,7 @@ function emptyBalance(): PayoutBalance {
   return {
     revenue: 0,
     commission: 0,
+    serviceFee: 0,
     net: 0,
     paidOut: 0,
     pending: 0,
@@ -59,7 +62,7 @@ async function computeBalances(
   if (eventRows.length > 0) {
     const { data: payments } = await admin
       .from("payments")
-      .select("event_id, amount")
+      .select("event_id, amount, service_fee, fee_paid_by")
       .eq("status", "paid")
       .in(
         "event_id",
@@ -75,7 +78,10 @@ async function computeBalances(
         },
       ]),
     );
-    for (const p of (payments ?? []) as Pick<Payment, "event_id" | "amount">[]) {
+    for (const p of (payments ?? []) as Pick<
+      Payment,
+      "event_id" | "amount" | "service_fee" | "fee_paid_by"
+    >[]) {
       const meta = byEvent.get(p.event_id);
       if (!meta) continue;
       const acc = balances.get(meta.organizerId);
@@ -83,6 +89,9 @@ async function computeBalances(
       const amount = p.amount ?? 0;
       acc.revenue += amount;
       acc.commission += amount * meta.rate;
+      // Frais négociés à la charge de l'organisateur : l'acheteur ne les a pas
+      // payés, ils sont retenus ici sur ce qui lui revient.
+      if (p.fee_paid_by === "organizer") acc.serviceFee += p.service_fee ?? 0;
     }
   }
 
@@ -100,7 +109,8 @@ async function computeBalances(
 
   for (const acc of balances.values()) {
     acc.commission = Math.round(acc.commission);
-    acc.net = acc.revenue - acc.commission;
+    acc.serviceFee = Math.round(acc.serviceFee);
+    acc.net = acc.revenue - acc.commission - acc.serviceFee;
     acc.available = Math.max(0, acc.net - acc.paidOut - acc.pending);
   }
   return balances;

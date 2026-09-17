@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { DiscountType, Payout, UserRole } from "@/lib/types";
+import type { DiscountType, FeePayer, Payout, UserRole } from "@/lib/types";
 import { createDexpayPayout, getDexpayPayout } from "@/lib/payments/dexpay";
 import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
 
@@ -299,6 +299,48 @@ export async function setTierFeePercent(tierId: string, percent: number | null) 
       fee_percent: percent === null ? null : Math.round(percent * 100) / 100,
     })
     .eq("id", tierId);
+  revalidatePath("/admin/frais");
+}
+
+/**
+ * Règle les frais d'un événement. `null` remet l'événement sur le taux global
+ * (les catégories de tickets peuvent encore avoir leur propre taux).
+ */
+export async function setEventFeePercent(
+  eventId: string,
+  percent: number | null,
+) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  if (
+    percent !== null &&
+    (!Number.isFinite(percent) || percent < MIN_FEE_PERCENT || percent > 100)
+  ) {
+    throw new Error(`Pourcentage invalide (entre ${MIN_FEE_PERCENT} et 100).`);
+  }
+  const admin = createAdminClient();
+  await admin
+    .from("events")
+    .update({
+      fee_percent: percent === null ? null : Math.round(percent * 100) / 100,
+    })
+    .eq("id", eventId);
+  revalidatePath("/admin/frais");
+}
+
+/**
+ * Définit qui supporte les frais de service d'un événement : l'acheteur
+ * (ajoutés au total payé) ou l'organisateur (retenus sur ses revenus).
+ * Ne change rien aux paiements déjà encaissés.
+ */
+export async function setEventFeePayer(eventId: string, payer: FeePayer) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  if (payer !== "buyer" && payer !== "organizer") {
+    throw new Error("Payeur des frais invalide.");
+  }
+  const admin = createAdminClient();
+  await admin.from("events").update({ fee_payer: payer }).eq("id", eventId);
   revalidatePath("/admin/frais");
 }
 
