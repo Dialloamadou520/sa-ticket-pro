@@ -9,6 +9,7 @@ import {
   formatDateShort,
   formatPrice,
 } from "@/lib/format";
+import { fillTone } from "@/components/events/fill-gauge";
 import type { Event } from "@/lib/types";
 
 export function EventCard({ event }: { event: Event }) {
@@ -19,6 +20,8 @@ export function EventCard({ event }: { event: Event }) {
   const countdown = countdownLabel(event);
   const upcoming = countdown !== "Terminé";
   const ongoing = countdown === "En cours";
+  const gaugeValue = fillPercent === null ? null : soldOut ? 100 : fillPercent;
+  const tone = gaugeValue === null ? null : fillTone(gaugeValue);
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
@@ -39,12 +42,30 @@ export function EventCard({ event }: { event: Event }) {
         )}
         <div className="absolute left-3 top-3 flex gap-2">
           {event.category && <Badge tone="brand">{event.category.name}</Badge>}
-          {fillPercent !== null && !soldOut ? (
-            <Badge tone="amber">{fillPercent} % vendu</Badge>
+          {gaugeValue !== null && tone && !soldOut ? (
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm ${tone.solid}`}
+            >
+              {gaugeValue} % vendu
+            </span>
           ) : (
             almostSoldOut && <Badge tone="amber">Bientôt complet</Badge>
           )}
         </div>
+        {gaugeValue !== null && tone && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/80 to-transparent px-3 pb-2 pt-6">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-white">
+              <span>{soldOut ? "Complet" : "Remplissage"}</span>
+              <span>{gaugeValue} %</span>
+            </div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/30">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${tone.bar}`}
+                style={{ width: `${gaugeValue}%` }}
+              />
+            </div>
+          </div>
+        )}
         {upcoming && (
           <span
             className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-white backdrop-blur ${
