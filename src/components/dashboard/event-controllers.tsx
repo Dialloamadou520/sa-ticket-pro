@@ -74,7 +74,11 @@ export function EventControllers({ eventId, controllers }: Props) {
               className="pl-9"
             />
           </div>
-          <Button type="submit" disabled={pending}>
+          <Button
+            type="submit"
+            disabled={pending}
+            className="w-full justify-center sm:w-auto"
+          >
             {pending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Ajout…
@@ -115,7 +119,7 @@ export function EventControllers({ eventId, controllers }: Props) {
                   type="button"
                   onClick={() => onRemove(c.id)}
                   disabled={pendingId === c.id}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 sm:h-9 sm:w-9"
                   aria-label="Retirer le contrôleur"
                 >
                   {pendingId === c.id ? (

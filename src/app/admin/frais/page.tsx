@@ -31,7 +31,7 @@ export default async function AdminFeesPage() {
       </Link>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
               <Receipt className="h-5 w-5" />
@@ -52,7 +52,7 @@ export default async function AdminFeesPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 p-5">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
           <h2 className="font-semibold text-slate-900">Frais par événement</h2>
           <p className="text-xs text-slate-500">
             Taux propre à l&apos;événement (champ vide = taux global{" "}
@@ -72,10 +72,12 @@ export default async function AdminFeesPage() {
             {events.map((event) => (
               <li
                 key={event.id}
-                className="flex flex-wrap items-center justify-between gap-3 p-5"
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-5"
               >
-                <div>
-                  <p className="font-medium text-slate-900">{event.title}</p>
+                <div className="min-w-0">
+                  <p className="font-medium break-words text-slate-900">
+                    {event.title}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {event.fee_percent == null
                       ? `Taux global (${globalPercent} %)`
@@ -96,7 +98,7 @@ export default async function AdminFeesPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 p-5">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
           <h2 className="font-semibold text-slate-900">
             Frais par catégorie de ticket
           </h2>
@@ -112,12 +114,54 @@ export default async function AdminFeesPage() {
         ) : (
           <div className="divide-y divide-slate-100">
             {withTiers.map((event) => (
-              <div key={event.id} className="p-5">
-                <h3 className="font-medium text-slate-900">{event.title}</h3>
+              <div key={event.id} className="p-4 sm:p-5">
+                <h3 className="font-medium break-words text-slate-900">
+                  {event.title}
+                </h3>
                 <p className="mb-3 text-xs text-slate-500">
                   Frais {feeLabel(event.fee_payer)}
                 </p>
-                <div className="overflow-x-auto">
+                <ul className="space-y-3 sm:hidden">
+                  {event.tiers.map((tier) => {
+                    const percent = resolveFeePercent(
+                      tier.fee_percent,
+                      event.fee_percent,
+                      globalPercent,
+                    );
+                    const fee = feeForUnitPrice(tier.price, percent);
+                    return (
+                      <li
+                        key={tier.id}
+                        className="space-y-2 rounded-xl border border-slate-200 p-3"
+                      >
+                        <div className="flex items-baseline justify-between gap-3">
+                          <p className="font-medium text-slate-900">
+                            {tier.name}
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            {formatAmount(tier.price)}
+                          </p>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Frais {formatAmount(fee)} ({percent} %
+                          {tier.fee_percent == null ? " — global" : ""}) · total
+                          acheteur{" "}
+                          {formatAmount(
+                            event.fee_payer === "organizer"
+                              ? tier.price
+                              : tier.price + fee,
+                          )}
+                        </p>
+                        <TierFeePercentEditor
+                          tierId={tier.id}
+                          percent={tier.fee_percent ?? null}
+                          globalPercent={globalPercent}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="hidden overflow-x-auto sm:block">
                   <table className="w-full text-sm">
                     <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
                       <tr>

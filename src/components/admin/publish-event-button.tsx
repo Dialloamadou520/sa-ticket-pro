@@ -46,7 +46,7 @@ export function AdminPublishEventButton({
       onClick={publish}
       disabled={pending}
       title="Publier cet événement"
-      className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+      className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:min-h-0 sm:px-2.5 sm:py-1.5"
     >
       <Send className="h-3.5 w-3.5" />
       Publier

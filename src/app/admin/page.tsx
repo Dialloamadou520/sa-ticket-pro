@@ -43,13 +43,20 @@ import { formatAmount, formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Administration" };
 
-const STATUS_BADGE: Record<EventStatus, { label: string; className: string }> = {
-  draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
-  pending: { label: "En attente", className: "bg-amber-100 text-amber-700" },
-  published: { label: "Publié", className: "bg-emerald-100 text-emerald-700" },
-  rejected: { label: "Rejeté", className: "bg-red-100 text-red-700" },
-  cancelled: { label: "Annulé", className: "bg-slate-100 text-slate-500" },
-};
+const STATUS_BADGE: Record<EventStatus, { label: string; className: string }> =
+  {
+    draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
+    pending: { label: "En attente", className: "bg-amber-100 text-amber-700" },
+    published: {
+      label: "Publié",
+      className: "bg-emerald-100 text-emerald-700",
+    },
+    rejected: { label: "Rejeté", className: "bg-red-100 text-red-700" },
+    cancelled: { label: "Annulé", className: "bg-slate-100 text-slate-500" },
+  };
+
+const HERO_LINK_CLASS =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20 sm:min-h-0 sm:justify-start sm:py-2.5";
 
 export default async function AdminPage() {
   const [
@@ -77,39 +84,32 @@ export default async function AdminPage() {
   const maxTopPage = Math.max(1, ...visits.topPages.map((p) => p.count));
 
   return (
-    <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-brand-800 px-6 py-7 text-white shadow-sm">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-brand-800 px-5 py-6 text-white shadow-sm sm:px-6 sm:py-7">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-500/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-accent-500/10 blur-2xl" />
         <div className="relative flex flex-wrap items-center gap-4">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 backdrop-blur">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 backdrop-blur sm:h-12 sm:w-12">
             <ShieldCheck className="h-6 w-6" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Administration</h1>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+              Administration
+            </h1>
             <p className="text-sm text-white/70">
               Pilotez la plateforme kaypass.
             </p>
           </div>
-          <div className="ml-auto flex flex-wrap gap-2">
-            <Link
-              href="/admin/codes-promo"
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
-            >
+          <div className="ml-auto grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <Link href="/admin/codes-promo" className={HERO_LINK_CLASS}>
               <Tag className="h-4 w-4" />
               Codes promo
             </Link>
-            <Link
-              href="/admin/reversements"
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
-            >
+            <Link href="/admin/reversements" className={HERO_LINK_CLASS}>
               <Wallet className="h-4 w-4" />
               Reversements
             </Link>
-            <Link
-              href="/admin/tickets"
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
-            >
+            <Link href="/admin/tickets" className={HERO_LINK_CLASS}>
               <TicketCheck className="h-4 w-4" />
               Récupérer un ticket perdu
             </Link>
@@ -117,10 +117,25 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminStatCard label="Utilisateurs" value={stats.totalUsers.toLocaleString("fr-FR")} icon={Users} accent="blue" />
-        <AdminStatCard label="Événements" value={String(stats.totalEvents)} icon={CalendarDays} accent="violet" />
-        <AdminStatCard label="Revenus plateforme" value={formatAmount(stats.totalRevenue)} icon={Wallet} accent="emerald" />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <AdminStatCard
+          label="Utilisateurs"
+          value={stats.totalUsers.toLocaleString("fr-FR")}
+          icon={Users}
+          accent="blue"
+        />
+        <AdminStatCard
+          label="Événements"
+          value={String(stats.totalEvents)}
+          icon={CalendarDays}
+          accent="violet"
+        />
+        <AdminStatCard
+          label="Revenus plateforme"
+          value={formatAmount(stats.totalRevenue)}
+          icon={Wallet}
+          accent="emerald"
+        />
         <AdminStatCard
           label="Commissions"
           value={formatAmount(stats.platformCommission)}
@@ -130,7 +145,7 @@ export default async function AdminPage() {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
             <BarChart3 className="h-5 w-5" />
           </span>
@@ -139,13 +154,13 @@ export default async function AdminPage() {
               Fréquentation de la plateforme
             </h2>
             <p className="text-xs text-slate-500">
-              Nombre de visites de pages (« clics ») sur la plateforme. Les pages
-              d&apos;administration ne sont pas comptées.
+              Nombre de visites de pages (« clics ») sur la plateforme. Les
+              pages d&apos;administration ne sont pas comptées.
             </p>
           </div>
         </div>
 
-        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 p-4 sm:gap-4 sm:p-5 lg:grid-cols-4">
           <AdminStatCard
             label="Visites totales"
             value={visits.total.toLocaleString("fr-FR")}
@@ -172,7 +187,7 @@ export default async function AdminPage() {
           />
         </div>
 
-        <div className="grid gap-6 border-t border-slate-100 p-5 lg:grid-cols-2">
+        <div className="grid gap-4 border-t border-slate-100 p-4 sm:gap-6 sm:p-5 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-700">
@@ -254,8 +269,8 @@ export default async function AdminPage() {
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Revenus encaissés par mois (paiements confirmés), du plus récent au
-              plus ancien.
+              Revenus encaissés par mois (paiements confirmés), du plus récent
+              au plus ancien.
             </p>
           </div>
         </div>
@@ -264,39 +279,64 @@ export default async function AdminPage() {
             Aucun revenu enregistré pour le moment.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Mois</th>
-                  <th className="px-5 py-3">Tickets vendus</th>
-                  <th className="px-5 py-3">Revenus</th>
-                  <th className="px-5 py-3">Commission</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {monthlyRevenue.map((m) => (
-                  <tr key={m.key} className="transition-colors hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium capitalize text-slate-900">
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {monthlyRevenue.map((m) => (
+                <li key={m.key} className="space-y-2 p-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="font-medium capitalize text-slate-900">
                       {m.label}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">{m.ticketsSold}</td>
-                    <td className="px-5 py-3 font-medium text-slate-900">
+                    </p>
+                    <p className="shrink-0 font-semibold text-slate-900">
                       {formatAmount(m.revenue)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">
-                      {formatAmount(m.commission)}
-                    </td>
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {m.ticketsSold} tickets · commission{" "}
+                    {formatAmount(m.commission)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Mois</th>
+                    <th className="px-5 py-3">Tickets vendus</th>
+                    <th className="px-5 py-3">Revenus</th>
+                    <th className="px-5 py-3">Commission</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {monthlyRevenue.map((m) => (
+                    <tr
+                      key={m.key}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-3 font-medium capitalize text-slate-900">
+                        {m.label}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {m.ticketsSold}
+                      </td>
+                      <td className="px-5 py-3 font-medium text-slate-900">
+                        {formatAmount(m.revenue)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatAmount(m.commission)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
               <Receipt className="h-5 w-5" />
@@ -316,7 +356,7 @@ export default async function AdminPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full items-center gap-3 sm:w-auto">
             <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
               {serviceFeePercent} % par ticket
             </span>
@@ -346,16 +386,17 @@ export default async function AdminPage() {
             {pending.map((event) => (
               <li
                 key={event.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50"
+                className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-slate-900">{event.title}</p>
                   <p className="text-xs text-slate-500">
                     {event.city ?? event.location} ·{" "}
-                    {formatDateShort(event.starts_at)} · {formatPrice(event.price)}
+                    {formatDateShort(event.starts_at)} ·{" "}
+                    {formatPrice(event.price)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <EventModeration id={event.id} />
                   <AdminDeleteEventButton id={event.id} title={event.title} />
                 </div>
@@ -379,8 +420,8 @@ export default async function AdminPage() {
             </h2>
             <p className="text-xs text-slate-500">
               Tous les événements de la plateforme, quel que soit leur statut.
-              Publiez directement un brouillon, réglez les frais de service et la
-              commission (%) par événement, ou supprimez-en définitivement
+              Publiez directement un brouillon, réglez les frais de service et
+              la commission (%) par événement, ou supprimez-en définitivement
               n&apos;importe lequel.
             </p>
           </div>
@@ -390,91 +431,176 @@ export default async function AdminPage() {
             Aucun événement.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Événement</th>
-                  <th className="px-5 py-3">Organisateur</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Tickets</th>
-                  <th className="px-5 py-3">Revenus</th>
-                  <th className="px-5 py-3">Taux</th>
-                  <th className="px-5 py-3">Commission</th>
-                  <th className="px-5 py-3">Statut</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {allEvents.map((event) => {
-                  const badge = STATUS_BADGE[event.status];
-                  return (
-                    <tr key={event.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-slate-900">{event.title}</p>
-                        <p className="text-xs text-slate-500">
-                          {event.city ?? event.location} · {formatPrice(event.price)}
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {allEvents.map((event) => {
+                const badge = STATUS_BADGE[event.status];
+                return (
+                  <li key={event.id} className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900">
+                          {event.title}
                         </p>
-                      </td>
-                      <td className="px-5 py-3">
-                        {event.organizer ? (
+                        <p className="text-xs text-slate-500">
+                          {event.city ?? event.location} ·{" "}
+                          {formatDateShort(event.starts_at)}
+                        </p>
+                        {event.organizer && (
                           <Link
                             href={`/admin/organisateurs/${event.organizer.id}`}
-                            className="text-slate-600 hover:text-brand-700"
+                            className="text-xs text-brand-700 hover:underline"
                           >
                             {event.organizer.company_name}
                           </Link>
-                        ) : (
-                          <span className="text-slate-400">—</span>
                         )}
-                      </td>
-                      <td className="px-5 py-3 text-slate-600">
-                        {formatDateShort(event.starts_at)}
-                      </td>
-                      <td className="px-5 py-3 text-slate-600">
-                        {event.tickets_sold}/{event.capacity}
-                      </td>
-                      <td className="px-5 py-3 font-medium text-slate-900">
-                        {formatAmount(event.revenue)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <EventCommissionEditor
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <dt className="text-xs text-slate-500">Tickets</dt>
+                        <dd className="text-slate-800">
+                          {event.tickets_sold}/{event.capacity}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Revenus</dt>
+                        <dd className="font-medium text-slate-900">
+                          {formatAmount(event.revenue)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Commission</dt>
+                        <dd className="text-slate-800">
+                          {formatAmount(event.commission)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Taux</dt>
+                        <dd>
+                          <EventCommissionEditor
+                            id={event.id}
+                            rate={event.commissionRate}
+                          />
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="flex flex-wrap gap-2">
+                      {event.status !== "published" && (
+                        <AdminPublishEventButton
                           id={event.id}
-                          rate={event.commissionRate}
+                          title={event.title}
                         />
-                      </td>
-                      <td className="px-5 py-3 text-slate-600">
-                        {formatAmount(event.commission)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          {event.status !== "published" && (
-                            <AdminPublishEventButton
+                      )}
+                      <AdminDeleteEventButton
+                        id={event.id}
+                        title={event.title}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Événement</th>
+                    <th className="px-5 py-3">Organisateur</th>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Tickets</th>
+                    <th className="px-5 py-3">Revenus</th>
+                    <th className="px-5 py-3">Taux</th>
+                    <th className="px-5 py-3">Commission</th>
+                    <th className="px-5 py-3">Statut</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {allEvents.map((event) => {
+                    const badge = STATUS_BADGE[event.status];
+                    return (
+                      <tr
+                        key={event.id}
+                        className="transition-colors hover:bg-slate-50"
+                      >
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-slate-900">
+                            {event.title}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {event.city ?? event.location} ·{" "}
+                            {formatPrice(event.price)}
+                          </p>
+                        </td>
+                        <td className="px-5 py-3">
+                          {event.organizer ? (
+                            <Link
+                              href={`/admin/organisateurs/${event.organizer.id}`}
+                              className="text-slate-600 hover:text-brand-700"
+                            >
+                              {event.organizer.company_name}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {formatDateShort(event.starts_at)}
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {event.tickets_sold}/{event.capacity}
+                        </td>
+                        <td className="px-5 py-3 font-medium text-slate-900">
+                          {formatAmount(event.revenue)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <EventCommissionEditor
+                            id={event.id}
+                            rate={event.commissionRate}
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {formatAmount(event.commission)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            {event.status !== "published" && (
+                              <AdminPublishEventButton
+                                id={event.id}
+                                title={event.title}
+                              />
+                            )}
+                            <AdminDeleteEventButton
                               id={event.id}
                               title={event.title}
                             />
-                          )}
-                          <AdminDeleteEventButton id={event.id} title={event.title} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
             <Building2 className="h-5 w-5" />
           </span>
@@ -497,114 +623,197 @@ export default async function AdminPage() {
             {`La liste des organisateurs s'affichera ici une fois Supabase configuré.`}
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Organisateur</th>
-                  <th className="px-5 py-3">Contact</th>
-                  <th className="px-5 py-3">Événements</th>
-                  <th className="px-5 py-3">Tickets</th>
-                  <th className="px-5 py-3">Revenus</th>
-                  <th className="px-5 py-3">Commission</th>
-                  <th className="px-5 py-3">Statut</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {organizers.map((o) => (
-                  <tr
-                    key={o.id}
-                    className={`transition-colors hover:bg-slate-50 ${
-                      o.disabled ? "bg-red-50/40" : ""
-                    }`}
-                  >
-                    <td className="px-5 py-3">
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {organizers.map((o) => (
+                <li
+                  key={o.id}
+                  className={`space-y-3 p-4 ${o.disabled ? "bg-red-50/40" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <Link
                         href={`/admin/organisateurs/${o.id}`}
-                        className="flex items-center gap-1 font-medium text-slate-900 hover:text-brand-700"
+                        className="flex items-center gap-1 font-medium text-slate-900"
                       >
-                        {o.company_name}
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                        <span className="truncate">{o.company_name}</span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
                       </Link>
-                      <p className="text-xs text-slate-500">
-                        {o.owner?.full_name || "—"}
+                      <p className="truncate text-xs text-slate-500">
+                        {o.owner?.full_name || "—"} · {o.owner?.email ?? "—"}
                       </p>
-                    </td>
-                    <td className="px-5 py-3">
                       {o.owner?.phone ? (
                         <a
                           href={`tel:${o.owner.phone.replace(/\s/g, "")}`}
-                          className="font-medium text-slate-900 hover:text-brand-700"
+                          className="text-sm font-medium text-brand-700"
                         >
                           {o.owner.phone}
                         </a>
                       ) : (
-                        <span className="text-slate-400">Non renseigné</span>
+                        <span className="text-xs text-slate-400">
+                          Numéro non renseigné
+                        </span>
                       )}
-                      <p className="text-xs text-slate-500">
-                        {o.owner?.email ?? "—"}
-                      </p>
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">
-                      {o.eventsCount}
-                      <span className="text-xs text-slate-400">
-                        {" "}
-                        ({o.publishedEvents} publiés)
+                    </div>
+                    {o.disabled ? (
+                      <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                        Retiré
                       </span>
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">{o.ticketsSold}</td>
-                    <td className="px-5 py-3 text-slate-600">
-                      {formatAmount(o.revenue)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">
-                      {formatAmount(o.commission)}
-                    </td>
-                    <td className="px-5 py-3">
-                      {o.disabled ? (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          Retiré
-                        </span>
-                      ) : o.verified ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          Vérifié
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                          Actif
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end">
-                        <OrganizerActions
-                          id={o.id}
-                          disabled={o.disabled}
-                          verified={o.verified}
-                        />
-                      </div>
-                    </td>
+                    ) : o.verified ? (
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        Vérifié
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        Actif
+                      </span>
+                    )}
+                  </div>
+                  <dl className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Événements</dt>
+                      <dd className="text-slate-800">
+                        {o.eventsCount} ({o.publishedEvents} publiés)
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Tickets</dt>
+                      <dd className="text-slate-800">{o.ticketsSold}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Revenus</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatAmount(o.revenue)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Commission</dt>
+                      <dd className="text-slate-800">
+                        {formatAmount(o.commission)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <OrganizerActions
+                    id={o.id}
+                    disabled={o.disabled}
+                    verified={o.verified}
+                  />
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Organisateur</th>
+                    <th className="px-5 py-3">Contact</th>
+                    <th className="px-5 py-3">Événements</th>
+                    <th className="px-5 py-3">Tickets</th>
+                    <th className="px-5 py-3">Revenus</th>
+                    <th className="px-5 py-3">Commission</th>
+                    <th className="px-5 py-3">Statut</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {organizers.map((o) => (
+                    <tr
+                      key={o.id}
+                      className={`transition-colors hover:bg-slate-50 ${
+                        o.disabled ? "bg-red-50/40" : ""
+                      }`}
+                    >
+                      <td className="px-5 py-3">
+                        <Link
+                          href={`/admin/organisateurs/${o.id}`}
+                          className="flex items-center gap-1 font-medium text-slate-900 hover:text-brand-700"
+                        >
+                          {o.company_name}
+                          <ChevronRight className="h-4 w-4 text-slate-400" />
+                        </Link>
+                        <p className="text-xs text-slate-500">
+                          {o.owner?.full_name || "—"}
+                        </p>
+                      </td>
+                      <td className="px-5 py-3">
+                        {o.owner?.phone ? (
+                          <a
+                            href={`tel:${o.owner.phone.replace(/\s/g, "")}`}
+                            className="font-medium text-slate-900 hover:text-brand-700"
+                          >
+                            {o.owner.phone}
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">Non renseigné</span>
+                        )}
+                        <p className="text-xs text-slate-500">
+                          {o.owner?.email ?? "—"}
+                        </p>
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {o.eventsCount}
+                        <span className="text-xs text-slate-400">
+                          {" "}
+                          ({o.publishedEvents} publiés)
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {o.ticketsSold}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatAmount(o.revenue)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatAmount(o.commission)}
+                      </td>
+                      <td className="px-5 py-3">
+                        {o.disabled ? (
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                            Retiré
+                          </span>
+                        ) : o.verified ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            Vérifié
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            Actif
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end">
+                          <OrganizerActions
+                            id={o.id}
+                            disabled={o.disabled}
+                            verified={o.verified}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
             <Users className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold text-slate-900">Utilisateurs récents</h2>
+            <h2 className="font-semibold text-slate-900">
+              Utilisateurs récents
+            </h2>
             <p className="text-xs text-slate-500">
               {`Attribuez un rôle à un compte existant. Un administrateur a accès à tout : événements, organisateurs, revenus et rôles.`}
             </p>
           </div>
         </div>
-        <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 sm:px-5">
           <AddAdminForm />
         </div>
         {users.length === 0 ? (
@@ -612,51 +821,88 @@ export default async function AdminPage() {
             {`La liste des utilisateurs s'affichera ici une fois Supabase configuré.`}
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Nom</th>
-                  <th className="px-5 py-3">Email</th>
-                  <th className="px-5 py-3">Téléphone</th>
-                  <th className="px-5 py-3">Rôle</th>
-                  <th className="px-5 py-3">Inscrit le</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((u) => (
-                  <tr key={u.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-900">
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {users.map((u) => (
+                <li key={u.id} className="space-y-2 p-4">
+                  <div>
+                    <p className="font-medium text-slate-900">
                       {u.full_name || "—"}
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">{u.email}</td>
-                    <td className="px-5 py-3 text-slate-500">
-                      {u.phone ? (
-                        <a
-                          href={`tel:${u.phone.replace(/\s/g, "")}`}
-                          className="hover:text-brand-700"
-                        >
-                          {u.phone}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <UserRoleEditor
-                        userId={u.id}
-                        role={u.role}
-                        self={u.id === currentUser?.id}
-                      />
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">
+                    </p>
+                    <p className="break-all text-xs text-slate-500">
+                      {u.email}
+                    </p>
+                    {u.phone && (
+                      <a
+                        href={`tel:${u.phone.replace(/\s/g, "")}`}
+                        className="text-sm font-medium text-brand-700"
+                      >
+                        {u.phone}
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <UserRoleEditor
+                      userId={u.id}
+                      role={u.role}
+                      self={u.id === currentUser?.id}
+                    />
+                    <span className="shrink-0 text-xs text-slate-400">
                       {formatDateShort(u.created_at)}
-                    </td>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Nom</th>
+                    <th className="px-5 py-3">Email</th>
+                    <th className="px-5 py-3">Téléphone</th>
+                    <th className="px-5 py-3">Rôle</th>
+                    <th className="px-5 py-3">Inscrit le</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-3 font-medium text-slate-900">
+                        {u.full_name || "—"}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">{u.email}</td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {u.phone ? (
+                          <a
+                            href={`tel:${u.phone.replace(/\s/g, "")}`}
+                            className="hover:text-brand-700"
+                          >
+                            {u.phone}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <UserRoleEditor
+                          userId={u.id}
+                          role={u.role}
+                          self={u.id === currentUser?.id}
+                        />
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {formatDateShort(u.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

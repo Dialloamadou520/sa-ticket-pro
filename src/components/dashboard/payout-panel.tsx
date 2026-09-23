@@ -91,7 +91,11 @@ export function PayoutPanel({ payoutPhone, payoutOperator, available }: Props) {
           />
         </div>
 
-        <Button type="submit" disabled={savingAccount} className="mt-4">
+        <Button
+          type="submit"
+          disabled={savingAccount}
+          className="mt-4 w-full justify-center sm:w-auto"
+        >
           {savingAccount ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> Enregistrement…
@@ -136,7 +140,11 @@ export function PayoutPanel({ payoutPhone, payoutOperator, available }: Props) {
           </p>
         )}
 
-        <Button type="submit" disabled={!canRequest || requesting} className="mt-4">
+        <Button
+          type="submit"
+          disabled={!canRequest || requesting}
+          className="mt-4 w-full justify-center sm:w-auto"
+        >
           {requesting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> Envoi…

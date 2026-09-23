@@ -28,7 +28,9 @@ export function PromoCodeActions({
         await fn();
         toast.success(success);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Action impossible.");
+        toast.error(
+          error instanceof Error ? error.message : "Action impossible.",
+        );
       }
     });
   }
@@ -45,7 +47,7 @@ export function PromoCodeActions({
           )
         }
         title={active ? "Désactiver le code" : "Réactiver le code"}
-        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0 sm:px-2.5 sm:py-1.5"
       >
         <Power className="h-3.5 w-3.5" />
         {active ? "Désactiver" : "Réactiver"}
@@ -64,7 +66,7 @@ export function PromoCodeActions({
           run(() => deletePromoCode(id), `Code ${code} supprimé.`);
         }}
         title="Supprimer le code"
-        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-0 sm:px-2.5 sm:py-1.5"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

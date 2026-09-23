@@ -175,8 +175,8 @@ export function VisitsChart({ daily }: { daily: DailyViews[] }) {
       </div>
 
       <p className="mt-3 text-[11px] text-slate-400">
-        Barre foncée = jour le plus fréquenté · fond gris = week-end · pointillés
-        = moyenne de la période.
+        Barre foncée = jour le plus fréquenté · fond gris = week-end ·
+        pointillés = moyenne de la période.
       </p>
     </div>
   );

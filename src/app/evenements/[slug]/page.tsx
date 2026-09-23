@@ -23,6 +23,7 @@ import {
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
 import { EventCountdown } from "@/components/events/event-countdown";
+import { FillGauge } from "@/components/events/fill-gauge";
 
 export async function generateMetadata({
   params,
@@ -144,20 +145,7 @@ export default async function EventDetailPage({
               )}
 
               {fillPercent !== null && (
-                <div className="mt-4 space-y-2 text-sm text-slate-600">
-                  <div className="flex items-center justify-between">
-                    <span>Remplissage</span>
-                    <span className="font-medium text-slate-900">
-                      {soldOut ? "Complet" : `${fillPercent} % vendu`}
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-brand-500"
-                      style={{ width: `${soldOut ? 100 : fillPercent}%` }}
-                    />
-                  </div>
-                </div>
+                <FillGauge percent={fillPercent} soldOut={soldOut} />
               )}
 
               {past ? (

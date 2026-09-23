@@ -50,7 +50,10 @@ export function PromoCodeForm({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <form
+      onSubmit={submit}
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
+    >
       <div>
         <Label htmlFor="code">Code</Label>
         <Input
