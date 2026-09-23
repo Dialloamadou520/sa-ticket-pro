@@ -20,7 +20,12 @@ interface Props {
   showVerify?: boolean;
 }
 
-export function OrganizerActions({ id, disabled, verified, showVerify }: Props) {
+export function OrganizerActions({
+  id,
+  disabled,
+  verified,
+  showVerify,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -82,7 +87,9 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
     startTransition(async () => {
       try {
         await setOrganizerVerified(id, !verified);
-        toast.success(verified ? "Vérification retirée." : "Organisateur vérifié.");
+        toast.success(
+          verified ? "Vérification retirée." : "Organisateur vérifié.",
+        );
       } catch {
         toast.error("Action impossible. Réessayez.");
       }
@@ -95,7 +102,7 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
         <button
           onClick={toggleVerified}
           disabled={pending}
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0 sm:py-1.5"
         >
           {verified ? (
             <>
@@ -114,7 +121,7 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
         <button
           onClick={toggleDisabled}
           disabled={pending}
-          className="flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:min-h-0 sm:py-1.5"
         >
           <RotateCcw className="h-4 w-4" />
           Réactiver
@@ -123,7 +130,7 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
         <button
           onClick={toggleDisabled}
           disabled={pending}
-          className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-0 sm:py-1.5"
         >
           <Ban className="h-4 w-4" />
           Retirer
@@ -132,7 +139,7 @@ export function OrganizerActions({ id, disabled, verified, showVerify }: Props) 
       <button
         onClick={onDelete}
         disabled={pending}
-        className="flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+        className="flex min-h-11 items-center justify-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:min-h-0 sm:py-1.5"
       >
         <Trash2 className="h-4 w-4" />
         Supprimer

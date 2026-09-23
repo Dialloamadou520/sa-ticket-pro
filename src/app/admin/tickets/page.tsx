@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Search, TicketCheck } from "lucide-react";
-import { TicketView, type TicketViewData } from "@/components/tickets/ticket-view";
+import {
+  TicketView,
+  type TicketViewData,
+} from "@/components/tickets/ticket-view";
 import { searchTickets } from "@/lib/data/admin";
 import { formatDate } from "@/lib/format";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
@@ -9,12 +12,13 @@ import type { TicketStatus } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Récupérer un ticket" };
 
-const STATUS_BADGE: Record<TicketStatus, { label: string; className: string }> = {
-  valid: { label: "Valide", className: "bg-emerald-100 text-emerald-700" },
-  used: { label: "Déjà scanné", className: "bg-slate-100 text-slate-600" },
-  cancelled: { label: "Annulé", className: "bg-red-100 text-red-700" },
-  refunded: { label: "Remboursé", className: "bg-amber-100 text-amber-700" },
-};
+const STATUS_BADGE: Record<TicketStatus, { label: string; className: string }> =
+  {
+    valid: { label: "Valide", className: "bg-emerald-100 text-emerald-700" },
+    used: { label: "Déjà scanné", className: "bg-slate-100 text-slate-600" },
+    cancelled: { label: "Annulé", className: "bg-red-100 text-red-700" },
+    refunded: { label: "Remboursé", className: "bg-amber-100 text-amber-700" },
+  };
 
 export default async function AdminTicketsPage({
   searchParams,
@@ -45,8 +49,8 @@ export default async function AdminTicketsPage({
               Récupérer un ticket perdu
             </h1>
             <p className="text-xs text-slate-500">
-              Retrouvez le billet d&apos;un participant par son nom, son email ou
-              la référence du ticket, puis renvoyez-lui le QR code ou le PDF.
+              Retrouvez le billet d&apos;un participant par son nom, son email
+              ou la référence du ticket, puis renvoyez-lui le QR code ou le PDF.
             </p>
           </div>
         </div>

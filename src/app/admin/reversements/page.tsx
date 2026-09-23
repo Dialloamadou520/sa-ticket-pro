@@ -37,7 +37,7 @@ export default async function AdminPayoutsPage() {
       </Link>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             <Wallet className="h-5 w-5" />
           </span>
@@ -47,8 +47,8 @@ export default async function AdminPayoutsPage() {
             </h1>
             <p className="text-xs text-slate-500">
               {waiting.length} demande(s) en attente ·{" "}
-              {formatAmount(waiting.reduce((s, p) => s + p.amount, 0))} à envoyer.
-              Le virement part vers le compte Wave / Orange Money de
+              {formatAmount(waiting.reduce((s, p) => s + p.amount, 0))} à
+              envoyer. Le virement part vers le compte Wave / Orange Money de
               l&apos;organisateur ; la commission de la plateforme est déjà
               déduite du solde.
             </p>
@@ -68,62 +68,101 @@ export default async function AdminPayoutsPage() {
             Aucune demande de reversement.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Organisateur</th>
-                  <th className="px-5 py-3">Montant</th>
-                  <th className="px-5 py-3">Destination</th>
-                  <th className="px-5 py-3">Solde restant</th>
-                  <th className="px-5 py-3">Statut</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {payouts.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-5 py-3 text-slate-600">
-                      {formatDateShort(p.created_at)}
-                    </td>
-                    <td className="px-5 py-3 font-medium text-slate-900">
-                      {p.organizerName}
-                    </td>
-                    <td className="px-5 py-3 font-semibold text-slate-900">
-                      {formatAmount(p.amount)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">
-                      {PAYOUT_OPERATOR_LABELS[p.operator]} · {p.phone}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">
-                      {formatAmount(p.available)}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[p.status]}`}
-                      >
-                        {PAYOUT_STATUS_LABELS[p.status]}
-                      </span>
-                      {p.failure_reason && (
-                        <p className="mt-1 max-w-xs text-xs text-red-600">
-                          {p.failure_reason}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <PayoutActions
-                        id={p.id}
-                        status={p.status}
-                        label={`${formatAmount(p.amount)} à ${p.organizerName}`}
-                        canSend={canSend}
-                      />
-                    </td>
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {payouts.map((p) => (
+                <li key={p.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">
+                        {formatAmount(p.amount)}
+                      </p>
+                      <p className="truncate text-sm text-slate-600">
+                        {p.organizerName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {PAYOUT_OPERATOR_LABELS[p.operator]} · {p.phone}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {formatDateShort(p.created_at)} · solde restant{" "}
+                        {formatAmount(p.available)}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[p.status]}`}
+                    >
+                      {PAYOUT_STATUS_LABELS[p.status]}
+                    </span>
+                  </div>
+                  {p.failure_reason && (
+                    <p className="text-xs text-red-600">{p.failure_reason}</p>
+                  )}
+                  <PayoutActions
+                    id={p.id}
+                    status={p.status}
+                    label={`${formatAmount(p.amount)} à ${p.organizerName}`}
+                    canSend={canSend}
+                  />
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Organisateur</th>
+                    <th className="px-5 py-3">Montant</th>
+                    <th className="px-5 py-3">Destination</th>
+                    <th className="px-5 py-3">Solde restant</th>
+                    <th className="px-5 py-3">Statut</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payouts.map((p) => (
+                    <tr key={p.id}>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatDateShort(p.created_at)}
+                      </td>
+                      <td className="px-5 py-3 font-medium text-slate-900">
+                        {p.organizerName}
+                      </td>
+                      <td className="px-5 py-3 font-semibold text-slate-900">
+                        {formatAmount(p.amount)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {PAYOUT_OPERATOR_LABELS[p.operator]} · {p.phone}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatAmount(p.available)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[p.status]}`}
+                        >
+                          {PAYOUT_STATUS_LABELS[p.status]}
+                        </span>
+                        {p.failure_reason && (
+                          <p className="mt-1 max-w-xs text-xs text-red-600">
+                            {p.failure_reason}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <PayoutActions
+                          id={p.id}
+                          status={p.status}
+                          label={`${formatAmount(p.amount)} à ${p.organizerName}`}
+                          canSend={canSend}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

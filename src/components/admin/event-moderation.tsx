@@ -30,7 +30,7 @@ export function EventModeration({ id }: { id: string }) {
       <button
         onClick={() => run("approve")}
         disabled={pending}
-        className="flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+        className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:min-h-0 sm:flex-none sm:py-1.5"
       >
         <Check className="h-4 w-4" />
         Approuver
@@ -38,7 +38,7 @@ export function EventModeration({ id }: { id: string }) {
       <button
         onClick={() => run("reject")}
         disabled={pending}
-        className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-0 sm:flex-none sm:py-1.5"
       >
         <X className="h-4 w-4" />
         Refuser
