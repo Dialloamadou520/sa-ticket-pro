@@ -42,8 +42,10 @@ export default async function ParticipantsPage({
       </nav>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{event.title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold break-words text-slate-900 sm:text-2xl">
+            {event.title}
+          </h1>
           <p className="text-sm text-slate-500">
             {tickets.length} participant{tickets.length > 1 ? "s" : ""} ·{" "}
             {event.tickets_sold} tickets vendus
@@ -60,7 +62,28 @@ export default async function ParticipantsPage({
           Aucun participant enregistré pour le moment.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <>
+          <ul className="space-y-3 sm:hidden">
+            {rows.map((r) => (
+              <li
+                key={r.reference}
+                className="rounded-2xl border border-slate-200 bg-white p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-medium text-slate-900">{r.name}</p>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    {r.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">{r.type}</p>
+                <p className="mt-2 text-xs text-slate-400">
+                  {r.reference} · {r.date}
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white sm:block">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -83,7 +106,8 @@ export default async function ParticipantsPage({
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -26,7 +26,9 @@ export default async function ReversementsPage() {
           <Wallet className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Reversements</h1>
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+            Reversements
+          </h1>
           <p className="text-sm text-slate-500">
             Recevez vos recettes directement sur votre compte Wave ou Orange
             Money.
@@ -41,7 +43,7 @@ export default async function ReversementsPage() {
         </p>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {[
               { label: "Recettes encaissées", value: balance.revenue },
               { label: "Commission plateforme", value: -balance.commission },
@@ -50,12 +52,12 @@ export default async function ReversementsPage() {
             ].map((card) => (
               <div
                 key={card.label}
-                className="rounded-2xl border border-slate-200 bg-white p-5"
+                className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"
               >
                 <p className="text-xs uppercase tracking-wide text-slate-500">
                   {card.label}
                 </p>
-                <p className="mt-1 text-xl font-bold text-slate-900">
+                <p className="mt-1 break-words text-lg font-bold text-slate-900 sm:text-xl">
                   {formatAmount(card.value)}
                 </p>
               </div>
@@ -83,7 +85,36 @@ export default async function ReversementsPage() {
                 Aucun reversement pour le moment.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+                <ul className="divide-y divide-slate-100 sm:hidden">
+                  {payouts.map((p) => (
+                    <li key={p.id} className="space-y-1 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-semibold text-slate-900">
+                          {formatAmount(p.amount)}
+                        </p>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[p.status]}`}
+                        >
+                          {PAYOUT_STATUS_LABELS[p.status]}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        {PAYOUT_OPERATOR_LABELS[p.operator]} · {p.phone}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {formatDateShort(p.created_at)}
+                      </p>
+                      {p.failure_reason && (
+                        <p className="text-xs text-red-600">
+                          {p.failure_reason}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full text-sm">
                   <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -121,7 +152,8 @@ export default async function ReversementsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             )}
           </section>
         </>

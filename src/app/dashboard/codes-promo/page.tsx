@@ -16,7 +16,9 @@ export default async function DashboardPromoCodesPage() {
           <Tag className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Codes promo</h1>
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+            Codes promo
+          </h1>
           <p className="text-sm text-slate-500">
             Ventes réalisées avec les codes utilisables sur vos événements.
             Consultation seule — la création et la modification des codes sont
@@ -49,7 +51,71 @@ export default async function DashboardPromoCodesPage() {
             Aucun code promo ne concerne vos événements pour le moment.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {codes.map((c, i) => (
+                <li key={c.id} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono font-semibold text-slate-900">
+                        #{i + 1} {c.code}
+                      </p>
+                      <p className="truncate text-sm text-slate-600">
+                        {c.owner_name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {c.eventTitle ?? "Tous les événements"}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        c.active
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {c.active ? "Actif" : "Inactif"}
+                    </span>
+                  </div>
+                  <dl className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Tickets vendus</dt>
+                      <dd className="font-medium text-slate-900">
+                        {c.ticketsSold}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Chiffre d&apos;affaires
+                      </dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatAmount(c.revenue)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Réduction</dt>
+                      <dd className="text-slate-700">
+                        {c.discount_value <= 0
+                          ? "Suivi seul"
+                          : c.discount_type === "percent"
+                            ? `-${c.discount_value} % par ticket`
+                            : `-${formatAmount(c.discount_value)} par ticket`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Réductions accordées
+                      </dt>
+                      <dd className="text-slate-700">
+                        {formatAmount(c.discountGiven)}
+                      </dd>
+                    </div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
@@ -105,8 +171,9 @@ export default async function DashboardPromoCodesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

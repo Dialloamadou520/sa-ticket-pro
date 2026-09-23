@@ -24,7 +24,9 @@ export default async function ModifierEvenementPage({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-slate-900">Modifier l&apos;événement</h1>
+      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+        Modifier l&apos;événement
+      </h1>
       <p className="mt-1 text-sm text-slate-500">{event.title}</p>
       <div className="mt-8">
         <EventForm

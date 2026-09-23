@@ -155,6 +155,7 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
+            className="w-full justify-center sm:w-auto"
           >
             {uploading ? (
               <>
@@ -294,12 +295,13 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
             {tiers.map((t, i) => (
               <div
                 key={i}
-                className="grid gap-2 sm:grid-cols-[1fr_120px_120px_40px]"
+                className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[1fr_120px_120px_40px] sm:border-0 sm:bg-transparent sm:p-0"
               >
                 <Input
                   value={t.name}
                   onChange={(e) => updateTier(i, "name", e.target.value)}
                   placeholder="Ex: VIP"
+                  className="col-span-2 sm:col-span-1"
                 />
                 <Input
                   type="number"
@@ -318,10 +320,11 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
                 <button
                   type="button"
                   onClick={() => removeTier(i)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                  className="col-span-2 flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-300 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 sm:col-span-1 sm:w-10 sm:gap-0"
                   aria-label="Supprimer la catégorie"
                 >
                   <Trash2 className="h-4 w-4" />
+                  <span className="sm:hidden">Supprimer</span>
                 </button>
               </div>
             ))}
@@ -351,7 +354,12 @@ export function EventForm({ action, categories, event, submitLabel }: Props) {
         </p>
       </div>
 
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button
+        type="submit"
+        size="lg"
+        disabled={pending}
+        className="w-full justify-center sm:w-auto"
+      >
         {pending ? "Enregistrement..." : submitLabel}
       </Button>
     </form>
