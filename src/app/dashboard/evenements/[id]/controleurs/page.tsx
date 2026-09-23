@@ -31,7 +31,9 @@ export default async function ControleursPage({
       </nav>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{event.title}</h1>
+        <h1 className="text-xl font-bold break-words text-slate-900 sm:text-2xl">
+          {event.title}
+        </h1>
         <p className="text-sm text-slate-500">
           Ajoutez des contrôleurs autorisés à scanner les tickets de cet
           événement. Ils n&apos;ont accès qu&apos;au scanner — aucune gestion ni

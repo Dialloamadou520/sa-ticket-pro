@@ -16,20 +16,25 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Vue d&apos;ensemble</h1>
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+            Vue d&apos;ensemble
+          </h1>
           <p className="text-sm text-slate-500">
             Suivez les performances de vos événements.
           </p>
         </div>
-        <LinkButton href="/dashboard/evenements/nouveau">
+        <LinkButton
+          href="/dashboard/evenements/nouveau"
+          className="w-full justify-center sm:w-auto"
+        >
           Créer un événement
         </LinkButton>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Événements" value={String(stats.totalEvents)} icon={CalendarDays} />
         <StatCard label="Publiés" value={String(stats.publishedEvents)} icon={TrendingUp} />
         <StatCard
@@ -45,7 +50,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-5">
           <h2 className="font-semibold text-slate-900">Événements récents</h2>
           <Link href="/dashboard/evenements" className="text-sm text-brand-600 hover:underline">
             Tout voir
@@ -58,11 +63,14 @@ export default async function DashboardPage() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {events.slice(0, 5).map((event) => (
-              <li key={event.id} className="flex items-center justify-between gap-4 px-5 py-4">
+              <li
+                key={event.id}
+                className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
+              >
                 <div className="min-w-0">
                   <Link
                     href={`/dashboard/evenements/${event.id}/modifier`}
-                    className="truncate font-medium text-slate-900 hover:text-brand-600"
+                    className="block truncate font-medium text-slate-900 hover:text-brand-600"
                   >
                     {event.title}
                   </Link>
@@ -71,7 +79,9 @@ export default async function DashboardPage() {
                     {event.capacity} vendus
                   </p>
                 </div>
-                <EventStatusBadge status={event.status} />
+                <div className="shrink-0">
+                  <EventStatusBadge status={event.status} />
+                </div>
               </li>
             ))}
           </ul>

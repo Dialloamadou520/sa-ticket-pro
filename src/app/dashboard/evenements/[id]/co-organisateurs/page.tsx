@@ -32,7 +32,9 @@ export default async function CoOrganisateursPage({
       </nav>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{event.title}</h1>
+        <h1 className="text-xl font-bold break-words text-slate-900 sm:text-2xl">
+          {event.title}
+        </h1>
         <p className="text-sm text-slate-500">
           Ajoutez des co-organisateurs qui pourront gérer cet événement
           (modifier, participants, contrôleurs). Ils n&apos;ont pas accès à vos

@@ -36,7 +36,9 @@ export default async function MesEvenementsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Mes événements</h1>
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+            Mes événements
+          </h1>
           {rows.length > 0 && (
             <p className="mt-1 text-sm text-slate-500">
               {rows.length} événement{rows.length > 1 ? "s" : ""}
@@ -60,7 +62,7 @@ export default async function MesEvenementsPage() {
           </LinkButton>
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
           {rows.map(({ event, isOwner }) => (
             <EventCard key={event.id} event={event} isOwner={isOwner} />
           ))}
@@ -69,6 +71,10 @@ export default async function MesEvenementsPage() {
     </div>
   );
 }
+
+/** Action d'une carte : cible tactile confortable sur mobile. */
+const ACTION_CLASS =
+  "flex min-h-11 items-center gap-1.5 rounded-lg bg-white px-2.5 text-sm text-slate-600 ring-1 ring-slate-200 hover:text-slate-900 sm:min-h-0 sm:bg-transparent sm:px-2 sm:py-1 sm:ring-0 sm:hover:bg-white";
 
 function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
   const capacity = event.capacity || 0;
@@ -162,39 +168,39 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 border-t border-slate-100 bg-slate-50/60 px-3 py-2.5">
+      <div className="grid grid-cols-2 gap-1 border-t border-slate-100 bg-slate-50/60 p-2 sm:flex sm:flex-wrap sm:items-center sm:gap-1 sm:px-3 sm:py-2.5">
         <Link
           href={`/dashboard/evenements/${event.id}/participants`}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
+          className={ACTION_CLASS}
         >
-          <Users className="h-4 w-4" />
+          <Users className="h-4 w-4 shrink-0" />
           Participants
         </Link>
         <Link
           href={`/dashboard/evenements/${event.id}/controleurs`}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
+          className={ACTION_CLASS}
         >
-          <ShieldCheck className="h-4 w-4" />
+          <ShieldCheck className="h-4 w-4 shrink-0" />
           Contrôleurs
         </Link>
         {isOwner && (
           <Link
             href={`/dashboard/evenements/${event.id}/co-organisateurs`}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
+            className={ACTION_CLASS}
           >
-            <UserCog className="h-4 w-4" />
-            Co-organisateurs
+            <UserCog className="h-4 w-4 shrink-0" />
+            <span className="truncate">Co-organisateurs</span>
           </Link>
         )}
         <Link
           href={`/dashboard/evenements/${event.id}/modifier`}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
+          className={ACTION_CLASS}
         >
-          <Pencil className="h-4 w-4" />
+          <Pencil className="h-4 w-4 shrink-0" />
           Modifier
         </Link>
         {isOwner && (
-          <div className="ml-auto">
+          <div className="col-span-2 flex justify-end sm:ml-auto">
             <DeleteEventButton id={event.id} />
           </div>
         )}
