@@ -54,7 +54,7 @@ export function EventCommissionEditor({
           onChange={(e) => setValue(e.target.value)}
           disabled={pending}
           aria-label="Taux de commission (%)"
-          className="w-16 rounded-lg border border-slate-300 py-1 pl-2 pr-5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+          className="h-10 w-20 rounded-lg border border-slate-300 pl-2 pr-5 text-sm sm:h-auto sm:w-16 sm:py-1 text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
         />
         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
           %
@@ -65,7 +65,7 @@ export function EventCommissionEditor({
         onClick={save}
         disabled={pending || !dirty || !valid}
         title="Enregistrer le taux"
-        className="flex h-7 w-7 items-center justify-center rounded-lg border border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-40"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-40 sm:h-7 sm:w-7"
       >
         <Check className="h-4 w-4" />
       </button>

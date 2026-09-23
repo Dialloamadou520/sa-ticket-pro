@@ -41,7 +41,9 @@ export function PayoutActions({
         await fn();
         toast.success(success);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Action impossible.");
+        toast.error(
+          error instanceof Error ? error.message : "Action impossible.",
+        );
       }
     });
   }
@@ -53,12 +55,14 @@ export function PayoutActions({
           type="button"
           disabled={pending}
           onClick={() => {
-            if (!window.confirm(`Envoyer ${label} ? L'argent part immédiatement.`)) {
+            if (
+              !window.confirm(`Envoyer ${label} ? L'argent part immédiatement.`)
+            ) {
               return;
             }
             run(() => sendPayout(id), "Reversement envoyé.");
           }}
-          className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:min-h-0 sm:px-2.5 sm:py-1.5"
         >
           <Send className="h-3.5 w-3.5" />
           Envoyer
@@ -69,7 +73,9 @@ export function PayoutActions({
         <button
           type="button"
           disabled={pending}
-          onClick={() => run(() => refreshPayoutStatus(id), "Statut actualisé.")}
+          onClick={() =>
+            run(() => refreshPayoutStatus(id), "Statut actualisé.")
+          }
           className={BTN}
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -82,7 +88,8 @@ export function PayoutActions({
           type="button"
           disabled={pending}
           onClick={() => {
-            if (!window.confirm(`Marquer ${label} comme payé à la main ?`)) return;
+            if (!window.confirm(`Marquer ${label} comme payé à la main ?`))
+              return;
             run(() => markPayoutPaid(id), "Reversement marqué payé.");
           }}
           className={BTN}
@@ -97,7 +104,7 @@ export function PayoutActions({
           type="button"
           disabled={pending}
           onClick={() => run(() => cancelPayout(id), "Demande annulée.")}
-          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-0 sm:px-2.5 sm:py-1.5"
         >
           <Ban className="h-3.5 w-3.5" />
           Annuler

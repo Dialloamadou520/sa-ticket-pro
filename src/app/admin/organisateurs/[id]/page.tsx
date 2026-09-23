@@ -31,7 +31,7 @@ export default async function OrganizerDetailPage({
   const paidPayments = payments.filter((p) => p.status === "paid");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
         <Link
           href="/admin"
@@ -43,7 +43,7 @@ export default async function OrganizerDetailPage({
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-xl font-bold break-words text-slate-900 sm:text-2xl">
                 {organizer.company_name}
               </h1>
               {organizer.disabled ? (
@@ -60,8 +60,9 @@ export default async function OrganizerDetailPage({
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-slate-500">
-              {organizer.owner?.full_name || "—"} · {organizer.owner?.email ?? "—"}
+            <p className="mt-1 break-words text-sm text-slate-500">
+              {organizer.owner?.full_name || "—"} ·{" "}
+              {organizer.owner?.email ?? "—"}
               {organizer.owner?.phone ? ` · ${organizer.owner.phone}` : ""}
             </p>
             <p className="text-xs text-slate-400">
@@ -77,7 +78,7 @@ export default async function OrganizerDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <AdminStatCard
           label="Événements"
           value={String(organizer.eventsCount)}
@@ -103,11 +104,16 @@ export default async function OrganizerDetailPage({
           icon={Percent}
           accent="amber"
         />
-        <AdminStatCard label="Scans (entrées)" value={String(scansCount)} icon={ScanLine} accent="rose" />
+        <AdminStatCard
+          label="Scans (entrées)"
+          value={String(scansCount)}
+          icon={ScanLine}
+          accent="rose"
+        />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
             <CalendarDays className="h-5 w-5" />
           </span>
@@ -123,47 +129,70 @@ export default async function OrganizerDetailPage({
             Aucun événement.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Titre</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Statut</th>
-                  <th className="px-5 py-3">Prix</th>
-                  <th className="px-5 py-3">Vendus</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {events.map((e) => (
-                  <tr key={e.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-900">{e.title}</td>
-                    <td className="px-5 py-3 text-slate-500">
-                      {formatDateShort(e.starts_at)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">
-                      {EVENT_STATUS_LABELS[e.status] ?? e.status}
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">{formatPrice(e.price)}</td>
-                    <td className="px-5 py-3 text-slate-500">
-                      {e.tickets_sold} / {e.capacity}
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end">
-                        <AdminDeleteEventButton id={e.id} title={e.title} />
-                      </div>
-                    </td>
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {events.map((e) => (
+                <li key={e.id} className="space-y-2 p-4">
+                  <p className="font-medium text-slate-900">{e.title}</p>
+                  <p className="text-xs text-slate-500">
+                    {formatDateShort(e.starts_at)} ·{" "}
+                    {EVENT_STATUS_LABELS[e.status] ?? e.status} ·{" "}
+                    {formatPrice(e.price)} · {e.tickets_sold}/{e.capacity}{" "}
+                    vendus
+                  </p>
+                  <AdminDeleteEventButton id={e.id} title={e.title} />
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Titre</th>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Statut</th>
+                    <th className="px-5 py-3">Prix</th>
+                    <th className="px-5 py-3">Vendus</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {events.map((e) => (
+                    <tr
+                      key={e.id}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-3 font-medium text-slate-900">
+                        {e.title}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {formatDateShort(e.starts_at)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {EVENT_STATUS_LABELS[e.status] ?? e.status}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {formatPrice(e.price)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {e.tickets_sold} / {e.capacity}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end">
+                          <AdminDeleteEventButton id={e.id} title={e.title} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
             <Wallet className="h-5 w-5" />
           </span>
@@ -175,7 +204,8 @@ export default async function OrganizerDetailPage({
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              {paidPayments.length} payé(s) · {formatAmount(organizer.revenue)} encaissés
+              {paidPayments.length} payé(s) · {formatAmount(organizer.revenue)}{" "}
+              encaissés
             </p>
           </div>
         </div>
@@ -184,34 +214,65 @@ export default async function OrganizerDetailPage({
             Aucun paiement.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Acheteur</th>
-                  <th className="px-5 py-3">Montant</th>
-                  <th className="px-5 py-3">Fournisseur</th>
-                  <th className="px-5 py-3">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {payments.slice(0, 50).map((p) => (
-                  <tr key={p.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-5 py-3 text-slate-500">
-                      {formatDateShort(p.created_at)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">
+          <>
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {payments.slice(0, 50).map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-start justify-between gap-3 p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-900">
                       {p.guest_email ?? p.guest_name ?? "Compte"}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">{formatPrice(p.amount)}</td>
-                    <td className="px-5 py-3 capitalize text-slate-500">{p.provider}</td>
-                    <td className="px-5 py-3 text-slate-500">{p.status}</td>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatDateShort(p.created_at)} ·{" "}
+                      <span className="capitalize">{p.provider}</span> ·{" "}
+                      {p.status}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-medium text-slate-900">
+                    {formatPrice(p.amount)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Acheteur</th>
+                    <th className="px-5 py-3">Montant</th>
+                    <th className="px-5 py-3">Fournisseur</th>
+                    <th className="px-5 py-3">Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments.slice(0, 50).map((p) => (
+                    <tr
+                      key={p.id}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-3 text-slate-500">
+                        {formatDateShort(p.created_at)}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {p.guest_email ?? p.guest_name ?? "Compte"}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {formatPrice(p.amount)}
+                      </td>
+                      <td className="px-5 py-3 capitalize text-slate-500">
+                        {p.provider}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">{p.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

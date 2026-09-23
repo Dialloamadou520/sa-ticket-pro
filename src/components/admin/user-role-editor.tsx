@@ -71,7 +71,7 @@ export function UserRoleEditor({
         onChange={(e) => setValue(e.target.value as UserRole)}
         disabled={pending}
         aria-label="Rôle de l'utilisateur"
-        className="rounded-lg border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+        className="h-10 rounded-lg border border-slate-300 px-2 text-sm sm:h-auto sm:py-1 text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
       >
         {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
           <option key={r} value={r}>
@@ -84,7 +84,7 @@ export function UserRoleEditor({
         onClick={save}
         disabled={pending || value === saved}
         title="Enregistrer le rôle"
-        className="flex h-7 w-7 items-center justify-center rounded-lg border border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-40"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-40 sm:h-7 sm:w-7"
       >
         <Check className="h-4 w-4" />
       </button>
