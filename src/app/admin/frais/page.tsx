@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Receipt } from "lucide-react";
 import { ServiceFeePercentEditor } from "@/components/admin/service-fee-percent-editor";
 import { TierFeePercentEditor } from "@/components/admin/tier-fee-percent-editor";
+import { EventFeeEditor } from "@/components/admin/event-fee-editor";
 import { getEventsWithTiers } from "@/lib/data/admin";
 import { getServiceFeePercent } from "@/lib/data/settings";
 import { feeForUnitPrice, resolveFeePercent } from "@/lib/payments/commission";
@@ -16,6 +17,8 @@ export default async function AdminFeesPage() {
     getEventsWithTiers(),
   ]);
   const withTiers = events.filter((e) => e.tiers.length > 0);
+  const feeLabel = (payer: string) =>
+    payer === "organizer" ? "payés par l'organisateur" : "payés par l'acheteur";
 
   return (
     <div className="space-y-6">
@@ -50,12 +53,58 @@ export default async function AdminFeesPage() {
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-4 sm:p-5">
+          <h2 className="font-semibold text-slate-900">Frais par événement</h2>
+          <p className="text-xs text-slate-500">
+            Taux propre à l&apos;événement (champ vide = taux global{" "}
+            {globalPercent} %) et qui le paie. Par défaut les frais sont ajoutés
+            au prix et payés par l&apos;acheteur ; « payés par
+            l&apos;organisateur » les retient sur ses revenus (l&apos;acheteur
+            paie alors le prix affiché). Les paiements déjà encaissés ne
+            changent pas.
+          </p>
+        </div>
+        {events.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            Aucun événement.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {events.map((event) => (
+              <li
+                key={event.id}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-5"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium break-words text-slate-900">
+                    {event.title}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {event.fee_percent == null
+                      ? `Taux global (${globalPercent} %)`
+                      : `${event.fee_percent} %`}{" "}
+                    — {feeLabel(event.fee_payer)}
+                  </p>
+                </div>
+                <EventFeeEditor
+                  eventId={event.id}
+                  percent={event.fee_percent}
+                  payer={event.fee_payer}
+                  globalPercent={globalPercent}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
           <h2 className="font-semibold text-slate-900">
             Frais par catégorie de ticket
           </h2>
           <p className="text-xs text-slate-500">
-            Laissez le champ vide pour suivre le taux global ({globalPercent}{" "}
-            %).
+            Laissez le champ vide pour suivre le taux de l&apos;événement (ou, à
+            défaut, le taux global de {globalPercent} %).
           </p>
         </div>
         {withTiers.length === 0 ? (
@@ -66,13 +115,17 @@ export default async function AdminFeesPage() {
           <div className="divide-y divide-slate-100">
             {withTiers.map((event) => (
               <div key={event.id} className="p-4 sm:p-5">
-                <h3 className="mb-3 font-medium break-words text-slate-900">
+                <h3 className="font-medium break-words text-slate-900">
                   {event.title}
                 </h3>
+                <p className="mb-3 text-xs text-slate-500">
+                  Frais {feeLabel(event.fee_payer)}
+                </p>
                 <ul className="space-y-3 sm:hidden">
                   {event.tiers.map((tier) => {
                     const percent = resolveFeePercent(
                       tier.fee_percent,
+                      event.fee_percent,
                       globalPercent,
                     );
                     const fee = feeForUnitPrice(tier.price, percent);
@@ -92,7 +145,12 @@ export default async function AdminFeesPage() {
                         <p className="text-xs text-slate-500">
                           Frais {formatAmount(fee)} ({percent} %
                           {tier.fee_percent == null ? " — global" : ""}) · total
-                          acheteur {formatAmount(tier.price + fee)}
+                          acheteur{" "}
+                          {formatAmount(
+                            event.fee_payer === "organizer"
+                              ? tier.price
+                              : tier.price + fee,
+                          )}
                         </p>
                         <TierFeePercentEditor
                           tierId={tier.id}
@@ -110,7 +168,11 @@ export default async function AdminFeesPage() {
                         <th className="py-2 pr-4">Catégorie</th>
                         <th className="py-2 pr-4">Prix</th>
                         <th className="py-2 pr-4">Frais appliqués</th>
-                        <th className="py-2 pr-4">Total acheteur</th>
+                        <th className="py-2 pr-4">
+                          {event.fee_payer === "organizer"
+                            ? "Total acheteur (frais non ajoutés)"
+                            : "Total acheteur"}
+                        </th>
                         <th className="py-2">Taux de cette catégorie</th>
                       </tr>
                     </thead>
@@ -118,6 +180,7 @@ export default async function AdminFeesPage() {
                       {event.tiers.map((tier) => {
                         const percent = resolveFeePercent(
                           tier.fee_percent,
+                          event.fee_percent,
                           globalPercent,
                         );
                         const fee = feeForUnitPrice(tier.price, percent);
@@ -137,7 +200,11 @@ export default async function AdminFeesPage() {
                               </span>
                             </td>
                             <td className="py-3 pr-4 text-slate-700">
-                              {formatAmount(tier.price + fee)}
+                              {formatAmount(
+                                event.fee_payer === "organizer"
+                                  ? tier.price
+                                  : tier.price + fee,
+                              )}
                             </td>
                             <td className="py-3">
                               <TierFeePercentEditor

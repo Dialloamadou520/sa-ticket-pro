@@ -47,6 +47,14 @@ export default async function ReversementsPage() {
             {[
               { label: "Recettes encaissées", value: balance.revenue },
               { label: "Commission plateforme", value: -balance.commission },
+              ...(balance.serviceFee > 0
+                ? [
+                    {
+                      label: "Frais de service à votre charge",
+                      value: -balance.serviceFee,
+                    },
+                  ]
+                : []),
               { label: "Déjà reversé", value: balance.paidOut },
               { label: "Disponible", value: balance.available },
             ].map((card) => (
