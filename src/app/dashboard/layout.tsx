@@ -16,7 +16,7 @@ export default function DashboardLayout({
         </div>
       )}
       <div className="grid gap-6 lg:grid-cols-[240px_1fr] lg:gap-8">
-        <aside className="lg:sticky lg:top-20 lg:self-start">
+        <aside className="min-w-0 lg:sticky lg:top-20 lg:self-start">
           <DashboardSidebar />
         </aside>
         <div className="min-w-0">{children}</div>
