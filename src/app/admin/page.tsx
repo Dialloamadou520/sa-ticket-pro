@@ -17,6 +17,7 @@ import {
   Tag,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
+import { AdminEventsMobile } from "@/components/admin/admin-events-mobile";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { AdminPublishEventButton } from "@/components/admin/publish-event-button";
@@ -407,11 +408,11 @@ export default async function AdminPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex items-start gap-3 border-b border-slate-100 p-4 sm:items-center sm:p-5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             <CalendarDays className="h-5 w-5" />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="flex items-center font-semibold text-slate-900">
               Tous les événements
               <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
@@ -432,80 +433,22 @@ export default async function AdminPage() {
           </p>
         ) : (
           <>
-            <ul className="divide-y divide-slate-100 sm:hidden">
-              {allEvents.map((event) => {
-                const badge = STATUS_BADGE[event.status];
-                return (
-                  <li key={event.id} className="space-y-3 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900">
-                          {event.title}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {event.city ?? event.location} ·{" "}
-                          {formatDateShort(event.starts_at)}
-                        </p>
-                        {event.organizer && (
-                          <Link
-                            href={`/admin/organisateurs/${event.organizer.id}`}
-                            className="text-xs text-brand-700 hover:underline"
-                          >
-                            {event.organizer.company_name}
-                          </Link>
-                        )}
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
-                      >
-                        {badge.label}
-                      </span>
-                    </div>
-                    <dl className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <dt className="text-xs text-slate-500">Tickets</dt>
-                        <dd className="text-slate-800">
-                          {event.tickets_sold}/{event.capacity}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-slate-500">Revenus</dt>
-                        <dd className="font-medium text-slate-900">
-                          {formatAmount(event.revenue)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-slate-500">Commission</dt>
-                        <dd className="text-slate-800">
-                          {formatAmount(event.commission)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-slate-500">Taux</dt>
-                        <dd>
-                          <EventCommissionEditor
-                            id={event.id}
-                            rate={event.commissionRate}
-                          />
-                        </dd>
-                      </div>
-                    </dl>
-                    <div className="flex flex-wrap gap-2">
-                      {event.status !== "published" && (
-                        <AdminPublishEventButton
-                          id={event.id}
-                          title={event.title}
-                        />
-                      )}
-                      <AdminDeleteEventButton
-                        id={event.id}
-                        title={event.title}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <AdminEventsMobile
+              events={allEvents.map((event) => ({
+                id: event.id,
+                title: event.title,
+                place: event.city ?? event.location,
+                startsAt: event.starts_at,
+                status: event.status,
+                ticketsSold: event.tickets_sold,
+                capacity: event.capacity,
+                revenue: event.revenue,
+                commission: event.commission,
+                commissionRate: event.commissionRate,
+                organizerId: event.organizer?.id ?? null,
+                organizerName: event.organizer?.company_name ?? null,
+              }))}
+            />
             <div className="hidden overflow-x-auto sm:block">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
