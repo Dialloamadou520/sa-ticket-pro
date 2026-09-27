@@ -4,19 +4,31 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { submitContactMessage } from "@/app/contact/actions";
 
 export function ContactForm() {
   const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
     setLoading(true);
-    // Branchement email/Supabase à venir — confirmation optimiste pour l'instant.
-    setTimeout(() => {
-      setLoading(false);
+    const result = await submitContactMessage({
+      name: String(data.get("name") ?? ""),
+      email: String(data.get("email") ?? ""),
+      phone: String(data.get("phone") ?? ""),
+      subject: String(data.get("subject") ?? ""),
+      message: String(data.get("message") ?? ""),
+    });
+    setLoading(false);
+
+    if (result.ok) {
       toast.success("Message envoyé ! Nous vous répondrons rapidement.");
-      (e.target as HTMLFormElement).reset();
-    }, 600);
+      form.reset();
+    } else {
+      toast.error(result.error ?? "Envoi impossible.");
+    }
   }
 
   return (
@@ -30,6 +42,10 @@ export function ContactForm() {
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" required placeholder="vous@exemple.com" />
         </div>
+      </div>
+      <div>
+        <Label htmlFor="phone">Téléphone (facultatif)</Label>
+        <Input id="phone" name="phone" type="tel" placeholder="+221 77 000 00 00" />
       </div>
       <div>
         <Label htmlFor="subject">Sujet</Label>

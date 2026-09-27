@@ -495,3 +495,26 @@ export async function cancelPayout(id: string): Promise<void> {
   revalidatePath("/admin/reversements");
   revalidatePath("/dashboard/reversements");
 }
+
+/** Marque un message de contact comme traité (ou le rouvre). */
+export async function setContactMessageHandled(
+  id: string,
+  handled: boolean
+): Promise<void> {
+  await assertAdmin();
+  if (!isSupabaseConfigured) return;
+  const admin = createAdminClient();
+  await admin.from("contact_messages").update({ handled }).eq("id", id);
+  revalidatePath("/admin/messages");
+  revalidatePath("/admin");
+}
+
+/** Supprime définitivement un message de contact. */
+export async function deleteContactMessage(id: string): Promise<void> {
+  await assertAdmin();
+  if (!isSupabaseConfigured) return;
+  const admin = createAdminClient();
+  await admin.from("contact_messages").delete().eq("id", id);
+  revalidatePath("/admin/messages");
+  revalidatePath("/admin");
+}

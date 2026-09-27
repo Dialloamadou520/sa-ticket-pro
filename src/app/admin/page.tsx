@@ -17,6 +17,7 @@ import {
   Tag,
   Trash2,
   BellRing,
+  MessageSquare,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { AdminEventsMobile } from "@/components/admin/admin-events-mobile";
@@ -40,6 +41,7 @@ import {
 } from "@/lib/data/admin";
 import { getVisitStats } from "@/lib/data/analytics";
 import { getPendingPayoutAlert } from "@/lib/data/payouts";
+import { getUnhandledContactCount } from "@/lib/data/contact";
 import { getCurrentUser } from "@/lib/data/auth";
 import type { EventStatus } from "@/lib/types";
 import { getServiceFeePercent } from "@/lib/data/settings";
@@ -74,6 +76,7 @@ export default async function AdminPage() {
     serviceFeePercent,
     currentUser,
     payoutAlert,
+    unhandledMessages,
   ] = await Promise.all([
     getAdminStats(),
     getVisitStats(),
@@ -85,6 +88,7 @@ export default async function AdminPage() {
     getServiceFeePercent(),
     getCurrentUser(),
     getPendingPayoutAlert(),
+    getUnhandledContactCount(),
   ]);
 
   const maxTopPage = Math.max(1, ...visits.topPages.map((p) => p.count));
@@ -123,6 +127,15 @@ export default async function AdminPage() {
             <Link href="/admin/tickets" className={HERO_LINK_CLASS}>
               <TicketCheck className="h-4 w-4" />
               Récupérer un ticket perdu
+            </Link>
+            <Link href="/admin/messages" className={HERO_LINK_CLASS}>
+              <MessageSquare className="h-4 w-4" />
+              Messages
+              {unhandledMessages > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white">
+                  {unhandledMessages}
+                </span>
+              )}
             </Link>
             <Link href="/admin/corbeille" className={HERO_LINK_CLASS}>
               <Trash2 className="h-4 w-4" />
