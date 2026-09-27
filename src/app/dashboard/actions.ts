@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { slugify } from "@/lib/slug";
 import { normalizeSenegalPhone } from "@/lib/payments/dexpay";
 import { getMyPayoutPage } from "@/lib/data/payouts";
+import { archiveEvent } from "@/lib/data/event-trash";
 import { MIN_PAYOUT_AMOUNT, PAYOUT_OPERATORS } from "@/lib/payments/payout";
 import type { PayoutOperator, TicketType } from "@/lib/types";
 
@@ -243,6 +244,9 @@ export async function deleteEvent(id: string): Promise<void> {
   if (!isSupabaseConfigured) return;
   // Seul le propriétaire (ou l'admin) peut supprimer, pas un co-organisateur.
   if (!(await canOwnEvent(id))) return;
+  // Archivé avant suppression : l'administrateur peut le restaurer depuis la
+  // corbeille si l'organisateur s'est trompé.
+  await archiveEvent(id, null);
   const admin = createAdminClient();
   await admin.from("events").delete().eq("id", id);
   revalidatePath("/dashboard/evenements");

@@ -15,6 +15,7 @@ import {
   BarChart3,
   TicketCheck,
   Tag,
+  Trash2,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { AdminEventsMobile } from "@/components/admin/admin-events-mobile";
@@ -113,6 +114,10 @@ export default async function AdminPage() {
             <Link href="/admin/tickets" className={HERO_LINK_CLASS}>
               <TicketCheck className="h-4 w-4" />
               Récupérer un ticket perdu
+            </Link>
+            <Link href="/admin/corbeille" className={HERO_LINK_CLASS}>
+              <Trash2 className="h-4 w-4" />
+              Corbeille
             </Link>
           </div>
         </div>

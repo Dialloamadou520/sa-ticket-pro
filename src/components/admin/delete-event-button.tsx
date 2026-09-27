@@ -22,7 +22,7 @@ export function AdminDeleteEventButton({
     }
     if (
       !window.confirm(
-        `Supprimer définitivement « ${title} » ? Ses tickets, paiements et scans seront aussi supprimés. Cette action est irréversible.`,
+        `Supprimer « ${title} » ? Ses tickets, paiements et scans partent aussi. L'événement reste récupérable depuis la corbeille.`,
       )
     ) {
       return;
@@ -30,7 +30,7 @@ export function AdminDeleteEventButton({
     startTransition(async () => {
       try {
         await deleteEventAsAdmin(id);
-        toast.success("Événement supprimé.");
+        toast.success("Événement supprimé — récupérable dans la corbeille.");
       } catch {
         toast.error("Suppression impossible. Réessayez.");
       }

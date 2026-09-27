@@ -6,6 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { DiscountType, FeePayer, Payout, UserRole } from "@/lib/types";
 import { createDexpayPayout, getDexpayPayout } from "@/lib/payments/dexpay";
+import {
+  archiveEvent,
+  purgeDeletedEvent,
+  restoreEvent,
+} from "@/lib/data/event-trash";
 import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
 
 const USER_ROLES: UserRole[] = ["participant", "organizer", "admin"];
@@ -132,15 +137,35 @@ export async function publishEventAsAdmin(id: string) {
 }
 
 /**
- * Supprime définitivement un événement (et, par cascade, ses tickets, paliers,
- * paiements, contrôleurs et scans). Réservé aux administrateurs.
+ * Supprime un événement (et, par cascade, ses tickets, paliers, paiements,
+ * contrôleurs et scans). L'événement est d'abord archivé dans la corbeille
+ * `/admin/corbeille`, d'où l'administrateur peut le restaurer.
  */
 export async function deleteEventAsAdmin(id: string) {
   if (!isSupabaseConfigured) return;
-  await assertAdmin();
+  const adminId = await assertAdmin();
+  await archiveEvent(id, adminId);
   const admin = createAdminClient();
   await admin.from("events").delete().eq("id", id);
   revalidatePath("/admin");
+  revalidatePath("/admin/corbeille");
+}
+
+/** Remet en ligne un événement supprimé par erreur, avec ses tickets et ventes. */
+export async function restoreEventAsAdmin(id: string) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  await restoreEvent(id);
+  revalidatePath("/admin");
+  revalidatePath("/admin/corbeille");
+}
+
+/** Vide une entrée de la corbeille : l'événement n'est plus récupérable. */
+export async function purgeEventAsAdmin(id: string) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  await purgeDeletedEvent(id);
+  revalidatePath("/admin/corbeille");
 }
 
 /**
