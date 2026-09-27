@@ -8,6 +8,12 @@ export const SITE = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 } as const;
 
+export const SUPPORT_PHONES = [
+  { label: "+221 77 352 53 82", href: "tel:+221773525382" },
+  { label: "+221 71 117 93 93", href: "tel:+221711179393" },
+  { label: "+221 78 927 12 24", href: "tel:+221789271224" },
+] as const;
+
 export const CURRENCY_LABEL = "FCFA";
 
 export const TICKET_TYPE_LABELS: Record<string, string> = {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Globe, Mail, MessageCircle, Phone, Send } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { SITE } from "@/lib/constants";
+import { SITE, SUPPORT_PHONES } from "@/lib/constants";
 
 const columns: {
   title: string;
@@ -60,13 +60,16 @@ export function Footer() {
                 <Mail className="h-4 w-4 shrink-0 text-slate-400" />
                 contact@kaypass.com
               </a>
-              <a
-                href="tel:+221773525382"
-                className="inline-flex min-h-11 items-center gap-2 text-slate-600 transition-colors hover:text-brand-600 sm:min-h-0"
-              >
-                <Phone className="h-4 w-4 shrink-0 text-slate-400" />
-                +221 77 352 53 82
-              </a>
+              {SUPPORT_PHONES.map((phone) => (
+                <a
+                  key={phone.href}
+                  href={phone.href}
+                  className="inline-flex min-h-11 items-center gap-2 text-slate-600 transition-colors hover:text-brand-600 sm:min-h-0"
+                >
+                  <Phone className="h-4 w-4 shrink-0 text-slate-400" />
+                  {phone.label}
+                </a>
+              ))}
             </div>
             <div className="mt-4 flex gap-3">
               {[Globe, MessageCircle, Send].map((Icon, i) => (

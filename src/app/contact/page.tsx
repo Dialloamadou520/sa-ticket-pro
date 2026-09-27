@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { ContactForm } from "@/components/contact/contact-form";
+import { SUPPORT_PHONES } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -13,6 +14,8 @@ interface ContactInfo {
   label: string;
   lines: string[];
   href?: string;
+  /** Lien propre à chaque ligne (numéros multiples) ; prioritaire sur `href`. */
+  lineHrefs?: string[];
 }
 
 const infos: ContactInfo[] = [
@@ -25,8 +28,8 @@ const infos: ContactInfo[] = [
   {
     icon: Phone,
     label: "Service client",
-    lines: ["+221 77 352 53 82", "+221 71 117 93 93"],
-    href: "tel:+221773525382",
+    lines: SUPPORT_PHONES.map((p) => p.label),
+    lineHrefs: SUPPORT_PHONES.map((p) => p.href),
   },
   { icon: MapPin, label: "Adresse", lines: ["Saint-Louis, Sénégal"] },
 ];
@@ -55,11 +58,22 @@ export default function ContactPage() {
                   <p className="text-xs uppercase tracking-wide text-slate-400">
                     {info.label}
                   </p>
-                  {info.lines.map((line) => (
-                    <p key={line} className="break-words font-medium text-slate-800">
-                      {line}
-                    </p>
-                  ))}
+                  {info.lines.map((line, index) => {
+                    const lineHref = info.lineHrefs?.[index];
+                    return lineHref ? (
+                      <a
+                        key={line}
+                        href={lineHref}
+                        className="block break-words font-medium text-slate-800 hover:text-brand-700"
+                      >
+                        {line}
+                      </a>
+                    ) : (
+                      <p key={line} className="break-words font-medium text-slate-800">
+                        {line}
+                      </p>
+                    );
+                  })}
                 </div>
               </>
             );
