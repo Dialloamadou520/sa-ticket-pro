@@ -16,6 +16,7 @@ import {
   TicketCheck,
   Tag,
   Trash2,
+  BellRing,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { AdminEventsMobile } from "@/components/admin/admin-events-mobile";
@@ -38,6 +39,7 @@ import {
   getPendingEvents,
 } from "@/lib/data/admin";
 import { getVisitStats } from "@/lib/data/analytics";
+import { getPendingPayoutAlert } from "@/lib/data/payouts";
 import { getCurrentUser } from "@/lib/data/auth";
 import type { EventStatus } from "@/lib/types";
 import { getServiceFeePercent } from "@/lib/data/settings";
@@ -71,6 +73,7 @@ export default async function AdminPage() {
     users,
     serviceFeePercent,
     currentUser,
+    payoutAlert,
   ] = await Promise.all([
     getAdminStats(),
     getVisitStats(),
@@ -81,6 +84,7 @@ export default async function AdminPage() {
     getAllUsers(),
     getServiceFeePercent(),
     getCurrentUser(),
+    getPendingPayoutAlert(),
   ]);
 
   const maxTopPage = Math.max(1, ...visits.topPages.map((p) => p.count));
@@ -110,6 +114,11 @@ export default async function AdminPage() {
             <Link href="/admin/reversements" className={HERO_LINK_CLASS}>
               <Wallet className="h-4 w-4" />
               Reversements
+              {payoutAlert.count > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white">
+                  {payoutAlert.count}
+                </span>
+              )}
             </Link>
             <Link href="/admin/tickets" className={HERO_LINK_CLASS}>
               <TicketCheck className="h-4 w-4" />
@@ -122,6 +131,30 @@ export default async function AdminPage() {
           </div>
         </div>
       </div>
+
+      {payoutAlert.count > 0 && (
+        <Link
+          href="/admin/reversements"
+          className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-colors hover:bg-amber-100 sm:items-center sm:p-5"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+            <BellRing className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              {payoutAlert.count} demande(s) de reversement à traiter ·{" "}
+              {formatAmount(payoutAlert.total)}
+            </p>
+            <p className="mt-0.5 text-xs text-amber-800">
+              {payoutAlert.latest
+                .map((p) => `${p.organizerName} (${formatAmount(p.amount)})`)
+                .join(" · ")}
+              {payoutAlert.count > payoutAlert.latest.length && " …"}
+            </p>
+          </div>
+          <ChevronRight className="hidden h-5 w-5 shrink-0 text-amber-600 sm:block" />
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <AdminStatCard

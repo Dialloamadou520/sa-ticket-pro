@@ -170,6 +170,46 @@ export interface AdminPayout extends Payout {
   available: number;
 }
 
+/** Demandes de reversement en attente de traitement (notification admin). */
+export interface PendingPayoutAlert {
+  count: number;
+  total: number;
+  /** Les plus récentes d'abord, pour l'aperçu affiché dans `/admin`. */
+  latest: { id: string; organizerName: string; amount: number; createdAt: string }[];
+}
+
+/**
+ * Compte les demandes qu'un administrateur doit encore traiter
+ * (`requested` = en attente, `processing` = virement en cours de confirmation).
+ */
+export async function getPendingPayoutAlert(): Promise<PendingPayoutAlert> {
+  if (!isSupabaseConfigured) return { count: 0, total: 0, latest: [] };
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("payouts")
+    .select("id, amount, created_at, status, organizer:organizers(company_name)")
+    .in("status", ["requested", "processing"])
+    .order("created_at", { ascending: false });
+
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    amount: number;
+    created_at: string;
+    organizer: { company_name: string } | null;
+  }[];
+
+  return {
+    count: rows.length,
+    total: rows.reduce((sum, r) => sum + r.amount, 0),
+    latest: rows.slice(0, 3).map((r) => ({
+      id: r.id,
+      organizerName: r.organizer?.company_name ?? "Organisateur",
+      amount: r.amount,
+      createdAt: r.created_at,
+    })),
+  };
+}
+
 /** Toutes les demandes de reversement, pour l'administration. */
 export async function getAdminPayouts(): Promise<AdminPayout[]> {
   if (!isSupabaseConfigured) return [];
