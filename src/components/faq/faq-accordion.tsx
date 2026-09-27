@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface FaqItem {
@@ -13,25 +13,45 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+    <div className="space-y-3">
       {items.map((item, i) => {
         const isOpen = open === i;
         return (
-          <div key={i}>
+          <div
+            key={i}
+            className={cn(
+              "overflow-hidden rounded-2xl border bg-white transition-colors",
+              isOpen
+                ? "border-brand-300 shadow-sm ring-1 ring-brand-100"
+                : "border-slate-200 hover:border-brand-200"
+            )}
+          >
             <button
               onClick={() => setOpen(isOpen ? null : i)}
-              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+              aria-expanded={isOpen}
+              className="flex min-h-14 w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5"
             >
-              <span className="font-medium text-slate-900">{item.q}</span>
-              <ChevronRight
+              <span
                 className={cn(
-                  "h-5 w-5 shrink-0 text-slate-400 transition-transform",
-                  isOpen && "rotate-90"
+                  "font-semibold",
+                  isOpen ? "text-brand-800" : "text-slate-900"
                 )}
-              />
+              >
+                {item.q}
+              </span>
+              <span
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all",
+                  isOpen
+                    ? "rotate-45 bg-brand-600 text-white"
+                    : "bg-slate-100 text-slate-500"
+                )}
+              >
+                <Plus className="h-4 w-4" />
+              </span>
             </button>
             {isOpen && (
-              <p className="px-5 pb-5 text-sm leading-relaxed text-slate-600">
+              <p className="border-t border-slate-100 px-4 py-4 text-sm leading-relaxed text-slate-600 sm:px-5">
                 {item.a}
               </p>
             )}
