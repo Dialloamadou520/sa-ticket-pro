@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (ticket.status === "used") {
+    const firstEntry = await firstValidScan(admin, ticket.id);
     await admin
       .from("scans")
       .insert({ ticket_id: ticket.id, scanned_by: user.id, result: "already_used" });
@@ -117,6 +118,8 @@ export async function POST(request: NextRequest) {
       holder: ticket.holder_name,
       event: ticket.event?.title,
       message: "Ce ticket a déjà été utilisé.",
+      usedAt: firstEntry.usedAt,
+      usedBy: firstEntry.usedBy,
       ...(await eventCounts(admin, ticket.event_id)),
     });
   }
@@ -140,6 +143,37 @@ export async function POST(request: NextRequest) {
     message: "Entrée autorisée.",
     ...(await eventCounts(admin, ticket.event_id)),
   });
+}
+
+/**
+ * Date et auteur de la première entrée validée d'un ticket, pour informer le
+ * contrôleur de quand le ticket a été utilisé.
+ */
+async function firstValidScan(
+  admin: ReturnType<typeof createAdminClient>,
+  ticketId: string
+): Promise<{ usedAt: string | null; usedBy: string | null }> {
+  const { data } = await admin
+    .from("scans")
+    .select("created_at, scanned_by")
+    .eq("ticket_id", ticketId)
+    .eq("result", "valid")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return { usedAt: null, usedBy: null };
+
+  let usedBy: string | null = null;
+  if (data.scanned_by) {
+    const { data: scanner } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", data.scanned_by)
+      .maybeSingle();
+    usedBy = scanner?.full_name ?? null;
+  }
+  return { usedAt: data.created_at, usedBy };
 }
 
 /**

@@ -4,6 +4,7 @@ import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { formatDate, formatTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Vérification du ticket" };
 
@@ -13,7 +14,7 @@ export default async function VerifierPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const status = await getStatus(token);
+  const { status, usedAt } = await getStatus(token);
   const ok = status === "valid";
 
   return (
@@ -31,6 +32,11 @@ export default async function VerifierPage({
         {status === "used" && "Ce ticket a déjà été utilisé."}
         {status === "invalid" && "Aucun ticket ne correspond à ce code."}
       </p>
+      {status === "used" && usedAt && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800">
+          Utilisé le {formatDate(usedAt, "d MMMM yyyy")} à {formatTime(usedAt)}
+        </p>
+      )}
       <p className="mt-6 max-w-xs text-xs text-slate-400">
         Cette page confirme l&apos;authenticité du QR code. La validation
         définitive à l&apos;entrée se fait via le scanner de l&apos;organisateur.
@@ -42,16 +48,33 @@ export default async function VerifierPage({
   );
 }
 
-async function getStatus(token: string): Promise<"valid" | "used" | "invalid"> {
-  if (!isSupabaseConfigured) return "valid";
+async function getStatus(
+  token: string
+): Promise<{ status: "valid" | "used" | "invalid"; usedAt: string | null }> {
+  if (!isSupabaseConfigured) return { status: "valid", usedAt: null };
   // Le qr_token sert de jeton de capacité : on lit via le client service-role
   // pour que la page publique fonctionne même sans connexion (scan téléphone).
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("tickets")
-    .select("status")
+    .select("id, status")
     .eq("qr_token", token)
     .maybeSingle();
-  if (!data) return "invalid";
-  return data.status === "used" ? "used" : data.status === "valid" ? "valid" : "invalid";
+  if (!data) return { status: "invalid", usedAt: null };
+
+  if (data.status === "used") {
+    const { data: scan } = await supabase
+      .from("scans")
+      .select("created_at")
+      .eq("ticket_id", data.id)
+      .eq("result", "valid")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return { status: "used", usedAt: scan?.created_at ?? null };
+  }
+  return {
+    status: data.status === "valid" ? "valid" : "invalid",
+    usedAt: null,
+  };
 }
