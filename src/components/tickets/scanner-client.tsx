@@ -14,12 +14,15 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { formatDate, formatTime } from "@/lib/format";
 
 type Result = {
   result: "valid" | "already_used" | "invalid";
   holder?: string;
   event?: string;
   message?: string;
+  usedAt?: string | null;
+  usedBy?: string | null;
   ticketsTotal?: number;
   ticketsScanned?: number;
   ticketsRemaining?: number;
@@ -387,8 +390,16 @@ function ResultCard({ result }: { result: Result }) {
         {result.holder && (
           <p className="text-sm text-slate-500">Participant : {result.holder}</p>
         )}
-        {result.message && (
-          <p className="text-xs text-slate-500">{result.message}</p>
+        {result.usedAt ? (
+          <p className="mt-1 rounded-lg bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+            Utilisé le {formatDate(result.usedAt, "d MMMM yyyy")} à{" "}
+            {formatTime(result.usedAt)}
+            {result.usedBy ? ` · par ${result.usedBy}` : ""}
+          </p>
+        ) : (
+          result.message && (
+            <p className="text-xs text-slate-500">{result.message}</p>
+          )
         )}
       </div>
     </div>
