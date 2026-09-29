@@ -26,6 +26,54 @@ export interface TicketViewData {
   qrToken: string;
 }
 
+const QR_SIZE = 1024;
+
+/** QR (correction H) avec la pastille kaypass au centre. */
+async function buildQrWithLogo(url: string): Promise<string> {
+  const canvas = document.createElement("canvas");
+  await QRCode.toCanvas(canvas, url, {
+    width: QR_SIZE,
+    margin: 1,
+    errorCorrectionLevel: "H",
+    color: { dark: "#0f172a", light: "#ffffff" },
+  });
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas.toDataURL("image/png");
+
+  try {
+    const logo = new Image();
+    logo.src = "/logo-kaypass-mark.png";
+    await logo.decode();
+
+    const badge = canvas.width * 0.24;
+    const logoSize = badge * 0.78;
+    const center = canvas.width / 2;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.roundRect(
+      center - badge / 2,
+      center - badge / 2,
+      badge,
+      badge,
+      badge * 0.28
+    );
+    ctx.fill();
+    ctx.drawImage(
+      logo,
+      center - logoSize / 2,
+      center - logoSize / 2,
+      logoSize,
+      logoSize
+    );
+  } catch {
+    // logo indisponible : on garde le QR nu
+  }
+
+  return canvas.toDataURL("image/png");
+}
+
 export function TicketView({ ticket }: { ticket: TicketViewData }) {
   const [qr, setQr] = useState<string>("");
   const [fullscreen, setFullscreen] = useState(false);
@@ -33,12 +81,13 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
   const theme = getTierTheme(ticket.ticketType);
 
   useEffect(() => {
-    QRCode.toDataURL(`${SITE.url}/verifier/${ticket.qrToken}`, {
-      width: 1024,
-      margin: 1,
-      errorCorrectionLevel: "H",
-      color: { dark: "#0f172a", light: "#ffffff" },
-    }).then(setQr);
+    let cancelled = false;
+    buildQrWithLogo(`${SITE.url}/verifier/${ticket.qrToken}`).then((url) => {
+      if (!cancelled) setQr(url);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [ticket.qrToken]);
 
   useEffect(() => {
