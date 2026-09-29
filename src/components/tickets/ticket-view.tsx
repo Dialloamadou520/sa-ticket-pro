@@ -6,6 +6,7 @@ import { jsPDF } from "jspdf";
 import {
   CalendarDays,
   Download,
+  ImageDown,
   Maximize2,
   MapPin,
   Ticket as TicketIcon,
@@ -184,6 +185,121 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
     doc.save(`ticket-${ticket.id.slice(0, 8)}.pdf`);
   }
 
+  /** Même mise en page que le PDF, rendue en PNG (mesures en mm × échelle). */
+  async function downloadImage() {
+    const W = 148;
+    const H = 210;
+    const M = 12;
+    const S = 6; // px par mm
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W * S;
+    canvas.height = H * S;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(S, S);
+
+    const font = (size: number, weight = "400", family = "sans-serif") => {
+      ctx.font = `${weight} ${size * 0.3528}px ${family}`;
+    };
+    const roundRect = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      r: number,
+      color: string
+    ) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.fill();
+    };
+
+    roundRect(0, 0, W, H, 0, "#f1f5f9");
+    roundRect(M, 14, W - M * 2, 184, 5, "#ffffff");
+
+    const [r, g, b] = theme.pdf;
+    roundRect(M, 14, W - M * 2, 20, 5, `rgb(${r}, ${g}, ${b})`);
+    ctx.fillRect(M, 26, W - M * 2, 8);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "alphabetic";
+    font(16, "700");
+    ctx.fillText(SITE.name, M + 8, 27);
+    font(10, "700");
+    ctx.textAlign = "right";
+    ctx.fillText(ticket.ticketType.toUpperCase(), W - M - 8, 27);
+
+    const qrSize = 62;
+    if (qr) {
+      const img = new Image();
+      img.src = qr;
+      await img.decode();
+      ctx.drawImage(img, (W - qrSize) / 2, 42, qrSize, qrSize);
+    }
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#64748b";
+    font(9);
+    ctx.fillText("Présentez ce QR code à l'entrée", W / 2, 112);
+
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 0.3;
+    ctx.setLineDash([1.6, 1.6]);
+    ctx.beginPath();
+    ctx.moveTo(M + 8, 119);
+    ctx.lineTo(W - M - 8, 119);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.textAlign = "left";
+    const maxWidth = W - M * 2 - 16;
+    const clip = (text: string) => {
+      let out = text;
+      while (out.length > 4 && ctx.measureText(out).width > maxWidth) {
+        out = out.slice(0, -1);
+      }
+      return out === text ? text : `${out.trimEnd()}…`;
+    };
+
+    ctx.fillStyle = "#0f172a";
+    font(14, "700");
+    ctx.fillText(clip(ticket.eventTitle), M + 8, 130);
+
+    const fields: [string, string][] = [
+      ["DATE", ticket.date],
+      ["LIEU", ticket.location],
+      ["PARTICIPANT", ticket.holderName],
+      ["CATÉGORIE", ticket.ticketType],
+    ];
+    let y = 142;
+    for (const [label, value] of fields) {
+      font(7.5);
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(label, M + 8, y);
+      font(10, "700");
+      ctx.fillStyle = "#1e293b";
+      ctx.fillText(clip(value), M + 8, y + 5);
+      y += 11;
+    }
+
+    roundRect(M + 8, y - 1, 58, 9, 2, "#0f172a");
+    ctx.fillStyle = "#ffffff";
+    font(10, "700", "monospace");
+    ctx.fillText(`RÉF. ${reference}`, M + 12, y + 5.2);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#94a3b8";
+    font(8);
+    ctx.fillText(SITE.url.replace(/^https?:\/\//, ""), W / 2, 204);
+
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `ticket-${ticket.id.slice(0, 8)}.png`;
+    link.click();
+  }
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-200/70">
       {/* Bandeau coloré selon la catégorie */}
@@ -248,15 +364,26 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
           <p className="text-center text-xs text-slate-500">
             Touchez le QR pour l&apos;agrandir · à présenter à l&apos;entrée
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadPdf}
-            className="h-11 w-full"
-          >
-            <Download className="h-4 w-4" />
-            Télécharger PDF
-          </Button>
+          <div className="grid w-full grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadPdf}
+              className="h-11 w-full"
+            >
+              <Download className="h-4 w-4" />
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadImage}
+              className="h-11 w-full"
+            >
+              <ImageDown className="h-4 w-4" />
+              Image
+            </Button>
+          </div>
         </div>
 
         {/* Corps principal */}
