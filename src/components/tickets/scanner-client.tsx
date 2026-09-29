@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import {
   Camera,
@@ -10,6 +10,7 @@ import {
   Clock,
   Keyboard,
   CameraOff,
+  History,
   Ticket as TicketIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,16 @@ type Counter = {
   remaining: number;
 };
 
+type HistoryEntry = {
+  id: number;
+  at: Date;
+  result: Result["result"];
+  label: string;
+};
+
+const RESUME_DELAY_MS = 1800;
+const DUPLICATE_WINDOW_MS = 4000;
+
 function extractToken(value: string): string {
   const trimmed = value.trim();
   if (trimmed.includes("/verifier/")) {
@@ -59,15 +70,55 @@ function cameraErrorMessage(err: unknown): string {
   }
 }
 
+/** Vibration + bip court : le contrôleur n'a pas toujours l'écran sous les yeux. */
+function feedback(ok: boolean) {
+  navigator.vibrate?.(ok ? 60 : [50, 60, 50]);
+  try {
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!Ctor) return;
+    const ctx = new Ctor();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = ok ? 880 : 240;
+    gain.gain.value = 0.05;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (ok ? 0.12 : 0.28));
+    osc.onended = () => void ctx.close();
+  } catch {
+    /* audio indisponible */
+  }
+}
+
 export function ScannerClient() {
   const [result, setResult] = useState<Result | null>(null);
   const [counter, setCounter] = useState<Counter | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [continuous, setContinuous] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const continuousRef = useRef(continuous);
+  const lastScanRef = useRef<{ token: string; at: number } | null>(null);
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    continuousRef.current = continuous;
+  }, [continuous]);
+
+  useEffect(
+    () => () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    },
+    []
+  );
 
   async function verify(token: string) {
     if (!token) return;
@@ -79,26 +130,40 @@ export function ScannerClient() {
         body: JSON.stringify({ token: extractToken(token) }),
       });
       const data = (await res.json()) as Result & { error?: string };
-      if (!data.result) {
-        setResult({ result: "invalid", message: data.error ?? "Vérification impossible." });
-      } else {
-        setResult(data);
-        if (
-          data.event &&
-          typeof data.ticketsTotal === "number" &&
-          typeof data.ticketsScanned === "number" &&
-          typeof data.ticketsRemaining === "number"
-        ) {
-          setCounter({
-            event: data.event,
-            total: data.ticketsTotal,
-            scanned: data.ticketsScanned,
-            remaining: data.ticketsRemaining,
-          });
-        }
+      const next: Result = data.result
+        ? data
+        : { result: "invalid", message: data.error ?? "Vérification impossible." };
+
+      setResult(next);
+      feedback(next.result === "valid");
+      setHistory((prev) =>
+        [
+          {
+            id: Date.now(),
+            at: new Date(),
+            result: next.result,
+            label: next.holder ?? next.event ?? extractToken(token).slice(0, 8).toUpperCase(),
+          },
+          ...prev,
+        ].slice(0, 6)
+      );
+
+      if (
+        next.event &&
+        typeof next.ticketsTotal === "number" &&
+        typeof next.ticketsScanned === "number" &&
+        typeof next.ticketsRemaining === "number"
+      ) {
+        setCounter({
+          event: next.event,
+          total: next.ticketsTotal,
+          scanned: next.ticketsScanned,
+          remaining: next.ticketsRemaining,
+        });
       }
     } catch {
       setResult({ result: "invalid", message: "Erreur réseau." });
+      feedback(false);
     } finally {
       setLoading(false);
     }
@@ -142,17 +207,28 @@ export function ScannerClient() {
 
     const detector = Detector ? new Detector({ formats: ["qr_code"] }) : null;
 
+    const onCode = (raw: string) => {
+      const token = extractToken(raw);
+      const last = lastScanRef.current;
+      if (last && last.token === token && Date.now() - last.at < DUPLICATE_WINDOW_MS) {
+        return false;
+      }
+      lastScanRef.current = { token, at: Date.now() };
+      stopCamera();
+      verify(token);
+      if (continuousRef.current) {
+        resumeTimerRef.current = setTimeout(startCamera, RESUME_DELAY_MS);
+      }
+      return true;
+    };
+
     const tick = async () => {
       const video = videoRef.current;
       if (!video || !streamRef.current) return;
       try {
         if (detector) {
           const codes = await detector.detect(video);
-          if (codes[0]?.rawValue) {
-            stopCamera();
-            verify(codes[0].rawValue);
-            return;
-          }
+          if (codes[0]?.rawValue && onCode(codes[0].rawValue)) return;
         } else if (video.readyState === video.HAVE_ENOUGH_DATA) {
           const canvas = (canvasRef.current ??= document.createElement("canvas"));
           canvas.width = video.videoWidth;
@@ -164,11 +240,7 @@ export function ScannerClient() {
             const code = jsQR(img.data, img.width, img.height, {
               inversionAttempts: "dontInvert",
             });
-            if (code?.data) {
-              stopCamera();
-              verify(code.data);
-              return;
-            }
+            if (code?.data && onCode(code.data)) return;
           }
         }
       } catch {
@@ -199,12 +271,19 @@ export function ScannerClient() {
     setCameraOn(false);
   }
 
+  function stopScanning() {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = null;
+    stopCamera();
+  }
+
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-4">
+      {result && <ResultCard result={result} />}
       {counter && <CounterCard counter={counter} />}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative aspect-square overflow-hidden bg-slate-950 sm:aspect-video">
+      <div className="overflow-hidden rounded-3xl bg-slate-950 shadow-xl ring-1 ring-slate-900/10">
+        <div className="relative aspect-square overflow-hidden sm:aspect-video">
           {/* L'élément vidéo reste monté en permanence : sinon videoRef est
               null au moment d'attacher le flux et la caméra reste noire. */}
           <video
@@ -217,25 +296,45 @@ export function ScannerClient() {
           {cameraOn ? (
             <Viewfinder />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-400">
+            <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_50%_30%,#1e293b,#020617)] px-6 text-slate-400">
               <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 ring-1 ring-white/10">
                 <ScanLine className="h-8 w-8" />
               </span>
-              <p className="text-sm font-medium">Caméra désactivée</p>
+              <p className="text-sm font-semibold text-slate-200">
+                {loading ? "Vérification…" : "Caméra en veille"}
+              </p>
               <p className="max-w-xs text-center text-xs text-slate-500">
-                Activez la caméra pour scanner le QR code du ticket.
+                {continuous
+                  ? "Le scan reprend automatiquement après chaque ticket."
+                  : "Activez la caméra pour scanner le QR code du ticket."}
               </p>
             </div>
           )}
+
+          <span
+            className={`absolute left-3 top-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur ${
+              cameraOn
+                ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40"
+                : "bg-white/10 text-slate-300 ring-1 ring-white/15"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                cameraOn ? "animate-pulse bg-emerald-400" : "bg-slate-400"
+              }`}
+            />
+            {cameraOn ? "Scan en cours" : "En pause"}
+          </span>
         </div>
-        <div className="p-3 sm:p-4">
+
+        <div className="space-y-3 border-t border-white/5 p-3 sm:p-4">
           {cameraError && (
-            <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+            <p className="rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-300 ring-1 ring-red-400/20">
               {cameraError}
             </p>
           )}
           {cameraOn ? (
-            <Button variant="danger" size="lg" className="w-full" onClick={stopCamera}>
+            <Button variant="danger" size="lg" className="w-full" onClick={stopScanning}>
               <CameraOff className="h-4 w-4" />
               Arrêter la caméra
             </Button>
@@ -245,13 +344,22 @@ export function ScannerClient() {
               Scanner avec la caméra
             </Button>
           )}
-        </div>
-      </div>
 
-      <div className="flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
-        ou
-        <span className="h-px flex-1 bg-slate-200" />
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2.5 text-sm text-slate-300">
+            <span>
+              Scan continu
+              <span className="block text-[11px] text-slate-500">
+                Enchaîner les tickets sans rappuyer
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={continuous}
+              onChange={(e) => setContinuous(e.target.checked)}
+              className="h-5 w-9 cursor-pointer appearance-none rounded-full bg-slate-700 transition-colors before:block before:h-4 before:w-4 before:translate-x-0.5 before:rounded-full before:bg-white before:transition-transform checked:bg-brand-500 checked:before:translate-x-[1.125rem]"
+            />
+          </label>
+        </div>
       </div>
 
       <form
@@ -260,7 +368,7 @@ export function ScannerClient() {
           const input = new FormData(e.currentTarget).get("token");
           verify(String(input));
         }}
-        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+        className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
       >
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
@@ -288,7 +396,7 @@ export function ScannerClient() {
         </div>
       </form>
 
-      {result && <ResultCard result={result} />}
+      {history.length > 0 && <HistoryCard entries={history} />}
     </div>
   );
 }
@@ -297,7 +405,7 @@ function CounterCard({ counter }: { counter: Counter }) {
   const { event, total, scanned, remaining } = counter;
   const pct = total > 0 ? Math.round((scanned / total) * 100) : 0;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2 text-slate-800">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
           <TicketIcon className="h-4 w-4" />
@@ -305,24 +413,27 @@ function CounterCard({ counter }: { counter: Counter }) {
         <p className="truncate text-sm font-medium">{event}</p>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-brand-50 py-3">
+        <div className="rounded-2xl bg-brand-50 py-3 ring-1 ring-brand-100">
           <p className="text-2xl font-bold text-brand-700">{remaining}</p>
           <p className="mt-0.5 text-xs font-medium text-slate-500">Restants</p>
         </div>
-        <div className="rounded-xl bg-slate-50 py-3">
+        <div className="rounded-2xl bg-slate-50 py-3 ring-1 ring-slate-100">
           <p className="text-2xl font-bold text-slate-900">{scanned}</p>
           <p className="mt-0.5 text-xs font-medium text-slate-500">Scannés</p>
         </div>
-        <div className="rounded-xl bg-slate-50 py-3">
+        <div className="rounded-2xl bg-slate-50 py-3 ring-1 ring-slate-100">
           <p className="text-2xl font-bold text-slate-900">{total}</p>
           <p className="mt-0.5 text-xs font-medium text-slate-500">Total</p>
         </div>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-brand-500 transition-all"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="mt-3 flex items-center gap-3">
+        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-xs font-semibold text-slate-500">{pct} %</span>
       </div>
     </div>
   );
@@ -331,12 +442,12 @@ function CounterCard({ counter }: { counter: Counter }) {
 function Viewfinder() {
   return (
     <div className="pointer-events-none absolute inset-0">
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40" />
       <div className="absolute left-1/2 top-1/2 h-3/5 w-3/5 -translate-x-1/2 -translate-y-1/2">
-        <span className="absolute left-0 top-0 h-7 w-7 rounded-tl-lg border-l-4 border-t-4 border-white/90" />
-        <span className="absolute right-0 top-0 h-7 w-7 rounded-tr-lg border-r-4 border-t-4 border-white/90" />
-        <span className="absolute bottom-0 left-0 h-7 w-7 rounded-bl-lg border-b-4 border-l-4 border-white/90" />
-        <span className="absolute bottom-0 right-0 h-7 w-7 rounded-br-lg border-b-4 border-r-4 border-white/90" />
+        <span className="absolute left-0 top-0 h-8 w-8 rounded-tl-xl border-l-4 border-t-4 border-brand-300" />
+        <span className="absolute right-0 top-0 h-8 w-8 rounded-tr-xl border-r-4 border-t-4 border-brand-300" />
+        <span className="absolute bottom-0 left-0 h-8 w-8 rounded-bl-xl border-b-4 border-l-4 border-brand-300" />
+        <span className="absolute bottom-0 right-0 h-8 w-8 rounded-br-xl border-b-4 border-r-4 border-brand-300" />
         <span className="animate-scan-line absolute left-2 right-2 h-0.5 rounded-full bg-brand-400 shadow-[0_0_12px_2px] shadow-brand-400/70" />
       </div>
       <p className="absolute inset-x-0 bottom-3 text-center text-xs font-medium text-white/80">
@@ -346,62 +457,94 @@ function Viewfinder() {
   );
 }
 
-function ResultCard({ result }: { result: Result }) {
-  const config = {
-    valid: {
-      icon: CheckCircle2,
-      color: "text-brand-700",
-      bg: "bg-brand-50 border-brand-200",
-      tile: "bg-brand-600",
-      title: "Entrée autorisée",
-    },
-    already_used: {
-      icon: Clock,
-      color: "text-amber-700",
-      bg: "bg-amber-50 border-amber-200",
-      tile: "bg-amber-500",
-      title: "Déjà utilisé",
-    },
-    invalid: {
-      icon: XCircle,
-      color: "text-red-700",
-      bg: "bg-red-50 border-red-200",
-      tile: "bg-red-600",
-      title: "Ticket invalide",
-    },
-  }[result.result];
+const RESULT_STYLE = {
+  valid: {
+    icon: CheckCircle2,
+    card: "from-emerald-500 to-brand-600",
+    title: "Entrée autorisée",
+  },
+  already_used: {
+    icon: Clock,
+    card: "from-amber-400 to-orange-500",
+    title: "Déjà utilisé",
+  },
+  invalid: {
+    icon: XCircle,
+    card: "from-rose-500 to-red-600",
+    title: "Ticket invalide",
+  },
+} as const;
 
+function ResultCard({ result }: { result: Result }) {
+  const config = RESULT_STYLE[result.result];
   const Icon = config.icon;
 
   return (
     <div
-      className={`animate-pop-in flex items-center gap-3 rounded-2xl border p-4 shadow-sm sm:gap-4 sm:p-5 ${config.bg}`}
+      className={`animate-pop-in flex items-center gap-3 rounded-3xl bg-gradient-to-r p-4 text-white shadow-lg sm:gap-4 sm:p-5 ${config.card}`}
     >
-      <span
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${config.tile}`}
-      >
-        <Icon className="h-6 w-6" />
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">
+        <Icon className="h-7 w-7" />
       </span>
       <div className="min-w-0">
-        <p className={`font-semibold ${config.color}`}>{config.title}</p>
+        <p className="text-lg font-bold leading-tight">{config.title}</p>
         {result.event && (
-          <p className="truncate text-sm text-slate-700">{result.event}</p>
+          <p className="truncate text-sm text-white/90">{result.event}</p>
         )}
         {result.holder && (
-          <p className="text-sm text-slate-500">Participant : {result.holder}</p>
+          <p className="truncate text-sm font-medium text-white/80">
+            {result.holder}
+          </p>
         )}
         {result.usedAt ? (
-          <p className="mt-1 rounded-lg bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+          <p className="mt-1.5 inline-block rounded-lg bg-black/20 px-2 py-1 text-xs font-semibold">
             Utilisé le {formatDate(result.usedAt, "d MMMM yyyy")} à{" "}
             {formatTime(result.usedAt)}
             {result.usedBy ? ` · par ${result.usedBy}` : ""}
           </p>
         ) : (
           result.message && (
-            <p className="text-xs text-slate-500">{result.message}</p>
+            <p className="mt-1 text-xs text-white/80">{result.message}</p>
           )
         )}
       </div>
+    </div>
+  );
+}
+
+function HistoryCard({ entries }: { entries: HistoryEntry[] }) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-2 text-slate-800">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+          <History className="h-4 w-4" />
+        </span>
+        <p className="text-sm font-medium">Derniers scans</p>
+      </div>
+      <ul className="mt-3 divide-y divide-slate-100">
+        {entries.map((entry) => (
+          <li key={entry.id} className="flex items-center gap-3 py-2">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                entry.result === "valid"
+                  ? "bg-emerald-500"
+                  : entry.result === "already_used"
+                    ? "bg-amber-500"
+                    : "bg-red-500"
+              }`}
+            />
+            <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+              {entry.label}
+            </span>
+            <span className="shrink-0 font-mono text-xs text-slate-400">
+              {entry.at.toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
