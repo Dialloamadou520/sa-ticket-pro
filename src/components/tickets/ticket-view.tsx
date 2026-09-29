@@ -105,30 +105,81 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
 
   function downloadPdf() {
     const doc = new jsPDF({ unit: "mm", format: "a5" });
+    const W = 148;
+    const M = 12;
+
+    // fond
+    doc.setFillColor(241, 245, 249);
+    doc.rect(0, 0, W, 210, "F");
+
+    // carte
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(M, 14, W - M * 2, 184, 5, 5, "F");
+
+    // bandeau coloré
     doc.setFillColor(theme.pdf[0], theme.pdf[1], theme.pdf[2]);
-    doc.rect(0, 0, 148, 22, "F");
+    doc.roundedRect(M, 14, W - M * 2, 20, 5, 5, "F");
+    doc.rect(M, 26, W - M * 2, 8, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.text(SITE.name, 12, 14);
-    doc.setFontSize(11);
-    doc.text(ticket.ticketType, 136, 14, { align: "right" });
-
-    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text(ticket.eventTitle, 12, 38, { maxWidth: 124 });
+    doc.text(SITE.name, M + 8, 27);
+    doc.setFontSize(10);
+    doc.text(ticket.ticketType.toUpperCase(), W - M - 8, 27, { align: "right" });
 
-    doc.setFontSize(11);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Date : ${ticket.date}`, 12, 52);
-    doc.text(`Lieu : ${ticket.location}`, 12, 60);
-    doc.text(`Participant : ${ticket.holderName}`, 12, 68);
-    doc.text(`Catégorie : ${ticket.ticketType}`, 12, 76);
-    doc.text(`Réf : ${reference}`, 12, 84);
-
-    if (qr) doc.addImage(qr, "PNG", 83, 92, 54, 54);
+    // QR centré
+    const qrSize = 62;
+    if (qr) doc.addImage(qr, "PNG", (W - qrSize) / 2, 42, qrSize, qrSize);
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Présentez ce QR code à l'entrée", W / 2, 112, { align: "center" });
+
+    // perforation
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineDashPattern([1.6, 1.6], 0);
+    doc.line(M + 8, 119, W - M - 8, 119);
+    doc.setLineDashPattern([], 0);
+
+    // infos
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text(ticket.eventTitle, M + 8, 130, { maxWidth: W - M * 2 - 16 });
+
+    const fields: [string, string][] = [
+      ["DATE", ticket.date],
+      ["LIEU", ticket.location],
+      ["PARTICIPANT", ticket.holderName],
+      ["CATÉGORIE", ticket.ticketType],
+    ];
+    let y = 142;
+    for (const [label, value] of fields) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(label, M + 8, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+      doc.text(value, M + 8, y + 5, { maxWidth: W - M * 2 - 16 });
+      y += 11;
+    }
+
+    // référence
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(M + 8, y - 1, 58, 9, 2, 2, "F");
+    doc.setFont("courier", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`RÉF. ${reference}`, M + 12, y + 5.2);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text("Présentez ce QR code à l'entrée.", 12, 110);
+    doc.text(SITE.url.replace(/^https?:\/\//, ""), W / 2, 204, {
+      align: "center",
+    });
 
     doc.save(`ticket-${ticket.id.slice(0, 8)}.pdf`);
   }
