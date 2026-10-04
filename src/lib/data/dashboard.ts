@@ -7,6 +7,7 @@ import type {
   DiscountType,
   Event,
   Payment,
+  Profile,
   PromoCode,
   Ticket,
 } from "@/lib/types";
@@ -165,12 +166,17 @@ export async function getMyPromoCodeStats(): Promise<OrganizerPromoCodeStats[]> 
     .sort((a, b) => b.ticketsSold - a.ticketsSold || b.revenue - a.revenue);
 }
 
+export type Participant = Ticket & { phone: string | null };
+
 /**
- * Participants (tickets) d'un événement. L'accès est contrôlé en amont par la
- * page (propriétaire ou co-organisateur) ; on lit via le client service-role
- * pour que les co-organisateurs voient aussi la liste.
+ * Participants (tickets) d'un événement avec le téléphone de l'acheteur
+ * (numéro saisi à l'achat, sinon celui du profil). L'accès est contrôlé en
+ * amont par la page (propriétaire ou co-organisateur) ; on lit via le client
+ * service-role pour que les co-organisateurs voient aussi la liste.
  */
-export async function getEventParticipants(eventId: string): Promise<Ticket[]> {
+export async function getEventParticipants(
+  eventId: string
+): Promise<Participant[]> {
   if (!isSupabaseConfigured) return [];
   const admin = createAdminClient();
   const { data } = await admin
@@ -178,5 +184,41 @@ export async function getEventParticipants(eventId: string): Promise<Ticket[]> {
     .select("*")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
-  return (data as Ticket[]) ?? [];
+  const tickets = (data as Ticket[]) ?? [];
+
+  const paymentIds = [
+    ...new Set(tickets.map((t) => t.payment_id).filter((v): v is string => !!v)),
+  ];
+  const userIds = [
+    ...new Set(tickets.map((t) => t.user_id).filter((v): v is string => !!v)),
+  ];
+
+  const [payments, profiles] = await Promise.all([
+    paymentIds.length
+      ? admin.from("payments").select("id, customer_phone").in("id", paymentIds)
+      : Promise.resolve({ data: [] }),
+    userIds.length
+      ? admin.from("profiles").select("id, phone").in("id", userIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const phoneByPayment = new Map(
+    ((payments.data ?? []) as Pick<Payment, "id" | "customer_phone">[]).map(
+      (p) => [p.id, p.customer_phone ?? null]
+    )
+  );
+  const phoneByUser = new Map(
+    ((profiles.data ?? []) as Pick<Profile, "id" | "phone">[]).map((p) => [
+      p.id,
+      p.phone,
+    ])
+  );
+
+  return tickets.map((t) => ({
+    ...t,
+    phone:
+      (t.payment_id ? phoneByPayment.get(t.payment_id) : null) ??
+      (t.user_id ? phoneByUser.get(t.user_id) : null) ??
+      null,
+  }));
 }

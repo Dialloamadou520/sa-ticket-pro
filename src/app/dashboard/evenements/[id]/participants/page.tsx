@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Phone } from "lucide-react";
 import {
   DownloadParticipants,
   type ParticipantRow,
@@ -25,6 +25,7 @@ export default async function ParticipantsPage({
   const tickets = await getEventParticipants(id);
   const rows: ParticipantRow[] = tickets.map((t) => ({
     name: t.holder_name ?? "—",
+    phone: t.phone ?? "—",
     type: TICKET_TYPE_LABELS[t.ticket_type],
     status: t.status,
     reference: t.id.slice(0, 8).toUpperCase(),
@@ -76,6 +77,15 @@ export default async function ParticipantsPage({
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-slate-500">{r.type}</p>
+                {r.phone !== "—" && (
+                  <a
+                    href={`tel:${r.phone.replace(/\s/g, "")}`}
+                    className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 text-sm font-medium text-brand-700"
+                  >
+                    <Phone className="h-4 w-4" />
+                    {r.phone}
+                  </a>
+                )}
                 <p className="mt-2 text-xs text-slate-400">
                   {r.reference} · {r.date}
                 </p>
@@ -88,6 +98,7 @@ export default async function ParticipantsPage({
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-5 py-3">Nom</th>
+                <th className="px-5 py-3">Téléphone</th>
                 <th className="px-5 py-3">Type</th>
                 <th className="px-5 py-3">Statut</th>
                 <th className="px-5 py-3">Référence</th>
@@ -98,6 +109,18 @@ export default async function ParticipantsPage({
               {rows.map((r) => (
                 <tr key={r.reference}>
                   <td className="px-5 py-3 font-medium text-slate-900">{r.name}</td>
+                  <td className="px-5 py-3 whitespace-nowrap text-slate-500">
+                    {r.phone !== "—" ? (
+                      <a
+                        href={`tel:${r.phone.replace(/\s/g, "")}`}
+                        className="hover:text-brand-600"
+                      >
+                        {r.phone}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-slate-500">{r.type}</td>
                   <td className="px-5 py-3 text-slate-500">{r.status}</td>
                   <td className="px-5 py-3 text-slate-500">{r.reference}</td>

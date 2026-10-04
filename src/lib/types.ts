@@ -167,6 +167,8 @@ export interface Payment {
   service_fee?: number;
   /** Qui a supporté ces frais, figé au moment de l'achat. */
   fee_paid_by?: FeePayer;
+  /** Numéro saisi par l'acheteur lors de l'achat (+221…). */
+  customer_phone?: string | null;
   created_at: string;
 }
 
