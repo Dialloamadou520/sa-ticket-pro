@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  ChevronLeft,
   ChevronRight,
   CalendarDays,
   CalendarX,
@@ -37,51 +38,93 @@ export default async function AchatPage({
 
   return (
     <div className="bg-slate-50">
-      {/* Bandeau image de l'événement */}
-      <div className="relative h-44 w-full bg-slate-900 sm:h-64">
+      <div className="relative overflow-hidden bg-slate-950 text-white">
         {event.banner_url && (
           <Image
             src={event.banner_url}
-            alt={event.title}
+            alt=""
             fill
-            priority
             sizes="100vw"
-            className="object-cover opacity-60"
+            className="scale-110 object-cover opacity-40 blur-2xl"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-slate-900/30" />
-        <Container className="relative flex h-full flex-col justify-end pb-5 sm:pb-6">
-          <nav className="mb-2 flex items-center gap-1 text-xs text-white/70 sm:mb-3 sm:text-sm">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 to-slate-950/90" />
+        <Container className="relative py-4 sm:py-8">
+          <nav className="hidden items-center gap-1 text-sm text-white/70 sm:flex">
             <Link href="/explorer" className="hover:text-white">
               Explorer
             </Link>
             <ChevronRight className="h-4 w-4" />
             <Link
               href={`/evenements/${event.slug}`}
-              className="max-w-[10rem] truncate hover:text-white sm:max-w-none"
+              className="hover:text-white"
             >
               {event.title}
             </Link>
             <ChevronRight className="h-4 w-4" />
             <span className="text-white">Achat</span>
           </nav>
-          <div className="flex flex-wrap items-center gap-2">
-            {event.category && (
-              <Badge tone="brand" className="bg-white/15 text-white backdrop-blur">
-                {event.category.name}
-              </Badge>
-            )}
-            <Badge tone="purple" className="bg-white/15 text-white backdrop-blur">
-              {TICKET_TYPE_LABELS[event.ticket_type]}
-            </Badge>
+          <Link
+            href={`/evenements/${event.slug}`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-white/70 hover:text-white sm:hidden"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Retour à l&apos;événement
+          </Link>
+
+          <div className="mt-3 flex items-center gap-4 sm:mt-5">
+            <div className="relative h-24 w-[76px] shrink-0 overflow-hidden rounded-xl bg-slate-900 shadow-lg ring-1 ring-white/15 sm:h-32 sm:w-[102px]">
+              {event.banner_url ? (
+                <Image
+                  src={event.banner_url}
+                  alt={event.title}
+                  fill
+                  preload
+                  sizes="102px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-slate-500">
+                  <TicketIcon className="h-8 w-8" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {event.category && (
+                  <Badge tone="brand" className="bg-white/15 text-white backdrop-blur">
+                    {event.category.name}
+                  </Badge>
+                )}
+                <Badge tone="purple" className="bg-white/15 text-white backdrop-blur">
+                  {TICKET_TYPE_LABELS[event.ticket_type]}
+                </Badge>
+              </div>
+              <h1 className="mt-1.5 line-clamp-2 text-lg font-bold leading-tight sm:text-3xl">
+                {event.title}
+              </h1>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-white/75 sm:text-sm">
+                <span className="inline-flex items-center gap-1">
+                  <CalendarDays className="h-3.5 w-3.5 text-brand-300" />
+                  {formatDate(event.starts_at, "d MMM yyyy")}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-brand-300" />
+                  {formatTime(event.starts_at)}
+                </span>
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-300" />
+                  <span className="truncate">
+                    {[event.location, event.city].filter(Boolean).join(", ")}
+                  </span>
+                </span>
+              </div>
+            </div>
           </div>
-          <h1 className="mt-2 text-xl font-bold leading-tight text-white drop-shadow-sm sm:text-3xl">
-            {event.title}
-          </h1>
         </Container>
       </div>
 
-      <Container className="relative -mt-6 pb-16">
+      <Container className="relative pb-16 pt-4 sm:pt-8">
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
           {/* Formulaire */}
           <div className="lg:col-span-3">
@@ -129,7 +172,7 @@ export default async function AchatPage({
           {/* Récapitulatif */}
           <aside className="lg:col-span-2">
             <div className="sticky top-20 space-y-4">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
                 <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                     Récapitulatif
