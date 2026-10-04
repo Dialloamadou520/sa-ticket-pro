@@ -398,7 +398,11 @@ export interface OrganizerActivity {
   organizer: OrganizerWithStats;
   events: Event[];
   payments: Payment[];
-  scansCount: number;
+  /** Entrées réelles : tickets distincts validés au scanner. */
+  entriesCount: number;
+  entriesByEvent: Record<string, number>;
+  /** Tentatives refusées sur un ticket déjà utilisé (non comptées en entrées). */
+  repeatScans: number;
 }
 
 /** Détail d'activité d'un organisateur : événements, paiements, scans. */
@@ -425,24 +429,42 @@ export async function getOrganizerActivity(
   const eventIds = eventRows.map((e) => e.id);
 
   let paymentRows: Payment[] = [];
-  let scansCount = 0;
+  let entriesCount = 0;
+  let repeatScans = 0;
+  const entriesByEvent: Record<string, number> = {};
   if (eventIds.length > 0) {
-    const [{ data: payments }, { count }] = await Promise.all([
-      supabase
-        .from("payments")
-        .select("*")
-        .in("event_id", eventIds)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("scans")
-        .select("id, ticket:tickets!inner(event_id)", {
-          count: "exact",
-          head: true,
-        })
-        .in("ticket.event_id", eventIds),
-    ]);
+    const [{ data: payments }, usedCounts, { count: repeats }] =
+      await Promise.all([
+        supabase
+          .from("payments")
+          .select("*")
+          .in("event_id", eventIds)
+          .order("created_at", { ascending: false }),
+        Promise.all(
+          eventIds.map((eventId) =>
+            supabase
+              .from("tickets")
+              .select("id", { count: "exact", head: true })
+              .eq("event_id", eventId)
+              .eq("status", "used"),
+          ),
+        ),
+        supabase
+          .from("scans")
+          .select("id, ticket:tickets!inner(event_id)", {
+            count: "exact",
+            head: true,
+          })
+          .eq("result", "already_used")
+          .in("ticket.event_id", eventIds),
+      ]);
     paymentRows = (payments as Payment[]) ?? [];
-    scansCount = count ?? 0;
+    eventIds.forEach((eventId, i) => {
+      const n = usedCounts[i].count ?? 0;
+      entriesByEvent[eventId] = n;
+      entriesCount += n;
+    });
+    repeatScans = repeats ?? 0;
   }
 
   const rateByEvent = new Map<string, number>();
@@ -467,6 +489,8 @@ export async function getOrganizerActivity(
     },
     events: eventRows,
     payments: paymentRows,
-    scansCount,
+    entriesCount,
+    entriesByEvent,
+    repeatScans,
   };
 }

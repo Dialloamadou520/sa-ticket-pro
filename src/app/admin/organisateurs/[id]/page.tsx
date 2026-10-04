@@ -27,7 +27,8 @@ export default async function OrganizerDetailPage({
   const activity = await getOrganizerActivity(id);
   if (!activity) notFound();
 
-  const { organizer, events, payments, scansCount } = activity;
+  const { organizer, events, payments, entriesCount, entriesByEvent, repeatScans } =
+    activity;
   const paidPayments = payments.filter((p) => p.status === "paid");
 
   return (
@@ -105,8 +106,13 @@ export default async function OrganizerDetailPage({
           accent="amber"
         />
         <AdminStatCard
-          label="Scans (entrées)"
-          value={String(scansCount)}
+          label="Entrées (scannées)"
+          value={String(entriesCount)}
+          hint={
+            repeatScans > 0
+              ? `${repeatScans} re-scan(s) refusé(s) non compté(s)`
+              : undefined
+          }
           icon={ScanLine}
           accent="rose"
         />
@@ -138,7 +144,7 @@ export default async function OrganizerDetailPage({
                     {formatDateShort(e.starts_at)} ·{" "}
                     {EVENT_STATUS_LABELS[e.status] ?? e.status} ·{" "}
                     {formatPrice(e.price)} · {e.tickets_sold}/{e.capacity}{" "}
-                    vendus
+                    vendus · {entriesByEvent[e.id] ?? 0} entrées
                   </p>
                   <AdminDeleteEventButton id={e.id} title={e.title} />
                 </li>
@@ -153,6 +159,7 @@ export default async function OrganizerDetailPage({
                     <th className="px-5 py-3">Statut</th>
                     <th className="px-5 py-3">Prix</th>
                     <th className="px-5 py-3">Vendus</th>
+                    <th className="px-5 py-3">Entrées</th>
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -176,6 +183,9 @@ export default async function OrganizerDetailPage({
                       </td>
                       <td className="px-5 py-3 text-slate-500">
                         {e.tickets_sold} / {e.capacity}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">
+                        {entriesByEvent[e.id] ?? 0}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end">
