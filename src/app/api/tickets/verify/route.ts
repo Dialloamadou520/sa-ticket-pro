@@ -131,7 +131,29 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  await admin.from("tickets").update({ status: "used" }).eq("id", ticket.id);
+  // Passage valid → used atomique : si deux appareils scannent le même ticket
+  // en même temps, un seul obtient l'entrée.
+  const { data: claimed } = await admin
+    .from("tickets")
+    .update({ status: "used" })
+    .eq("id", ticket.id)
+    .eq("status", "valid")
+    .select("id");
+  if (!claimed || claimed.length === 0) {
+    const firstEntry = await firstValidScan(admin, ticket.id);
+    await admin
+      .from("scans")
+      .insert({ ticket_id: ticket.id, scanned_by: user.id, result: "already_used" });
+    return NextResponse.json({
+      result: "already_used",
+      holder: ticket.holder_name,
+      event: ticket.event?.title,
+      message: "Ce ticket a déjà été utilisé.",
+      usedAt: firstEntry.usedAt,
+      usedBy: firstEntry.usedBy,
+      ...(await eventCounts(admin, ticket.event_id)),
+    });
+  }
   await admin
     .from("scans")
     .insert({ ticket_id: ticket.id, scanned_by: user.id, result: "valid" });
