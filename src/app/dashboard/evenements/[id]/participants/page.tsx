@@ -28,7 +28,7 @@ export default async function ParticipantsPage({
     phone: t.phone ?? "—",
     type: TICKET_TYPE_LABELS[t.ticket_type],
     status: t.status,
-    reference: t.id.slice(0, 8).toUpperCase(),
+    reference: t.qr_token.slice(0, 8).toUpperCase(),
     date: formatDateShort(t.created_at),
   }));
 

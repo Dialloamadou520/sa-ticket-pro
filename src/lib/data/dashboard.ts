@@ -184,8 +184,13 @@ export async function getEventParticipants(
     .select("*")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
-  const tickets = (data as Ticket[]) ?? [];
+  return withBuyerPhones(admin, (data as Ticket[]) ?? []);
+}
 
+async function withBuyerPhones(
+  admin: ReturnType<typeof createAdminClient>,
+  tickets: Ticket[]
+): Promise<Participant[]> {
   const paymentIds = [
     ...new Set(tickets.map((t) => t.payment_id).filter((v): v is string => !!v)),
   ];
@@ -221,4 +226,57 @@ export async function getEventParticipants(
       (t.user_id ? phoneByUser.get(t.user_id) : null) ??
       null,
   }));
+}
+
+/**
+ * Récupération d'un ticket perdu côté organisateur : recherche par nom, email,
+ * référence du billet ou téléphone de l'acheteur, limitée aux événements que
+ * l'utilisateur gère (propriétaire ou co-organisateur).
+ */
+export async function searchMyEventTickets(
+  query: string
+): Promise<Participant[]> {
+  if (!isSupabaseConfigured) return [];
+  const q = query.trim().replace(/[%,()*]/g, "");
+  if (!q) return [];
+
+  const { owned, collaborated } = await getManageableEvents();
+  const eventIds = [...owned, ...collaborated].map((e) => e.id);
+  if (eventIds.length === 0) return [];
+
+  const admin = createAdminClient();
+  const like = `%${q}%`;
+  const filters = [
+    `holder_name.ilike.${like}`,
+    `holder_email.ilike.${like}`,
+    `qr_token.ilike.${like}`,
+  ];
+
+  const digits = q.replace(/\D/g, "");
+  if (digits.length >= 6) {
+    // Tolère les espaces / indicatif : « 77 352 53 82 », « +221773525382 »…
+    const phoneLike = `%${digits.slice(-9).split("").join("%")}%`;
+    const [{ data: pays }, { data: profs }] = await Promise.all([
+      admin
+        .from("payments")
+        .select("id")
+        .in("event_id", eventIds)
+        .ilike("customer_phone", phoneLike)
+        .limit(100),
+      admin.from("profiles").select("id").ilike("phone", phoneLike).limit(100),
+    ]);
+    const payIds = ((pays ?? []) as Pick<Payment, "id">[]).map((p) => p.id);
+    const userIds = ((profs ?? []) as Pick<Profile, "id">[]).map((p) => p.id);
+    if (payIds.length) filters.push(`payment_id.in.(${payIds.join(",")})`);
+    if (userIds.length) filters.push(`user_id.in.(${userIds.join(",")})`);
+  }
+
+  const { data } = await admin
+    .from("tickets")
+    .select("*, event:events(*)")
+    .in("event_id", eventIds)
+    .or(filters.join(","))
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return withBuyerPhones(admin, (data as Ticket[]) ?? []);
 }
