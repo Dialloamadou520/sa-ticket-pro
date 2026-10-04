@@ -183,6 +183,20 @@ export async function restoreEvent(eventId: string) {
     }
   }
 
+  // Le trigger increment_tickets_sold a recompté chaque ticket réinséré :
+  // on remet le compteur d'origine de l'événement.
+  const restoredTickets = snapshot.tickets ?? [];
+  if (restoredTickets.length > 0) {
+    const originalSold = snapshot.event.tickets_sold;
+    await admin
+      .from("events")
+      .update({
+        tickets_sold:
+          typeof originalSold === "number" ? originalSold : restoredTickets.length,
+      })
+      .eq("id", eventId);
+  }
+
   await admin.from("deleted_events").delete().eq("id", eventId);
 }
 
