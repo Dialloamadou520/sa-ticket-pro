@@ -12,10 +12,13 @@ import {
   Mail,
   Menu,
   PlusCircle,
+  Share,
+  Smartphone,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { SITE } from "@/lib/constants";
+import { promptInstall, useInstallState } from "@/components/pwa/install-store";
 
 interface NavLink {
   label: string;
@@ -38,6 +41,8 @@ export function MobileMenu({
   isAuthed: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [showIosHelp, setShowIosHelp] = useState(false);
+  const installState = useInstallState();
   // true uniquement côté client (sans setState dans un effet) → permet le portail.
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -114,6 +119,32 @@ export function MobileMenu({
             );
           })}
         </nav>
+
+        {(installState === "prompt" || installState === "ios") && (
+          <div className="border-t border-slate-200 p-3">
+            <button
+              type="button"
+              onClick={() =>
+                installState === "prompt"
+                  ? promptInstall()
+                  : setShowIosHelp((v) => !v)
+              }
+              className="flex w-full items-center gap-3 rounded-xl bg-brand-50 px-3 py-3 text-left text-base font-semibold text-brand-700"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
+                <Smartphone className="h-5 w-5" />
+              </span>
+              Installer l&apos;application
+            </button>
+            {installState === "ios" && showIosHelp && (
+              <p className="mt-2 px-3 text-sm text-slate-500">
+                Touchez <Share className="inline h-4 w-4 align-[-3px]" />{" "}
+                Partager en bas de Safari, puis « Sur l&apos;écran
+                d&apos;accueil ».
+              </p>
+            )}
+          </div>
+        )}
 
         {!isAuthed && (
           <div className="flex flex-col gap-2 border-t border-slate-200 p-4">

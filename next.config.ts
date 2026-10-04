@@ -11,6 +11,17 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
+    ];
+  },
   images: {
     // Les organisateurs collent des URL de bannière de n'importe quel hôte ;
     // on autorise donc toute image https (sinon next/image renvoie 400 et casse
