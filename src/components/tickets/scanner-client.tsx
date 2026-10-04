@@ -44,6 +44,8 @@ type HistoryEntry = {
 };
 
 const RESUME_DELAY_MS = 1800;
+const FLASH_OK_MS = 1500;
+const FLASH_KO_MS = 2600;
 const DUPLICATE_WINDOW_MS = 4000;
 
 function extractToken(value: string): string {
@@ -97,6 +99,9 @@ export function ScannerClient() {
   const [result, setResult] = useState<Result | null>(null);
   const [counter, setCounter] = useState<Counter | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [flash, setFlash] = useState<{ id: number; result: Result } | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [continuous, setContinuous] = useState(true);
@@ -120,6 +125,15 @@ export function ScannerClient() {
     []
   );
 
+  useEffect(() => {
+    if (!flash) return;
+    const timer = setTimeout(
+      () => setFlash(null),
+      flash.result.result === "valid" ? FLASH_OK_MS : FLASH_KO_MS
+    );
+    return () => clearTimeout(timer);
+  }, [flash]);
+
   async function verify(token: string) {
     if (!token) return;
     setLoading(true);
@@ -135,6 +149,7 @@ export function ScannerClient() {
         : { result: "invalid", message: data.error ?? "Vérification impossible." };
 
       setResult(next);
+      setFlash({ id: Date.now(), result: next });
       feedback(next.result === "valid");
       setHistory((prev) =>
         [
@@ -162,7 +177,9 @@ export function ScannerClient() {
         });
       }
     } catch {
-      setResult({ result: "invalid", message: "Erreur réseau." });
+      const failed: Result = { result: "invalid", message: "Erreur réseau." };
+      setResult(failed);
+      setFlash({ id: Date.now(), result: failed });
       feedback(false);
     } finally {
       setLoading(false);
@@ -279,6 +296,13 @@ export function ScannerClient() {
 
   return (
     <div className="space-y-4">
+      {flash && (
+        <StatusFlash
+          key={flash.id}
+          result={flash.result}
+          onClose={() => setFlash(null)}
+        />
+      )}
       {result && <ResultCard result={result} />}
       {counter && <CounterCard counter={counter} />}
 
@@ -475,6 +499,80 @@ const RESULT_STYLE = {
   },
 } as const;
 
+const FLASH_BG: Record<Result["result"], string> = {
+  valid: "bg-emerald-500",
+  already_used: "bg-orange-500",
+  invalid: "bg-red-600",
+};
+
+/** Écran plein vert / orange / rouge : lisible à bout de bras. */
+function StatusFlash({
+  result,
+  onClose,
+}: {
+  result: Result;
+  onClose: () => void;
+}) {
+  const ok = result.result === "valid";
+  const Icon = RESULT_STYLE[result.result].icon;
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-live="assertive"
+      className={`animate-flash-in fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-6 text-center text-white ${
+        FLASH_BG[result.result]
+      }`}
+    >
+      <span className="flex h-32 w-32 items-center justify-center rounded-full bg-white/20 ring-4 ring-white/40">
+        <Icon className="h-20 w-20" strokeWidth={2.5} />
+      </span>
+      <span className="text-5xl font-black tracking-tight sm:text-6xl">
+        {ok ? "VALIDE" : "REFUSÉ"}
+      </span>
+      <span className="text-xl font-semibold">
+        {RESULT_STYLE[result.result].title}
+      </span>
+      {result.holder && (
+        <span className="max-w-full truncate text-lg text-white/90">
+          {result.holder}
+        </span>
+      )}
+      {result.usedAt ? (
+        <span className="w-full max-w-xs rounded-2xl bg-black/20 px-4 py-3 text-left">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="text-xs font-medium uppercase tracking-wide text-white/75">
+              Entré à
+            </span>
+            <span className="text-2xl font-bold">
+              {formatTime(result.usedAt)}
+            </span>
+          </span>
+          <span className="mt-0.5 block text-right text-xs text-white/80">
+            le {formatDate(result.usedAt, "d MMMM yyyy")}
+          </span>
+          <span className="mt-2 flex items-baseline justify-between gap-3 border-t border-white/20 pt-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-white/75">
+              Contrôlé par
+            </span>
+            <span className="truncate text-lg font-semibold">
+              {result.usedBy ?? "—"}
+            </span>
+          </span>
+        </span>
+      ) : (
+        !ok &&
+        result.message && (
+          <span className="text-sm text-white/85">{result.message}</span>
+        )
+      )}
+      <span className="absolute inset-x-0 bottom-8 text-xs font-medium text-white/70">
+        Touchez l&apos;écran pour fermer
+      </span>
+    </button>
+  );
+}
+
 function ResultCard({ result }: { result: Result }) {
   const config = RESULT_STYLE[result.result];
   const Icon = config.icon;
@@ -529,7 +627,7 @@ function HistoryCard({ entries }: { entries: HistoryEntry[] }) {
                 entry.result === "valid"
                   ? "bg-emerald-500"
                   : entry.result === "already_used"
-                    ? "bg-amber-500"
+                    ? "bg-orange-500"
                     : "bg-red-500"
               }`}
             />
