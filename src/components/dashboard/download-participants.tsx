@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export interface ParticipantRow {
   name: string;
+  phone: string;
   type: string;
   status: string;
   reference: string;
@@ -19,11 +20,11 @@ export function DownloadParticipants({
   filename: string;
 }) {
   function download() {
-    const header = ["Nom", "Type", "Statut", "Référence", "Date"];
+    const header = ["Nom", "Téléphone", "Type", "Statut", "Référence", "Date"];
     const csv = [
       header.join(","),
       ...rows.map((r) =>
-        [r.name, r.type, r.status, r.reference, r.date]
+        [r.name, r.phone, r.type, r.status, r.reference, r.date]
           .map((v) => `"${String(v).replace(/"/g, '""')}"`)
           .join(",")
       ),

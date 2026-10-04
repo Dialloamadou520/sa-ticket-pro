@@ -155,6 +155,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const buyerPhone = normalizeSenegalPhone(body.phone ?? "");
+  if (buyerPhone) {
+    await admin
+      .from("payments")
+      .update({ customer_phone: `+221${buyerPhone}` })
+      .eq("id", payment.id);
+  }
+
   // Rien à débiter (événement gratuit ou code promo à 100 %) : tickets immédiats.
   if (chargeAmount === 0) {
     const tickets = Array.from({ length: quantity }).map(() => ({
