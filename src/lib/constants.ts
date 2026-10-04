@@ -31,6 +31,6 @@ export const EVENT_STATUS_LABELS: Record<string, string> = {
 };
 
 export const PAYMENT_PROVIDERS = [
-  { id: "wave", label: "Wave", color: "#1DC8FF" },
-  { id: "orange_money", label: "Orange Money", color: "#FF7900" },
+  { id: "wave", label: "Wave" },
+  { id: "orange_money", label: "Orange Money" },
 ] as const;
