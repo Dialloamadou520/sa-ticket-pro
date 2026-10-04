@@ -489,7 +489,7 @@ const RESULT_STYLE = {
   },
   already_used: {
     icon: Clock,
-    card: "from-rose-500 to-red-600",
+    card: "from-amber-400 to-orange-500",
     title: "Déjà utilisé",
   },
   invalid: {
@@ -499,7 +499,13 @@ const RESULT_STYLE = {
   },
 } as const;
 
-/** Écran plein vert / rouge : lisible à bout de bras, sans regarder le détail. */
+const FLASH_BG: Record<Result["result"], string> = {
+  valid: "bg-emerald-500",
+  already_used: "bg-orange-500",
+  invalid: "bg-red-600",
+};
+
+/** Écran plein vert / orange / rouge : lisible à bout de bras. */
 function StatusFlash({
   result,
   onClose,
@@ -515,7 +521,7 @@ function StatusFlash({
       onClick={onClose}
       aria-live="assertive"
       className={`animate-flash-in fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-6 text-center text-white ${
-        ok ? "bg-emerald-500" : "bg-red-600"
+        FLASH_BG[result.result]
       }`}
     >
       <span className="flex h-32 w-32 items-center justify-center rounded-full bg-white/20 ring-4 ring-white/40">
@@ -533,9 +539,26 @@ function StatusFlash({
         </span>
       )}
       {result.usedAt ? (
-        <span className="rounded-xl bg-black/20 px-3 py-1.5 text-sm font-semibold">
-          Utilisé le {formatDate(result.usedAt, "d MMMM yyyy")} à{" "}
-          {formatTime(result.usedAt)}
+        <span className="w-full max-w-xs rounded-2xl bg-black/20 px-4 py-3 text-left">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="text-xs font-medium uppercase tracking-wide text-white/75">
+              Entré à
+            </span>
+            <span className="text-2xl font-bold">
+              {formatTime(result.usedAt)}
+            </span>
+          </span>
+          <span className="mt-0.5 block text-right text-xs text-white/80">
+            le {formatDate(result.usedAt, "d MMMM yyyy")}
+          </span>
+          <span className="mt-2 flex items-baseline justify-between gap-3 border-t border-white/20 pt-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-white/75">
+              Contrôlé par
+            </span>
+            <span className="truncate text-lg font-semibold">
+              {result.usedBy ?? "—"}
+            </span>
+          </span>
         </span>
       ) : (
         !ok &&
@@ -603,7 +626,9 @@ function HistoryCard({ entries }: { entries: HistoryEntry[] }) {
               className={`h-2 w-2 shrink-0 rounded-full ${
                 entry.result === "valid"
                   ? "bg-emerald-500"
-                  : "bg-red-500"
+                  : entry.result === "already_used"
+                    ? "bg-orange-500"
+                    : "bg-red-500"
               }`}
             />
             <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
