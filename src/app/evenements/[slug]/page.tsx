@@ -11,6 +11,7 @@ import {
   Ticket as TicketIcon,
   Users,
 } from "lucide-react";
+import { ExpandableText } from "@/components/events/expandable-text";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
@@ -94,15 +95,15 @@ export default async function EventDetailPage({
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/60 to-slate-950" />
 
-        <Container className="relative grid items-center gap-6 py-6 sm:py-10 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12 lg:py-14">
-          <div className="relative mx-auto aspect-[4/5] w-full max-w-[340px] overflow-hidden rounded-3xl bg-slate-900 shadow-2xl ring-1 ring-white/15 lg:max-w-none">
+        <Container className="relative grid items-center gap-5 py-5 sm:gap-6 sm:py-10 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12 lg:py-14">
+          <div className="relative mx-auto aspect-[4/5] w-full max-w-[240px] overflow-hidden rounded-3xl sm:max-w-[320px] bg-slate-900 shadow-2xl ring-1 ring-white/15 lg:max-w-none">
             {event.banner_url ? (
               <Image
                 src={event.banner_url}
                 alt={event.title}
                 fill
                 preload
-                sizes="(max-width: 1024px) 340px, 380px"
+                sizes="(max-width: 640px) 240px, 380px"
                 className="object-contain"
               />
             ) : (
@@ -123,10 +124,10 @@ export default async function EventDetailPage({
                 {TICKET_TYPE_LABELS[event.ticket_type]}
               </span>
             </div>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
+            <h1 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight sm:text-5xl">
               {event.title}
             </h1>
-            <div className="mt-4 flex flex-col items-center gap-2 text-sm text-slate-200 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-5 lg:justify-start">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm text-slate-200 sm:mt-4 sm:gap-x-5 lg:justify-start">
               <span className="flex items-center gap-1.5">
                 <CalendarDays className="h-4 w-4 text-brand-300" />
                 <span className="inline-block first-letter:uppercase">{formatDate(event.starts_at)}</span>
@@ -149,7 +150,7 @@ export default async function EventDetailPage({
       </section>
 
       <Container className="grid gap-5 py-6 pb-28 lg:grid-cols-3 lg:gap-8 lg:py-10 lg:pb-16">
-        <div className="grid grid-cols-2 gap-3 lg:col-span-2">
+        <div className="grid divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-2 sm:gap-3 sm:divide-y-0 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none lg:col-span-2">
           <InfoCard
             icon={<CalendarDays className="h-5 w-5" />}
             tone="bg-brand-50 text-brand-700"
@@ -282,9 +283,12 @@ export default async function EventDetailPage({
           <h2 className="text-lg font-bold text-slate-900">
             À propos de l&apos;événement
           </h2>
-          <p className="mt-3 whitespace-pre-line leading-relaxed text-slate-600">
-            {event.description || "Aucune description fournie."}
-          </p>
+          <div className="mt-3">
+            <ExpandableText
+              text={event.description || "Aucune description fournie."}
+              className="leading-relaxed text-slate-600"
+            />
+          </div>
         </section>
       </Container>
 
@@ -324,17 +328,19 @@ function InfoCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex items-center gap-3 px-4 py-3 sm:block sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white sm:p-4 sm:shadow-sm">
       <span
-        className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone}`}
       >
         {icon}
       </span>
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <div className="mt-0.5 text-sm font-semibold text-slate-800">
-        {children}
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 sm:mt-3">
+          {label}
+        </p>
+        <div className="mt-0.5 text-sm font-semibold text-slate-800">
+          {children}
+        </div>
       </div>
     </div>
   );
