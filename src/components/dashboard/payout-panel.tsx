@@ -13,6 +13,7 @@ import {
 import { formatAmount } from "@/lib/format";
 import { MIN_PAYOUT_AMOUNT, PAYOUT_OPERATOR_LABELS } from "@/lib/payments/payout";
 import type { PayoutOperator } from "@/lib/types";
+import { ProviderLogo } from "@/components/payments/provider-logo";
 
 interface Props {
   payoutPhone: string | null;
@@ -53,24 +54,27 @@ export function PayoutPanel({ payoutPhone, payoutOperator, available }: Props) {
           Numéro Wave ou Orange Money sur lequel vous recevrez votre argent.
         </p>
 
-        <label
-          htmlFor="operator"
-          className="mt-4 mb-1 block text-sm font-medium text-slate-700"
-        >
+        <p className="mt-4 mb-1 block text-sm font-medium text-slate-700">
           Opérateur
-        </label>
-        <select
-          id="operator"
-          name="operator"
-          defaultValue={payoutOperator ?? "wave"}
-          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
-        >
+        </p>
+        <div className="grid grid-cols-2 gap-3">
           {(Object.keys(PAYOUT_OPERATOR_LABELS) as PayoutOperator[]).map((op) => (
-            <option key={op} value={op}>
-              {PAYOUT_OPERATOR_LABELS[op]}
-            </option>
+            <label
+              key={op}
+              className="flex cursor-pointer items-center gap-2.5 rounded-xl border-2 border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700"
+            >
+              <input
+                type="radio"
+                name="operator"
+                value={op}
+                defaultChecked={(payoutOperator ?? "wave") === op}
+                className="sr-only"
+              />
+              <ProviderLogo provider={op} size={32} />
+              <span className="leading-tight">{PAYOUT_OPERATOR_LABELS[op]}</span>
+            </label>
           ))}
-        </select>
+        </div>
 
         <label
           htmlFor="phone"

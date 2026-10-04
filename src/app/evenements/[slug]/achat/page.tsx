@@ -17,6 +17,7 @@ import {
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { PurchaseForm } from "@/components/events/purchase-form";
+import { ProviderLogo } from "@/components/payments/provider-logo";
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeePercent } from "@/lib/data/settings";
 import { formatDate, formatPrice, formatTime, isEventPast } from "@/lib/format";
@@ -224,6 +225,10 @@ export default async function AchatPage({
                   title="Paiement 100% sécurisé"
                 >
                   Wave &amp; Orange Money, directement sur cette page.
+                  <span className="mt-2 flex gap-2">
+                    <ProviderLogo provider="wave" size={28} />
+                    <ProviderLogo provider="orange_money" size={28} />
+                  </span>
                 </Reassurance>
                 <Reassurance
                   icon={<QrCode className="h-4 w-4" />}

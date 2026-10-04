@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Loader2, Smartphone, ShieldCheck, Tag, X } from "lucide-react";
+import { Minus, Plus, Loader2, ShieldCheck, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { Input, Label } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { discountFor } from "@/lib/payments/promo-discount";
 import { getTierTheme } from "@/lib/tier-theme";
 import { PAYMENT_PROVIDERS } from "@/lib/constants";
+import { ProviderLogo } from "@/components/payments/provider-logo";
 import type { DiscountType, Event, PaymentProvider } from "@/lib/types";
 
 interface Pending {
@@ -194,9 +195,11 @@ export function PurchaseForm({
     const isWave = pending.provider === "wave";
     return (
       <div className="space-y-5 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
-          <Smartphone className="h-7 w-7 text-brand-600" />
-        </div>
+        <ProviderLogo
+          provider={isWave ? "wave" : "orange_money"}
+          size={64}
+          className="mx-auto shadow-md"
+        />
         <h3 className="text-xl font-bold text-slate-900">
           Validez le paiement sur votre téléphone
         </h3>
@@ -327,17 +330,14 @@ export function PurchaseForm({
                 key={p.id}
                 type="button"
                 onClick={() => setProvider(p.id)}
-                className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex items-center justify-center gap-2.5 rounded-xl border-2 px-3 py-2.5 text-sm font-semibold transition-colors ${
                   provider === p.id
                     ? "border-brand-600 bg-brand-50 text-brand-700"
                     : "border-slate-200 text-slate-600 hover:border-slate-300"
                 }`}
               >
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: p.color }}
-                />
-                {p.label}
+                <ProviderLogo provider={p.id} size={32} />
+                <span className="text-left leading-tight">{p.label}</span>
               </button>
             ))}
           </div>
