@@ -3,13 +3,14 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   CalendarDays,
+  Gift,
   MapPin,
   Pencil,
   Plus,
   ShieldCheck,
   Timer,
-  Users,
   UserCog,
+  Users,
 } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { EventStatusBadge } from "@/components/dashboard/event-status-badge";
@@ -182,6 +183,13 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
         >
           <ShieldCheck className="h-4 w-4 shrink-0" />
           Contrôleurs
+        </Link>
+        <Link
+          href={`/dashboard/evenements/${event.id}/invitations`}
+          className={ACTION_CLASS}
+        >
+          <Gift className="h-4 w-4 shrink-0" />
+          Invitations
         </Link>
         {isOwner && (
           <Link

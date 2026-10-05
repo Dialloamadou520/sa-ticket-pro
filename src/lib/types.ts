@@ -141,6 +141,9 @@ export interface Ticket {
   status: TicketStatus;
   holder_name: string | null;
   holder_email: string | null;
+  holder_phone?: string | null;
+  is_invitation?: boolean;
+  invited_by?: string | null;
   created_at: string;
   event?: Event;
 }
