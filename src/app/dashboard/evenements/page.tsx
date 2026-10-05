@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
+  BarChart3,
   CalendarDays,
   Gift,
   MapPin,
@@ -176,6 +177,13 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
         >
           <Users className="h-4 w-4 shrink-0" />
           Participants
+        </Link>
+        <Link
+          href={`/dashboard/evenements/${event.id}/statistiques`}
+          className={ACTION_CLASS}
+        >
+          <BarChart3 className="h-4 w-4 shrink-0" />
+          Statistiques
         </Link>
         <Link
           href={`/dashboard/evenements/${event.id}/controleurs`}
