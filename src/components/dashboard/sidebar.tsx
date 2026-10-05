@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarPlus,
+  Gift,
   LayoutDashboard,
   ScanLine,
   Tag,
@@ -33,6 +34,7 @@ const defaultItems: Item[] = [
   { label: "Créer un événement", href: "/dashboard/evenements/nouveau", icon: CalendarPlus },
   { label: "Codes promo", href: "/dashboard/codes-promo", icon: Tag },
   { label: "Reversements", href: "/dashboard/reversements", icon: Wallet },
+  { label: "Invitations", href: "/dashboard/invitations", icon: Gift },
   { label: "Ticket perdu", href: "/dashboard/tickets", icon: TicketCheck },
   { label: "Scanner les tickets", href: "/scanner", icon: ScanLine },
 ];

@@ -222,6 +222,7 @@ async function withBuyerPhones(
   return tickets.map((t) => ({
     ...t,
     phone:
+      t.holder_phone ??
       (t.payment_id ? phoneByPayment.get(t.payment_id) : null) ??
       (t.user_id ? phoneByUser.get(t.user_id) : null) ??
       null,
@@ -265,6 +266,14 @@ export async function searchMyEventTickets(
         .limit(100),
       admin.from("profiles").select("id").ilike("phone", phoneLike).limit(100),
     ]);
+    const { data: guests } = await admin
+      .from("tickets")
+      .select("id")
+      .in("event_id", eventIds)
+      .ilike("holder_phone", phoneLike)
+      .limit(100);
+    const guestIds = ((guests ?? []) as Pick<Ticket, "id">[]).map((t) => t.id);
+    if (guestIds.length) filters.push(`id.in.(${guestIds.join(",")})`);
     const payIds = ((pays ?? []) as Pick<Payment, "id">[]).map((p) => p.id);
     const userIds = ((profs ?? []) as Pick<Profile, "id">[]).map((p) => p.id);
     if (payIds.length) filters.push(`payment_id.in.(${payIds.join(",")})`);
@@ -279,4 +288,29 @@ export async function searchMyEventTickets(
     .order("created_at", { ascending: false })
     .limit(50);
   return withBuyerPhones(admin, (data as Ticket[]) ?? []);
+}
+
+/**
+ * Invitations (billets gratuits) d'un événement. `ready` est faux tant que la
+ * migration 0021 n'a pas été appliquée.
+ */
+export async function getEventInvitations(
+  eventId: string
+): Promise<{ ready: boolean; invitations: Participant[] }> {
+  if (!isSupabaseConfigured) return { ready: true, invitations: [] };
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("tickets")
+    .select("*")
+    .eq("event_id", eventId)
+    .eq("is_invitation", true)
+    .order("created_at", { ascending: false });
+  if (error) return { ready: false, invitations: [] };
+  return {
+    ready: true,
+    invitations: ((data as Ticket[]) ?? []).map((t) => ({
+      ...t,
+      phone: t.holder_phone ?? null,
+    })),
+  };
 }

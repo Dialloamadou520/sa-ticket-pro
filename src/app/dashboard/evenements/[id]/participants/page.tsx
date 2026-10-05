@@ -23,10 +23,13 @@ export default async function ParticipantsPage({
   const { event } = manageable;
 
   const tickets = await getEventParticipants(id);
+  const invitationCount = tickets.filter((t) => t.is_invitation).length;
   const rows: ParticipantRow[] = tickets.map((t) => ({
     name: t.holder_name ?? "—",
     phone: t.phone ?? "—",
-    type: TICKET_TYPE_LABELS[t.ticket_type],
+    type: `${t.is_invitation ? "Invitation · " : ""}${
+      t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type]
+    }`,
     status: t.status,
     reference: t.qr_token.slice(0, 8).toUpperCase(),
     date: formatDateShort(t.created_at),
@@ -50,6 +53,8 @@ export default async function ParticipantsPage({
           <p className="text-sm text-slate-500">
             {tickets.length} participant{tickets.length > 1 ? "s" : ""} ·{" "}
             {event.tickets_sold} tickets vendus
+            {invitationCount > 0 &&
+              ` · ${invitationCount} invitation${invitationCount > 1 ? "s" : ""}`}
           </p>
         </div>
         <DownloadParticipants

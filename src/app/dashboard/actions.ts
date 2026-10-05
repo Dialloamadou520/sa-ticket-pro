@@ -9,7 +9,9 @@ import { normalizeSenegalPhone } from "@/lib/payments/dexpay";
 import { getMyPayoutPage } from "@/lib/data/payouts";
 import { archiveEvent } from "@/lib/data/event-trash";
 import { MIN_PAYOUT_AMOUNT, PAYOUT_OPERATORS } from "@/lib/payments/payout";
-import type { PayoutOperator, TicketType } from "@/lib/types";
+import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { isEventPast } from "@/lib/format";
+import type { PayoutOperator, TicketTier, TicketType } from "@/lib/types";
 
 interface TierInput {
   name: string;
@@ -482,4 +484,138 @@ export async function requestPayout(
   revalidatePath("/dashboard/reversements");
   revalidatePath("/admin/reversements");
   return { success: "Demande envoyée. Le virement part dès validation." };
+}
+
+export interface InvitationTicket {
+  id: string;
+  qrToken: string;
+  holderName: string;
+  ticketType: string;
+}
+
+export interface InvitationFormState {
+  error?: string;
+  tickets?: InvitationTicket[];
+}
+
+const MAX_INVITATIONS_PER_BATCH = 20;
+const MISSING_COLUMN_CODES = new Set(["42703", "PGRST204"]);
+
+/**
+ * Génère des billets gratuits (invités, presse) sans paiement. Réservé au
+ * propriétaire, aux co-organisateurs et à l'admin. Ces billets passent au
+ * scanner comme les autres mais ne comptent ni dans les ventes ni dans les
+ * revenus.
+ */
+export async function createInvitations(
+  eventId: string,
+  _prev: InvitationFormState,
+  formData: FormData
+): Promise<InvitationFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+  if (!(await canManageEvent(eventId))) return { error: "Action non autorisée." };
+
+  const name = String(formData.get("name") || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (name.length < 2) return { error: "Indiquez le nom de l'invité." };
+  if (name.length > 80) return { error: "Nom trop long (80 caractères max)." };
+
+  const rawPhone = String(formData.get("phone") || "").trim();
+  let phone: string | null = null;
+  if (rawPhone) {
+    const local = normalizeSenegalPhone(rawPhone);
+    if (!local) return { error: "Numéro de téléphone invalide (9 chiffres)." };
+    phone = `+221${local}`;
+  }
+
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  if (email && !EMAIL_RE.test(email)) return { error: "Adresse email invalide." };
+
+  const quantity = Number(formData.get("quantity") || 1);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_INVITATIONS_PER_BATCH) {
+    return { error: `Nombre de billets : entre 1 et ${MAX_INVITATIONS_PER_BATCH}.` };
+  }
+
+  const admin = createAdminClient();
+  const { data: event } = await admin
+    .from("events")
+    .select("id, starts_at, ends_at, ticket_type, tiers:ticket_tiers(id, name)")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (!event) return { error: "Événement introuvable." };
+  if (isEventPast(event)) return { error: "Cet événement est terminé." };
+
+  const tiers = (event.tiers ?? []) as Pick<TicketTier, "id" | "name">[];
+  const tierId = String(formData.get("tier_id") || "");
+  const tier = tiers.find((t) => t.id === tierId) ?? null;
+  if (tiers.length > 0 && !tier) return { error: "Choisissez une catégorie de ticket." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const ticketType = event.ticket_type as TicketType;
+  const rows = Array.from({ length: quantity }, () => ({
+    event_id: eventId,
+    user_id: null,
+    payment_id: null,
+    ticket_type: ticketType,
+    tier_id: tier?.id ?? null,
+    tier_name: tier?.name ?? null,
+    price: 0,
+    holder_name: name,
+    holder_email: email || null,
+    holder_phone: phone,
+    is_invitation: true,
+    invited_by: user?.id ?? null,
+  }));
+
+  const { data, error } = await admin
+    .from("tickets")
+    .insert(rows)
+    .select("id, qr_token");
+  if (error) {
+    if (MISSING_COLUMN_CODES.has(error.code)) {
+      return {
+        error:
+          "Les invitations ne sont pas encore activées : lancez d'abord le SQL de la migration 0021.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath(`/dashboard/evenements/${eventId}/invitations`);
+  revalidatePath(`/dashboard/evenements/${eventId}/participants`);
+  const label = `Invitation · ${tier?.name ?? TICKET_TYPE_LABELS[ticketType]}`;
+  return {
+    tickets: ((data ?? []) as { id: string; qr_token: string }[]).map((t) => ({
+      id: t.id,
+      qrToken: t.qr_token,
+      holderName: name,
+      ticketType: label,
+    })),
+  };
+}
+
+/** Annule une invitation encore valide (le QR devient refusé au scanner). */
+export async function cancelInvitation(
+  eventId: string,
+  ticketId: string
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (!(await canManageEvent(eventId))) return;
+  const admin = createAdminClient();
+  await admin
+    .from("tickets")
+    .update({ status: "cancelled" })
+    .eq("id", ticketId)
+    .eq("event_id", eventId)
+    .eq("is_invitation", true)
+    .eq("status", "valid");
+  revalidatePath(`/dashboard/evenements/${eventId}/invitations`);
+  revalidatePath(`/dashboard/evenements/${eventId}/participants`);
 }
