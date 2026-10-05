@@ -23,7 +23,7 @@ import {
   formatTime,
   isEventPast,
 } from "@/lib/format";
-import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { SITE, TICKET_TYPE_LABELS } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
 import { EventCountdown } from "@/components/events/event-countdown";
 import { FillGauge } from "@/components/events/fill-gauge";
@@ -36,14 +36,31 @@ export async function generateMetadata({
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) return { title: "Événement introuvable" };
+  const place = [event.location, event.city]
+    .map((part) => part?.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join(", ");
+  const date = formatDate(event.starts_at);
+  const price =
+    event.price > 0 ? `À partir de ${formatPrice(event.price)}` : "Entrée gratuite";
+  const summary = `${date.charAt(0).toUpperCase()}${date.slice(1)} à ${formatTime(event.starts_at)} · ${place} · ${price}`;
+  const details = event.description?.replace(/\s+/g, " ").trim();
+  const description = details
+    ? `${summary}. ${details.length > 160 ? `${details.slice(0, 159).trimEnd()}…` : details}`
+    : summary;
   return {
     title: event.title,
-    description: event.description ?? undefined,
+    description,
+    alternates: { canonical: `/evenements/${event.slug}` },
     openGraph: {
+      type: "website",
+      siteName: SITE.name,
+      locale: SITE.locale,
+      url: `/evenements/${event.slug}`,
       title: event.title,
-      description: event.description ?? undefined,
-      images: event.banner_url ? [event.banner_url] : undefined,
+      description,
     },
+    twitter: { card: "summary_large_image", title: event.title, description },
   };
 }
 
