@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { PwaInstall } from "@/components/pwa/pwa-install";
 import { SITE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -37,6 +38,12 @@ export const metadata: Metadata = {
     description: SITE.description,
   },
   twitter: { card: "summary_large_image" },
+  applicationName: SITE.name,
+  appleWebApp: { capable: true, title: SITE.name, statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#067a46",
 };
 
 export default function RootLayout({
@@ -49,6 +56,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <Footer />
         <PageViewTracker />
+        <PwaInstall />
         <Toaster position="top-center" richColors />
       </body>
     </html>
