@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sampleEvents } from "@/lib/sample-data";
 import { getCollaboratorEvents } from "@/lib/data/collaborators";
+import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { eventEndsAt } from "@/lib/format";
 import type {
   DiscountType,
   Event,
@@ -312,5 +314,121 @@ export async function getEventInvitations(
       ...t,
       phone: t.holder_phone ?? null,
     })),
+  };
+}
+
+export interface DailySales {
+  key: string;
+  label: string;
+  weekday: string;
+  weekend: boolean;
+  tickets: number;
+  revenue: number;
+}
+
+export interface CategorySales {
+  name: string;
+  tickets: number;
+  revenue: number;
+  scanned: number;
+}
+
+export interface EventSalesStats {
+  daily: DailySales[];
+  categories: CategorySales[];
+  totalTickets: number;
+  totalRevenue: number;
+  scanned: number;
+  invitations: number;
+  invitationsScanned: number;
+}
+
+type SalesTicketRow = Pick<
+  Ticket,
+  "created_at" | "price" | "status" | "tier_name" | "ticket_type" | "is_invitation"
+>;
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Ventes d'un événement par jour (UTC = heure du Sénégal) et par catégorie.
+ * Seuls les billets valides ou utilisés comptent ; les invitations sont
+ * comptées à part et ne génèrent aucun revenu.
+ */
+export async function getEventSalesStats(event: Event): Promise<EventSalesStats> {
+  const empty: EventSalesStats = {
+    daily: [],
+    categories: [],
+    totalTickets: 0,
+    totalRevenue: 0,
+    scanned: 0,
+    invitations: 0,
+    invitationsScanned: 0,
+  };
+  if (!isSupabaseConfigured) return empty;
+
+  const admin = createAdminClient();
+  const rows: SalesTicketRow[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data } = await admin
+      .from("tickets")
+      .select("created_at, price, status, tier_name, ticket_type, is_invitation")
+      .eq("event_id", event.id)
+      .in("status", ["valid", "used"])
+      .order("created_at")
+      .range(from, from + PAGE - 1);
+    const page = (data as SalesTicketRow[]) ?? [];
+    rows.push(...page);
+    if (page.length < PAGE) break;
+  }
+
+  const sales = rows.filter((t) => !t.is_invitation);
+  const invitations = rows.filter((t) => t.is_invitation);
+
+  const byCategory = new Map<string, CategorySales>();
+  const byDay = new Map<string, { tickets: number; revenue: number }>();
+  for (const t of sales) {
+    const name = t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type];
+    const cat = byCategory.get(name) ?? { name, tickets: 0, revenue: 0, scanned: 0 };
+    cat.tickets += 1;
+    cat.revenue += t.price;
+    if (t.status === "used") cat.scanned += 1;
+    byCategory.set(name, cat);
+
+    const key = t.created_at.slice(0, 10);
+    const day = byDay.get(key) ?? { tickets: 0, revenue: 0 };
+    day.tickets += 1;
+    day.revenue += t.price;
+    byDay.set(key, day);
+  }
+
+  const daily: DailySales[] = [];
+  if (sales.length) {
+    const first = Date.parse(`${sales[0].created_at.slice(0, 10)}T00:00:00Z`);
+    const lastSale = Date.parse(`${sales[sales.length - 1].created_at.slice(0, 10)}T00:00:00Z`);
+    const end = Math.max(lastSale, Math.min(Date.now(), eventEndsAt(event).getTime()));
+    for (let t = first; t <= end; t += DAY_MS) {
+      const d = new Date(t);
+      const key = d.toISOString().slice(0, 10);
+      const day = byDay.get(key) ?? { tickets: 0, revenue: 0 };
+      daily.push({
+        key,
+        label: d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }),
+        weekday: d.toLocaleDateString("fr-FR", { weekday: "short", timeZone: "UTC" }),
+        weekend: d.getUTCDay() === 0 || d.getUTCDay() === 6,
+        ...day,
+      });
+    }
+  }
+
+  return {
+    daily,
+    categories: [...byCategory.values()].sort((a, b) => b.tickets - a.tickets),
+    totalTickets: sales.length,
+    totalRevenue: sales.reduce((s, t) => s + t.price, 0),
+    scanned: sales.filter((t) => t.status === "used").length,
+    invitations: invitations.length,
+    invitationsScanned: invitations.filter((t) => t.status === "used").length,
   };
 }
