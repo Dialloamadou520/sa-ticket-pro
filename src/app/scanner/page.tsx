@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { ScanLine } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { ScannerClient } from "@/components/tickets/scanner-client";
+import { getScannableEvents } from "@/lib/data/scanner";
 
 export const metadata: Metadata = { title: "Scanner les tickets" };
 
-export default function ScannerPage() {
+export default async function ScannerPage() {
+  const events = await getScannableEvents();
   return (
     <Container className="max-w-xl py-6 sm:py-10">
       <div className="flex items-center gap-3 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white shadow-lg sm:p-5">
@@ -21,7 +23,7 @@ export default function ScannerPage() {
         </div>
       </div>
       <div className="mt-4 sm:mt-6">
-        <ScannerClient />
+        <ScannerClient events={events} />
       </div>
     </Container>
   );

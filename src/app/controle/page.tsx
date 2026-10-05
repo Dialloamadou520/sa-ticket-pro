@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import { ScannerClient } from "@/components/tickets/scanner-client";
 import { getCurrentUser } from "@/lib/data/auth";
 import { getControllerEvents } from "@/lib/data/controllers";
+import { getScannableEvents } from "@/lib/data/scanner";
 import { formatDateShort } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Contrôle des entrées" };
@@ -13,7 +14,10 @@ export default async function ControlePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion?redirect=/controle");
 
-  const events = await getControllerEvents();
+  const [events, scannable] = await Promise.all([
+    getControllerEvents(),
+    getScannableEvents(),
+  ]);
 
   return (
     <Container className="max-w-xl py-6 sm:py-10">
@@ -66,7 +70,7 @@ export default async function ControlePage() {
           </div>
 
           <div className="mt-6 sm:mt-8">
-            <ScannerClient />
+            <ScannerClient events={scannable} />
           </div>
         </>
       )}

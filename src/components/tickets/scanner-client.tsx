@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import jsQR from "jsqr";
 import {
   Camera,
@@ -12,10 +12,21 @@ import {
   CameraOff,
   History,
   Ticket as TicketIcon,
+  WifiOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatTime } from "@/lib/format";
+import { OfflinePanel } from "@/components/tickets/offline-panel";
+import {
+  getPack,
+  getQueue,
+  packCounts,
+  recordOnlineScan,
+  syncQueue,
+  verifyOffline,
+} from "@/lib/tickets/offline-store";
+import type { ScannableEvent } from "@/lib/tickets/offline-types";
 
 type Result = {
   result: "valid" | "already_used" | "invalid";
@@ -27,6 +38,7 @@ type Result = {
   ticketsTotal?: number;
   ticketsScanned?: number;
   ticketsRemaining?: number;
+  offline?: boolean;
 };
 
 type Counter = {
@@ -47,6 +59,21 @@ const RESUME_DELAY_MS = 1800;
 const FLASH_OK_MS = 1500;
 const FLASH_KO_MS = 2600;
 const DUPLICATE_WINDOW_MS = 4000;
+const ONLINE_TIMEOUT_MS = 5000;
+const SYNC_INTERVAL_MS = 20_000;
+
+function subscribeOnline(listener: () => void) {
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  return () => {
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+  };
+}
+
+function useOnline(): boolean {
+  return useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
+}
 
 function extractToken(value: string): string {
   const trimmed = value.trim();
@@ -95,7 +122,7 @@ function feedback(ok: boolean) {
   }
 }
 
-export function ScannerClient() {
+export function ScannerClient({ events }: { events: ScannableEvent[] }) {
   const [result, setResult] = useState<Result | null>(null);
   const [counter, setCounter] = useState<Counter | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -106,6 +133,11 @@ export function ScannerClient() {
   const [cameraOn, setCameraOn] = useState(false);
   const [continuous, setContinuous] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const online = useOnline();
+  const syncingRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -134,19 +166,94 @@ export function ScannerClient() {
     return () => clearTimeout(timer);
   }, [flash]);
 
-  async function verify(token: string) {
-    if (!token) return;
-    setLoading(true);
+  const runSync = useCallback(async () => {
+    if (syncingRef.current || getQueue().length === 0) return;
+    syncingRef.current = true;
+    setSyncing(true);
+    try {
+      let synced = 0;
+      let conflicts = 0;
+      while (getQueue().length > 0) {
+        const r = await syncQueue();
+        synced += r.synced;
+        conflicts += r.conflicts;
+        if (r.synced + r.conflicts === 0) break;
+      }
+      setSyncMessage(
+        `Synchronisé à ${formatTime(new Date())} : ${synced} entrée(s) confirmée(s)` +
+          (conflicts ? `, ${conflicts} doublon(s)/refus.` : ".")
+      );
+    } catch {
+      setSyncMessage("Synchronisation impossible pour l'instant, nouvel essai automatique.");
+    } finally {
+      syncingRef.current = false;
+      setSyncing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const trySync = () => {
+      if (navigator.onLine) void runSync();
+    };
+    trySync();
+    window.addEventListener("online", trySync);
+    const timer = setInterval(trySync, SYNC_INTERVAL_MS);
+    return () => {
+      window.removeEventListener("online", trySync);
+      clearInterval(timer);
+    };
+  }, [runSync]);
+
+  async function verifyOnline(token: string): Promise<Result | null> {
     try {
       const res = await fetch("/api/tickets/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: extractToken(token) }),
+        signal: AbortSignal.timeout(ONLINE_TIMEOUT_MS),
       });
       const data = (await res.json()) as Result & { error?: string };
       const next: Result = data.result
         ? data
         : { result: "invalid", message: data.error ?? "Vérification impossible." };
+      if (next.result !== "invalid") {
+        await recordOnlineScan(token, next.usedAt, next.usedBy);
+      }
+      if (next.result === "valid") void runSync();
+      return next;
+    } catch {
+      return null;
+    }
+  }
+
+  async function verifyLocally(token: string): Promise<Result> {
+    const verdict = await verifyOffline(token);
+    const pack = getPack();
+    if (!verdict || !pack) {
+      return {
+        result: "invalid",
+        message:
+          "Erreur réseau. Téléchargez la liste des billets pour scanner hors connexion.",
+      };
+    }
+    const counts = packCounts(pack);
+    return {
+      ...verdict,
+      holder: verdict.holder ?? undefined,
+      offline: true,
+      ticketsTotal: counts.total,
+      ticketsScanned: counts.scanned,
+      ticketsRemaining: counts.remaining,
+    };
+  }
+
+  async function verify(token: string) {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const useNetwork = !offlineMode && navigator.onLine;
+      const next =
+        (useNetwork ? await verifyOnline(token) : null) ?? (await verifyLocally(token));
 
       setResult(next);
       setFlash({ id: Date.now(), result: next });
@@ -176,11 +283,6 @@ export function ScannerClient() {
           remaining: next.ticketsRemaining,
         });
       }
-    } catch {
-      const failed: Result = { result: "invalid", message: "Erreur réseau." };
-      setResult(failed);
-      setFlash({ id: Date.now(), result: failed });
-      feedback(false);
     } finally {
       setLoading(false);
     }
@@ -349,6 +451,12 @@ export function ScannerClient() {
             />
             {cameraOn ? "Scan en cours" : "En pause"}
           </span>
+          {(offlineMode || !online) && (
+            <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-400/40 backdrop-blur">
+              <WifiOff className="h-3 w-3" />
+              Hors ligne
+            </span>
+          )}
         </div>
 
         <div className="space-y-3 border-t border-white/5 p-3 sm:p-4">
@@ -419,6 +527,15 @@ export function ScannerClient() {
           </Button>
         </div>
       </form>
+
+      <OfflinePanel
+        events={events}
+        offlineMode={offlineMode}
+        onOfflineModeChange={setOfflineMode}
+        syncing={syncing}
+        syncMessage={syncMessage}
+        onSync={() => void runSync()}
+      />
 
       {history.length > 0 && <HistoryCard entries={history} />}
     </div>
@@ -533,6 +650,12 @@ function StatusFlash({
       <span className="text-xl font-semibold">
         {RESULT_STYLE[result.result].title}
       </span>
+      {result.offline && (
+        <span className="flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1 text-xs font-semibold">
+          <WifiOff className="h-3.5 w-3.5" />
+          Vérifié hors ligne
+        </span>
+      )}
       {result.holder && (
         <span className="max-w-full truncate text-lg text-white/90">
           {result.holder}
@@ -585,7 +708,15 @@ function ResultCard({ result }: { result: Result }) {
         <Icon className="h-7 w-7" />
       </span>
       <div className="min-w-0">
-        <p className="text-lg font-bold leading-tight">{config.title}</p>
+        <p className="text-lg font-bold leading-tight">
+          {config.title}
+          {result.offline && (
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-black/20 px-1.5 py-0.5 align-middle text-[10px] font-semibold">
+              <WifiOff className="h-3 w-3" />
+              hors ligne
+            </span>
+          )}
+        </p>
         {result.event && (
           <p className="truncate text-sm text-white/90">{result.event}</p>
         )}
