@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import {
   PhysicalTickets,
   type PhysicalBatchRow,
+  type PhysicalCategoryOption,
 } from "@/components/dashboard/physical-tickets";
 import { getManageableEventById, getPhysicalBatches } from "@/lib/data/dashboard";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -51,7 +52,7 @@ export default async function PhysicalTicketsPage({
       id: b.id,
       label: b.label,
       category,
-      price: formatPrice(tier ? tier.price : event.price),
+      price: formatPrice(b.price ?? (tier ? tier.price : event.price)),
       color: getTierTheme(category).pdf,
       quantity: b.quantity,
       firstNumber: b.first_number,
@@ -61,6 +62,26 @@ export default async function PhysicalTicketsPage({
       date: formatDateShort(b.created_at),
     };
   });
+
+  // Catégories proposées : celles vendues en ligne, puis celles créées pour
+  // des lots papier précédents (dernier prix utilisé), sinon la catégorie
+  // unique de l'événement.
+  const categories: PhysicalCategoryOption[] = tiers.map((t) => ({
+    value: `tier:${t.id}`,
+    label: `${t.name} — ${formatPrice(t.price)}`,
+  }));
+  if (tiers.length === 0) {
+    categories.push({ value: "default", label: `${defaultCategory} — ${formatPrice(event.price)}` });
+  }
+  const seen = new Set<string>();
+  for (const b of batches) {
+    if (b.tier_id || !b.tier_name || seen.has(b.tier_name)) continue;
+    seen.add(b.tier_name);
+    categories.push({
+      value: `phys:${b.id}`,
+      label: `${b.tier_name} — ${formatPrice(b.price ?? 0)} (papier)`,
+    });
+  }
 
   const total = rows.reduce((s, r) => s + r.quantity - r.cancelled, 0);
   const scanned = rows.reduce((s, r) => s + r.scanned, 0);
@@ -93,7 +114,7 @@ export default async function PhysicalTicketsPage({
           date: formatDate(event.starts_at),
           location: `${event.location}${event.city ? `, ${event.city}` : ""}`,
         }}
-        tiers={tiers.map((t) => ({ id: t.id, name: t.name, price: formatPrice(t.price) }))}
+        categories={categories}
         batches={rows}
         ready={ready}
         closed={isEventPast(event)}

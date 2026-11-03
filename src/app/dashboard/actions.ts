@@ -636,6 +636,69 @@ const MAX_PHYSICAL_PER_BATCH = 1000;
 const INSERT_CHUNK = 500;
 const READ_PAGE = 1000;
 
+type PhysicalCategory =
+  | { error: string }
+  | {
+      tier: Pick<TicketTier, "id" | "name" | "price"> | null;
+      name: string | null;
+      price: number;
+      custom: boolean;
+    };
+
+/**
+ * Catégorie d'un lot papier, lue depuis le champ `category` :
+ *   tier:<id>    catégorie vendue en ligne
+ *   phys:<lotId> catégorie papier déjà utilisée sur un lot précédent
+ *   new          nouvelle catégorie papier (`new_name`, `new_price`)
+ *   default      catégorie unique de l'événement (sans catégories)
+ */
+async function resolvePhysicalCategory(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string,
+  tiers: Pick<TicketTier, "id" | "name" | "price">[],
+  eventPrice: number,
+  formData: FormData
+): Promise<PhysicalCategory> {
+  const value = String(formData.get("category") || "");
+
+  if (value.startsWith("tier:")) {
+    const tier = tiers.find((t) => t.id === value.slice(5));
+    if (!tier) return { error: "Catégorie introuvable." };
+    return { tier, name: tier.name, price: tier.price, custom: false };
+  }
+
+  if (value.startsWith("phys:")) {
+    const { data } = await admin
+      .from("ticket_print_batches")
+      .select("tier_name, price")
+      .eq("id", value.slice(5))
+      .eq("event_id", eventId)
+      .maybeSingle();
+    if (!data?.tier_name) return { error: "Catégorie introuvable." };
+    return { tier: null, name: data.tier_name, price: data.price ?? 0, custom: true };
+  }
+
+  if (value === "new") {
+    const name = String(formData.get("new_name") || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (name.length < 2 || name.length > 40) {
+      return { error: "Nom de la catégorie : entre 2 et 40 caractères." };
+    }
+    const rawPrice = String(formData.get("new_price") || "0").replace(/\s/g, "");
+    const price = Number(rawPrice);
+    if (!Number.isInteger(price) || price < 0 || price > 10_000_000) {
+      return { error: "Prix de la catégorie invalide." };
+    }
+    return { tier: null, name, price, custom: true };
+  }
+
+  if (value === "default" || (!value && tiers.length === 0)) {
+    return { tier: null, name: null, price: eventPrice ?? 0, custom: false };
+  }
+  return { error: "Choisissez une catégorie de ticket." };
+}
+
 /**
  * Génère un lot de billets physiques : des QR codes numérotés, créés à
  * l'avance pour être imprimés sur des tickets papier vendus hors plateforme.
@@ -662,16 +725,16 @@ export async function createPhysicalBatch(
   const admin = createAdminClient();
   const { data: event } = await admin
     .from("events")
-    .select("id, starts_at, ends_at, ticket_type, tiers:ticket_tiers(id, name, price)")
+    .select("id, starts_at, ends_at, price, ticket_type, tiers:ticket_tiers(id, name, price)")
     .eq("id", eventId)
     .maybeSingle();
   if (!event) return { error: "Événement introuvable." };
   if (isEventPast(event)) return { error: "Cet événement est terminé." };
 
   const tiers = (event.tiers ?? []) as Pick<TicketTier, "id" | "name" | "price">[];
-  const tierId = String(formData.get("tier_id") || "");
-  const tier = tiers.find((t) => t.id === tierId) ?? null;
-  if (tiers.length > 0 && !tier) return { error: "Choisissez une catégorie de ticket." };
+  const category = await resolvePhysicalCategory(admin, eventId, tiers, event.price, formData);
+  if ("error" in category) return { error: category.error };
+  const tier = category.tier;
 
   const { data: last, error: lastError } = await admin
     .from("ticket_print_batches")
@@ -693,20 +756,35 @@ export async function createPhysicalBatch(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: batch, error: batchError } = await admin
+  const batchRow = {
+    event_id: eventId,
+    tier_id: tier?.id ?? null,
+    tier_name: category.name,
+    label,
+    quantity,
+    first_number: firstNumber,
+    created_by: user?.id ?? null,
+  };
+  let { data: batch, error: batchError } = await admin
     .from("ticket_print_batches")
-    .insert({
-      event_id: eventId,
-      tier_id: tier?.id ?? null,
-      tier_name: tier?.name ?? null,
-      label,
-      quantity,
-      first_number: firstNumber,
-      created_by: user?.id ?? null,
-    })
+    .insert({ ...batchRow, price: category.price })
     .select("id")
     .single();
+  if (batchError && MISSING_COLUMN_CODES.has(batchError.code)) {
+    if (category.custom) {
+      return {
+        error:
+          "Les catégories papier ne sont pas encore activées : lancez d'abord le SQL de la migration 0023.",
+      };
+    }
+    ({ data: batch, error: batchError } = await admin
+      .from("ticket_print_batches")
+      .insert(batchRow)
+      .select("id")
+      .single());
+  }
   if (batchError || !batch) return { error: batchError?.message ?? "Création impossible." };
+  const batchId = batch.id as string;
 
   const ticketType = event.ticket_type as TicketType;
   const rows = Array.from({ length: quantity }, (_, i) => {
@@ -717,11 +795,11 @@ export async function createPhysicalBatch(
       payment_id: null,
       ticket_type: ticketType,
       tier_id: tier?.id ?? null,
-      tier_name: tier?.name ?? null,
+      tier_name: category.name,
       price: 0,
       holder_name: `Billet physique N° ${String(number).padStart(4, "0")}`,
       is_physical: true,
-      print_batch_id: batch.id,
+      print_batch_id: batchId,
       print_number: number,
     };
   });
@@ -730,8 +808,8 @@ export async function createPhysicalBatch(
     const { error } = await admin.from("tickets").insert(rows.slice(i, i + INSERT_CHUNK));
     if (error) {
       // Lot incomplet : on supprime tout pour garder une numérotation propre.
-      await admin.from("tickets").delete().eq("print_batch_id", batch.id);
-      await admin.from("ticket_print_batches").delete().eq("id", batch.id);
+      await admin.from("tickets").delete().eq("print_batch_id", batchId);
+      await admin.from("ticket_print_batches").delete().eq("id", batchId);
       return { error: error.message };
     }
   }
@@ -739,7 +817,7 @@ export async function createPhysicalBatch(
   revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
   return {
     success: `${quantity} billet${quantity > 1 ? "s" : ""} généré${quantity > 1 ? "s" : ""} (N° ${firstNumber} à ${firstNumber + quantity - 1}).`,
-    batchId: batch.id,
+    batchId,
   };
 }
 
