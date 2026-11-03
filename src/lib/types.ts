@@ -144,6 +144,9 @@ export interface Ticket {
   holder_phone?: string | null;
   is_invitation?: boolean;
   invited_by?: string | null;
+  is_physical?: boolean;
+  print_batch_id?: string | null;
+  print_number?: number | null;
   created_at: string;
   event?: Event;
 }
@@ -213,5 +216,17 @@ export interface EventCollaborator {
   id: string;
   event_id: string;
   email: string;
+  created_at: string;
+}
+
+export interface TicketPrintBatch {
+  id: string;
+  event_id: string;
+  tier_id: string | null;
+  tier_name: string | null;
+  label: string | null;
+  quantity: number;
+  first_number: number;
+  created_by: string | null;
   created_at: string;
 }

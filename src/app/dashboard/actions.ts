@@ -619,3 +619,172 @@ export async function cancelInvitation(
   revalidatePath(`/dashboard/evenements/${eventId}/invitations`);
   revalidatePath(`/dashboard/evenements/${eventId}/participants`);
 }
+
+export interface PhysicalBatchFormState {
+  error?: string;
+  success?: string;
+  batchId?: string;
+}
+
+export interface PrintableTicket {
+  number: number;
+  qrToken: string;
+  status: string;
+}
+
+const MAX_PHYSICAL_PER_BATCH = 1000;
+const INSERT_CHUNK = 500;
+const READ_PAGE = 1000;
+
+/**
+ * Génère un lot de billets physiques : des QR codes numérotés, créés à
+ * l'avance pour être imprimés sur des tickets papier vendus hors plateforme.
+ * La numérotation continue d'un lot à l'autre pour un même événement.
+ */
+export async function createPhysicalBatch(
+  eventId: string,
+  _prev: PhysicalBatchFormState,
+  formData: FormData
+): Promise<PhysicalBatchFormState> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+  if (!(await canManageEvent(eventId))) return { error: "Action non autorisée." };
+
+  const quantity = Number(formData.get("quantity") || 0);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_PHYSICAL_PER_BATCH) {
+    return { error: `Nombre de billets : entre 1 et ${MAX_PHYSICAL_PER_BATCH} par lot.` };
+  }
+  const label =
+    String(formData.get("label") || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60) || null;
+
+  const admin = createAdminClient();
+  const { data: event } = await admin
+    .from("events")
+    .select("id, starts_at, ends_at, ticket_type, tiers:ticket_tiers(id, name, price)")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (!event) return { error: "Événement introuvable." };
+  if (isEventPast(event)) return { error: "Cet événement est terminé." };
+
+  const tiers = (event.tiers ?? []) as Pick<TicketTier, "id" | "name" | "price">[];
+  const tierId = String(formData.get("tier_id") || "");
+  const tier = tiers.find((t) => t.id === tierId) ?? null;
+  if (tiers.length > 0 && !tier) return { error: "Choisissez une catégorie de ticket." };
+
+  const { data: last, error: lastError } = await admin
+    .from("ticket_print_batches")
+    .select("first_number, quantity")
+    .eq("event_id", eventId)
+    .order("first_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (lastError) {
+    return {
+      error:
+        "Les billets physiques ne sont pas encore activés : lancez d'abord le SQL de la migration 0022.",
+    };
+  }
+  const firstNumber = last ? last.first_number + last.quantity : 1;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: batch, error: batchError } = await admin
+    .from("ticket_print_batches")
+    .insert({
+      event_id: eventId,
+      tier_id: tier?.id ?? null,
+      tier_name: tier?.name ?? null,
+      label,
+      quantity,
+      first_number: firstNumber,
+      created_by: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (batchError || !batch) return { error: batchError?.message ?? "Création impossible." };
+
+  const ticketType = event.ticket_type as TicketType;
+  const rows = Array.from({ length: quantity }, (_, i) => {
+    const number = firstNumber + i;
+    return {
+      event_id: eventId,
+      user_id: null,
+      payment_id: null,
+      ticket_type: ticketType,
+      tier_id: tier?.id ?? null,
+      tier_name: tier?.name ?? null,
+      price: 0,
+      holder_name: `Billet physique N° ${String(number).padStart(4, "0")}`,
+      is_physical: true,
+      print_batch_id: batch.id,
+      print_number: number,
+    };
+  });
+
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+    const { error } = await admin.from("tickets").insert(rows.slice(i, i + INSERT_CHUNK));
+    if (error) {
+      // Lot incomplet : on supprime tout pour garder une numérotation propre.
+      await admin.from("tickets").delete().eq("print_batch_id", batch.id);
+      await admin.from("ticket_print_batches").delete().eq("id", batch.id);
+      return { error: error.message };
+    }
+  }
+
+  revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
+  return {
+    success: `${quantity} billet${quantity > 1 ? "s" : ""} généré${quantity > 1 ? "s" : ""} (N° ${firstNumber} à ${firstNumber + quantity - 1}).`,
+    batchId: batch.id,
+  };
+}
+
+/** QR codes d'un lot (numéro + jeton) pour l'impression PDF / l'export CSV. */
+export async function getPhysicalBatchTickets(
+  eventId: string,
+  batchId: string
+): Promise<{ error?: string; tickets?: PrintableTicket[] }> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+  if (!(await canManageEvent(eventId))) return { error: "Action non autorisée." };
+
+  const admin = createAdminClient();
+  const tickets: PrintableTicket[] = [];
+  for (let from = 0; ; from += READ_PAGE) {
+    const { data, error } = await admin
+      .from("tickets")
+      .select("print_number, qr_token, status")
+      .eq("event_id", eventId)
+      .eq("print_batch_id", batchId)
+      .order("print_number")
+      .range(from, from + READ_PAGE - 1);
+    if (error) return { error: error.message };
+    const page = (data ?? []) as { print_number: number; qr_token: string; status: string }[];
+    tickets.push(
+      ...page.map((t) => ({ number: t.print_number, qrToken: t.qr_token, status: t.status }))
+    );
+    if (page.length < READ_PAGE) break;
+  }
+  return { tickets };
+}
+
+/**
+ * Annule les billets encore valides d'un lot (lot perdu, volé ou invendu) :
+ * ils seront refusés au scanner. Les billets déjà entrés ne changent pas.
+ */
+export async function cancelPhysicalBatch(eventId: string, batchId: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (!(await canManageEvent(eventId))) return;
+  const admin = createAdminClient();
+  await admin
+    .from("tickets")
+    .update({ status: "cancelled" })
+    .eq("event_id", eventId)
+    .eq("print_batch_id", batchId)
+    .eq("is_physical", true)
+    .eq("status", "valid");
+  revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
+}

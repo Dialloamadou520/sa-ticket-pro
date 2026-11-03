@@ -12,6 +12,7 @@ import type {
   Profile,
   PromoCode,
   Ticket,
+  TicketPrintBatch,
 } from "@/lib/types";
 
 export interface OrganizerStats {
@@ -181,11 +182,16 @@ export async function getEventParticipants(
 ): Promise<Participant[]> {
   if (!isSupabaseConfigured) return [];
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("tickets")
-    .select("*")
-    .eq("event_id", eventId)
-    .order("created_at", { ascending: false });
+  const query = () =>
+    admin
+      .from("tickets")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false });
+  // Les billets physiques (lots imprimés) ne sont pas des participants
+  // nominatifs : ils sont suivis sur leur propre page.
+  const filtered = await query().eq("is_physical", false);
+  const { data } = filtered.error ? await query() : filtered;
   return withBuyerPhones(admin, (data as Ticket[]) ?? []);
 }
 
@@ -317,6 +323,52 @@ export async function getEventInvitations(
   };
 }
 
+export interface PhysicalBatchSummary extends TicketPrintBatch {
+  lastNumber: number;
+  scanned: number;
+  cancelled: number;
+}
+
+/**
+ * Lots de billets physiques d'un événement, avec le nombre d'entrées et
+ * d'annulations. `ready` est faux tant que la migration 0022 n'est pas faite.
+ */
+export async function getPhysicalBatches(
+  eventId: string
+): Promise<{ ready: boolean; batches: PhysicalBatchSummary[] }> {
+  if (!isSupabaseConfigured) return { ready: true, batches: [] };
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("ticket_print_batches")
+    .select("*")
+    .eq("event_id", eventId)
+    .order("first_number", { ascending: false });
+  if (error) return { ready: false, batches: [] };
+  const batches = (data as TicketPrintBatch[]) ?? [];
+
+  const counts = async (batchId: string, status: "used" | "cancelled") => {
+    const { count } = await admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("print_batch_id", batchId)
+      .eq("status", status);
+    return count ?? 0;
+  };
+
+  return {
+    ready: true,
+    batches: await Promise.all(
+      batches.map(async (b) => {
+        const [scanned, cancelled] = await Promise.all([
+          counts(b.id, "used"),
+          counts(b.id, "cancelled"),
+        ]);
+        return { ...b, lastNumber: b.first_number + b.quantity - 1, scanned, cancelled };
+      })
+    ),
+  };
+}
+
 export interface DailySales {
   key: string;
   label: string;
@@ -341,11 +393,13 @@ export interface EventSalesStats {
   scanned: number;
   invitations: number;
   invitationsScanned: number;
+  physical: number;
+  physicalScanned: number;
 }
 
 type SalesTicketRow = Pick<
   Ticket,
-  "created_at" | "price" | "status" | "tier_name" | "ticket_type" | "is_invitation"
+  "created_at" | "price" | "status" | "tier_name" | "ticket_type" | "is_invitation" | "is_physical"
 >;
 
 const DAY_MS = 86_400_000;
@@ -364,27 +418,42 @@ export async function getEventSalesStats(event: Event): Promise<EventSalesStats>
     scanned: 0,
     invitations: 0,
     invitationsScanned: 0,
+    physical: 0,
+    physicalScanned: 0,
   };
   if (!isSupabaseConfigured) return empty;
 
   const admin = createAdminClient();
   const rows: SalesTicketRow[] = [];
   const PAGE = 1000;
+  let columns = "created_at, price, status, tier_name, ticket_type, is_invitation, is_physical";
   for (let from = 0; ; from += PAGE) {
-    const { data } = await admin
+    let { data, error } = await admin
       .from("tickets")
-      .select("created_at, price, status, tier_name, ticket_type, is_invitation")
+      .select(columns)
       .eq("event_id", event.id)
       .in("status", ["valid", "used"])
       .order("created_at")
       .range(from, from + PAGE - 1);
-    const page = (data as SalesTicketRow[]) ?? [];
+    if (error && from === 0 && columns.includes("is_physical")) {
+      // migration 0022 pas encore appliquée
+      columns = "created_at, price, status, tier_name, ticket_type, is_invitation";
+      ({ data, error } = await admin
+        .from("tickets")
+        .select(columns)
+        .eq("event_id", event.id)
+        .in("status", ["valid", "used"])
+        .order("created_at")
+        .range(from, from + PAGE - 1));
+    }
+    const page = (data as unknown as SalesTicketRow[]) ?? [];
     rows.push(...page);
     if (page.length < PAGE) break;
   }
 
-  const sales = rows.filter((t) => !t.is_invitation);
+  const sales = rows.filter((t) => !t.is_invitation && !t.is_physical);
   const invitations = rows.filter((t) => t.is_invitation);
+  const physical = rows.filter((t) => t.is_physical);
 
   const byCategory = new Map<string, CategorySales>();
   const byDay = new Map<string, { tickets: number; revenue: number }>();
@@ -430,5 +499,7 @@ export async function getEventSalesStats(event: Event): Promise<EventSalesStats>
     scanned: sales.filter((t) => t.status === "used").length,
     invitations: invitations.length,
     invitationsScanned: invitations.filter((t) => t.status === "used").length,
+    physical: physical.length,
+    physicalScanned: physical.filter((t) => t.status === "used").length,
   };
 }
