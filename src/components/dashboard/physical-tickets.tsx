@@ -33,11 +33,16 @@ export interface PhysicalBatchRow {
   date: string;
 }
 
+export interface PhysicalCategoryOption {
+  value: string;
+  label: string;
+}
+
 interface Props {
   eventId: string;
   eventSlug: string;
   event: { title: string; date: string; location: string };
-  tiers: { id: string; name: string; price: string }[];
+  categories: PhysicalCategoryOption[];
   batches: PhysicalBatchRow[];
   ready: boolean;
   closed: boolean;
@@ -45,7 +50,7 @@ interface Props {
 
 type Busy = { batchId: string; kind: PrintFormat | "csv" | "cancel"; done?: number } | null;
 
-export function PhysicalTickets({ eventId, eventSlug, event, tiers, batches, ready, closed }: Props) {
+export function PhysicalTickets({ eventId, eventSlug, event, categories, batches, ready, closed }: Props) {
   const action = createPhysicalBatch.bind(null, eventId);
   const [state, formAction, pending] = useActionState<PhysicalBatchFormState, FormData>(
     action,
@@ -53,6 +58,7 @@ export function PhysicalTickets({ eventId, eventSlug, event, tiers, batches, rea
   );
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState<Busy>(null);
+  const [category, setCategory] = useState(categories[0]?.value ?? "new");
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -166,16 +172,38 @@ export function PhysicalTickets({ eventId, eventSlug, event, tiers, batches, rea
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {tiers.length > 0 && (
-              <div>
-                <Label htmlFor="phys-tier">Catégorie *</Label>
-                <Select id="phys-tier" name="tier_id" required defaultValue={tiers[0].id} className="text-base sm:text-sm">
-                  {tiers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} — {t.price}
-                    </option>
-                  ))}
-                </Select>
+            <div className="sm:col-span-2">
+              <Label htmlFor="phys-category">Catégorie *</Label>
+              <Select
+                id="phys-category"
+                name="category"
+                required
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="text-base sm:text-sm"
+              >
+                {categories.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+                <option value="new">+ Nouvelle catégorie papier…</option>
+              </Select>
+            </div>
+            {category === "new" && (
+              <div className="grid gap-4 rounded-xl border border-brand-100 bg-brand-50/40 p-3 sm:col-span-2 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="phys-new-name">Nom de la catégorie *</Label>
+                  <Input id="phys-new-name" name="new_name" required minLength={2} maxLength={40} placeholder="Ex. Tribune, Pelouse, VIP papier" className="text-base sm:text-sm" />
+                </div>
+                <div>
+                  <Label htmlFor="phys-new-price">Prix imprimé (FCFA) *</Label>
+                  <Input id="phys-new-price" name="new_price" type="number" inputMode="numeric" min={0} step={1} required defaultValue={0} className="text-base sm:text-sm" />
+                </div>
+                <p className="text-xs text-slate-500 sm:col-span-2">
+                  Réservée aux billets papier : elle n&apos;apparaît pas à la vente en ligne
+                  et sera proposée pour vos prochains lots.
+                </p>
               </div>
             )}
             <div>

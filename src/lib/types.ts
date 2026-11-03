@@ -225,6 +225,7 @@ export interface TicketPrintBatch {
   tier_id: string | null;
   tier_name: string | null;
   label: string | null;
+  price?: number | null;
   quantity: number;
   first_number: number;
   created_by: string | null;
