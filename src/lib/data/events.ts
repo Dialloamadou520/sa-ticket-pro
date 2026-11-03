@@ -73,6 +73,29 @@ export async function getRecentEvents(limit = 6): Promise<Event[]> {
   return (data as Event[]) ?? [];
 }
 
+/** Prochains événements publiés (les plus proches d'abord), pour le carrousel d'accueil. */
+export async function getUpcomingEvents(limit = 5): Promise<Event[]> {
+  const now = new Date();
+  if (!isSupabaseConfigured) {
+    return sampleEvents
+      .filter((e) => new Date(e.starts_at).getTime() >= now.getTime())
+      .sort(
+        (a, b) =>
+          new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+      )
+      .slice(0, limit);
+  }
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select(EVENT_SELECT)
+    .eq("status", "published")
+    .gte("starts_at", now.toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(limit);
+  return (data as Event[]) ?? [];
+}
+
 export async function getEventBySlug(slug: string): Promise<Event | null> {
   if (!isSupabaseConfigured) {
     return getSampleEventBySlug(slug) ?? null;

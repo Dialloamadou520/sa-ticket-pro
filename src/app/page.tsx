@@ -3,22 +3,17 @@ import { RecentEvents } from "@/components/home/recent-events";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { CtaSection } from "@/components/home/cta";
 import { Testimonials } from "@/components/home/testimonials";
-import { getRecentEvents } from "@/lib/data/events";
-import { isEventPast } from "@/lib/format";
+import { getRecentEvents, getUpcomingEvents } from "@/lib/data/events";
 
 export default async function HomePage() {
-  const recent = await getRecentEvents(6);
-  const featured =
-    recent
-      .filter((e) => !isEventPast(e))
-      .sort(
-        (a, b) =>
-          new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
-      )[0] ?? null;
+  const [recent, upcoming] = await Promise.all([
+    getRecentEvents(6),
+    getUpcomingEvents(5),
+  ]);
 
   return (
     <>
-      <Hero featured={featured} />
+      <Hero events={upcoming} />
       <RecentEvents events={recent} />
       <HowItWorks />
       <Testimonials />
