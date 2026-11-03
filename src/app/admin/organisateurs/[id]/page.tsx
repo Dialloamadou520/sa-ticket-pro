@@ -8,6 +8,7 @@ import {
   Wallet,
   Percent,
   ScanLine,
+  Printer,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { OrganizerActions } from "@/components/admin/organizer-actions";
@@ -27,8 +28,19 @@ export default async function OrganizerDetailPage({
   const activity = await getOrganizerActivity(id);
   if (!activity) notFound();
 
-  const { organizer, events, payments, entriesCount, entriesByEvent, repeatScans } =
-    activity;
+  const {
+    organizer,
+    events,
+    payments,
+    entriesCount,
+    entriesByEvent,
+    physicalByEvent,
+    repeatScans,
+  } = activity;
+  const paperOf = (eventId: string) =>
+    physicalByEvent[eventId] ?? { generated: 0, entered: 0 };
+  const onlineEntries = (eventId: string) =>
+    Math.max(0, (entriesByEvent[eventId] ?? 0) - paperOf(eventId).entered);
   const paidPayments = payments.filter((p) => p.status === "paid");
 
   return (
@@ -79,7 +91,7 @@ export default async function OrganizerDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
         <AdminStatCard
           label="Événements"
           value={String(organizer.eventsCount)}
@@ -88,10 +100,18 @@ export default async function OrganizerDetailPage({
           accent="violet"
         />
         <AdminStatCard
-          label="Tickets vendus"
+          label="Tickets numériques"
           value={String(organizer.ticketsSold)}
+          hint="Achetés en ligne"
           icon={TicketIcon}
           accent="blue"
+        />
+        <AdminStatCard
+          label="Tickets physiques"
+          value={String(organizer.physicalTickets)}
+          hint={`${organizer.physicalEntered} entrés · hors revenus`}
+          icon={Printer}
+          accent="violet"
         />
         <AdminStatCard
           label="Revenus"
@@ -109,9 +129,16 @@ export default async function OrganizerDetailPage({
           label="Entrées (scannées)"
           value={String(entriesCount)}
           hint={
-            repeatScans > 0
-              ? `${repeatScans} re-scan(s) refusé(s) non compté(s)`
-              : undefined
+            [
+              organizer.physicalEntered > 0
+                ? `dont ${organizer.physicalEntered} physique(s)`
+                : "",
+              repeatScans > 0
+                ? `${repeatScans} re-scan(s) refusé(s) non compté(s)`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined
           }
           icon={ScanLine}
           accent="rose"
@@ -143,8 +170,17 @@ export default async function OrganizerDetailPage({
                   <p className="text-xs text-slate-500">
                     {formatDateShort(e.starts_at)} ·{" "}
                     {EVENT_STATUS_LABELS[e.status] ?? e.status} ·{" "}
-                    {formatPrice(e.price)} · {e.tickets_sold}/{e.capacity}{" "}
-                    vendus · {entriesByEvent[e.id] ?? 0} entrées
+                    {formatPrice(e.price)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Numériques : {e.tickets_sold}/{e.capacity} vendus ·{" "}
+                    {onlineEntries(e.id)} entrés
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Physiques :{" "}
+                    {paperOf(e.id).generated > 0
+                      ? `${paperOf(e.id).generated} générés · ${paperOf(e.id).entered} entrés`
+                      : "aucun"}
                   </p>
                   <AdminDeleteEventButton id={e.id} title={e.title} />
                 </li>
@@ -158,8 +194,8 @@ export default async function OrganizerDetailPage({
                     <th className="px-5 py-3">Date</th>
                     <th className="px-5 py-3">Statut</th>
                     <th className="px-5 py-3">Prix</th>
-                    <th className="px-5 py-3">Vendus</th>
-                    <th className="px-5 py-3">Entrées</th>
+                    <th className="px-5 py-3">Numériques</th>
+                    <th className="px-5 py-3">Physiques</th>
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -183,9 +219,21 @@ export default async function OrganizerDetailPage({
                       </td>
                       <td className="px-5 py-3 text-slate-500">
                         {e.tickets_sold} / {e.capacity}
+                        <p className="text-xs text-slate-400">
+                          {onlineEntries(e.id)} entrés
+                        </p>
                       </td>
                       <td className="px-5 py-3 text-slate-500">
-                        {entriesByEvent[e.id] ?? 0}
+                        {paperOf(e.id).generated > 0 ? (
+                          <>
+                            {paperOf(e.id).generated}
+                            <p className="text-xs text-slate-400">
+                              {paperOf(e.id).entered} entrés
+                            </p>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end">

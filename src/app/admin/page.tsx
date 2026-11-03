@@ -18,6 +18,8 @@ import {
   Trash2,
   BellRing,
   MessageSquare,
+  Smartphone,
+  Printer,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { AdminEventsMobile } from "@/components/admin/admin-events-mobile";
@@ -193,6 +195,23 @@ export default async function AdminPage() {
           value={formatAmount(stats.platformCommission)}
           icon={Percent}
           accent="amber"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <AdminStatCard
+          label="Tickets numériques"
+          value={stats.onlineTickets.toLocaleString("fr-FR")}
+          hint="Achetés en ligne"
+          icon={Smartphone}
+          accent="blue"
+        />
+        <AdminStatCard
+          label="Tickets physiques"
+          value={stats.physicalTickets.toLocaleString("fr-FR")}
+          hint={`${stats.physicalEntered.toLocaleString("fr-FR")} entrés · hors revenus`}
+          icon={Printer}
+          accent="violet"
         />
       </div>
 
@@ -493,6 +512,8 @@ export default async function AdminPage() {
                 status: event.status,
                 ticketsSold: event.tickets_sold,
                 capacity: event.capacity,
+                physicalTickets: event.physical.generated,
+                physicalEntered: event.physical.entered,
                 revenue: event.revenue,
                 commission: event.commission,
                 commissionRate: event.commissionRate,
@@ -507,7 +528,8 @@ export default async function AdminPage() {
                     <th className="px-5 py-3">Événement</th>
                     <th className="px-5 py-3">Organisateur</th>
                     <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Tickets</th>
+                    <th className="px-5 py-3">Numériques</th>
+                    <th className="px-5 py-3">Physiques</th>
                     <th className="px-5 py-3">Revenus</th>
                     <th className="px-5 py-3">Taux</th>
                     <th className="px-5 py-3">Commission</th>
@@ -549,6 +571,18 @@ export default async function AdminPage() {
                         </td>
                         <td className="px-5 py-3 text-slate-600">
                           {event.tickets_sold}/{event.capacity}
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {event.physical.generated > 0 ? (
+                            <>
+                              {event.physical.generated}
+                              <p className="text-xs text-slate-400">
+                                {event.physical.entered} entrés
+                              </p>
+                            </>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
                         </td>
                         <td className="px-5 py-3 font-medium text-slate-900">
                           {formatAmount(event.revenue)}
@@ -671,8 +705,24 @@ export default async function AdminPage() {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-slate-500">Tickets</dt>
+                      <dt className="text-xs text-slate-500">
+                        Tickets numériques
+                      </dt>
                       <dd className="text-slate-800">{o.ticketsSold}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Tickets physiques
+                      </dt>
+                      <dd className="text-slate-800">
+                        {o.physicalTickets}
+                        {o.physicalTickets > 0 && (
+                          <span className="text-xs text-slate-400">
+                            {" "}
+                            ({o.physicalEntered} entrés)
+                          </span>
+                        )}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-slate-500">Revenus</dt>
@@ -702,7 +752,8 @@ export default async function AdminPage() {
                     <th className="px-5 py-3">Organisateur</th>
                     <th className="px-5 py-3">Contact</th>
                     <th className="px-5 py-3">Événements</th>
-                    <th className="px-5 py-3">Tickets</th>
+                    <th className="px-5 py-3">Numériques</th>
+                    <th className="px-5 py-3">Physiques</th>
                     <th className="px-5 py-3">Revenus</th>
                     <th className="px-5 py-3">Commission</th>
                     <th className="px-5 py-3">Statut</th>
@@ -753,6 +804,18 @@ export default async function AdminPage() {
                       </td>
                       <td className="px-5 py-3 text-slate-600">
                         {o.ticketsSold}
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">
+                        {o.physicalTickets > 0 ? (
+                          <>
+                            {o.physicalTickets}
+                            <p className="text-xs text-slate-400">
+                              {o.physicalEntered} entrés
+                            </p>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-slate-600">
                         {formatAmount(o.revenue)}

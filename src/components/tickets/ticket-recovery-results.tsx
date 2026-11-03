@@ -56,6 +56,19 @@ export function TicketRecoveryResults({
                 >
                   {badge.label}
                 </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 font-medium ${
+                    t.is_physical
+                      ? "bg-violet-100 text-violet-700"
+                      : "bg-sky-100 text-sky-700"
+                  }`}
+                >
+                  {t.is_physical
+                    ? "Billet physique"
+                    : t.is_invitation
+                      ? "Invitation"
+                      : "Numérique"}
+                </span>
                 {t.holder_email && (
                   <span className="font-medium break-all text-slate-700">
                     {t.holder_email}
@@ -70,7 +83,10 @@ export function TicketRecoveryResults({
                     {t.phone}
                   </a>
                 )}
-                <span>Acheté le {formatDate(t.created_at)}</span>
+                <span>
+                  {t.is_physical ? "Généré le" : "Acheté le"}{" "}
+                  {formatDate(t.created_at)}
+                </span>
               </div>
               <TicketView ticket={data} />
             </div>

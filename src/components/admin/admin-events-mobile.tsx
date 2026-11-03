@@ -17,6 +17,8 @@ export interface AdminEventCard {
   status: EventStatus;
   ticketsSold: number;
   capacity: number;
+  physicalTickets: number;
+  physicalEntered: number;
   revenue: number;
   commission: number;
   commissionRate: number;
@@ -218,7 +220,9 @@ export function AdminEventsMobile({ events }: { events: AdminEventCard[] }) {
                 <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
                   <div>
                     <div className="flex items-baseline justify-between gap-2 text-xs">
-                      <span className="text-slate-500">Tickets vendus</span>
+                      <span className="text-slate-500">
+                        Tickets numériques vendus
+                      </span>
                       <span className="font-semibold text-slate-900">
                         {event.ticketsSold}/{event.capacity}{" "}
                         <span className={`font-semibold ${fill.text}`}>
@@ -231,6 +235,14 @@ export function AdminEventsMobile({ events }: { events: AdminEventCard[] }) {
                         className={`h-full rounded-full ${fill.bar}`}
                         style={{ width: `${percent}%` }}
                       />
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between gap-2 text-xs">
+                      <span className="text-slate-500">Tickets physiques</span>
+                      <span className="font-semibold text-slate-900">
+                        {event.physicalTickets > 0
+                          ? `${event.physicalTickets} · ${event.physicalEntered} entrés`
+                          : "Aucun"}
+                      </span>
                     </div>
                   </div>
 
