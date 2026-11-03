@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Ban, FileDown, Loader2, Printer, QrCode, Sheet } from "lucide-react";
+import { Ban, FileDown, Loader2, Palette, Printer, QrCode, Sheet } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +11,13 @@ import {
   getPhysicalBatchTickets,
   type PhysicalBatchFormState,
 } from "@/app/dashboard/actions";
+import { TicketDesigner } from "@/components/dashboard/ticket-designer";
 import {
+  buildCustomDesignSheet,
   buildPrintCsv,
   buildPrintSheet,
   ticketNumber,
+  type CustomTicketDesign,
   type PrintFormat,
   type PrintSheetEvent,
 } from "@/lib/tickets/print-sheet";
@@ -48,7 +51,7 @@ interface Props {
   closed: boolean;
 }
 
-type Busy = { batchId: string; kind: PrintFormat | "csv" | "cancel"; done?: number } | null;
+type Busy = { batchId: string; kind: PrintFormat | "csv" | "cancel" | "design"; done?: number } | null;
 
 export function PhysicalTickets({ eventId, eventSlug, event, categories, batches, ready, closed }: Props) {
   const action = createPhysicalBatch.bind(null, eventId);
@@ -59,6 +62,7 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState<Busy>(null);
   const [category, setCategory] = useState(categories[0]?.value ?? "new");
+  const [designFor, setDesignFor] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -100,6 +104,24 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
         setBusy({ batchId: batch.id, kind: format, done })
       );
       doc.save(`${fileBase(batch)}${format === "labels" ? "-qr" : ""}.pdf`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function downloadDesignPdf(batch: PhysicalBatchRow, design: CustomTicketDesign) {
+    setBusy({ batchId: batch.id, kind: "design", done: 0 });
+    try {
+      const tickets = await loadTickets(batch);
+      if (!tickets) return;
+      if (tickets.length === 0) {
+        toast.error("Aucun billet valide dans ce lot.");
+        return;
+      }
+      const doc = await buildCustomDesignSheet(design, tickets, (done) =>
+        setBusy({ batchId: batch.id, kind: "design", done })
+      );
+      doc.save(`${fileBase(batch)}-design.pdf`);
     } finally {
       setBusy(null);
     }
@@ -264,7 +286,7 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
                       {b.cancelled} billet{b.cancelled > 1 ? "s" : ""} annulé{b.cancelled > 1 ? "s" : ""}
                     </p>
                   )}
-                  {isBusy && busy?.done !== undefined && (
+                  {isBusy && busy?.done !== undefined && busy.kind !== "design" && (
                     <p className="text-xs text-slate-500">
                       Préparation du PDF… {busy.done}/{active}
                     </p>
@@ -278,6 +300,15 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
                       <button type="button" className={btn} disabled={!!busy} onClick={() => downloadPdf(b, "labels")}>
                         {isBusy && busy?.kind === "labels" ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
                         QR seuls (PDF)
+                      </button>
+                      <button
+                        type="button"
+                        className={`${btn} ${designFor === b.id ? "border-brand-400 bg-brand-50 text-brand-700" : ""}`}
+                        disabled={!!busy}
+                        onClick={() => setDesignFor(designFor === b.id ? null : b.id)}
+                      >
+                        <Palette className="h-4 w-4" />
+                        Mon design (PDF)
                       </button>
                       <button type="button" className={btn} disabled={!!busy} onClick={() => downloadCsv(b)}>
                         {isBusy && busy?.kind === "csv" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sheet className="h-4 w-4" />}
@@ -296,6 +327,19 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
                       )}
                     </div>
                   )}
+                  {active > 0 && designFor === b.id && (
+                    <TicketDesigner
+                      eventId={eventId}
+                      busy={isBusy && busy?.kind === "design"}
+                      progress={
+                        isBusy && busy?.kind === "design"
+                          ? `Préparation… ${busy.done ?? 0}/${active}`
+                          : undefined
+                      }
+                      onGenerate={(design) => downloadDesignPdf(b, design)}
+                      onClose={() => setDesignFor(null)}
+                    />
+                  )}
                 </li>
               );
             })}
@@ -307,7 +351,9 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
         <strong>Billets (PDF)</strong> : tickets complets prêts à découper (10 par page A4).{" "}
         <strong>QR seuls (PDF)</strong> : planche d&apos;étiquettes (24 par page) à coller ou
         à imprimer sur vos propres tickets. <strong>CSV imprimeur</strong> : numéros et
-        contenus des QR pour une impression professionnelle.
+        contenus des QR pour une impression professionnelle.{" "}
+        <strong>Mon design (PDF)</strong> : importez votre propre visuel de billet et
+        placez-y le QR code ; il est ajouté automatiquement à chaque billet du lot.
       </p>
     </div>
   );

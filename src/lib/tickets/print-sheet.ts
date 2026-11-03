@@ -207,3 +207,106 @@ export function buildPrintCsv(event: PrintSheetEvent, tickets: PrintSheetTicket[
   );
   return [header.join(","), ...lines].join("\n");
 }
+
+/** Design de billet importé par l'organisateur, avec la position du QR et du numéro. */
+export interface CustomTicketDesign {
+  /** Image du billet (data URL JPEG). */
+  image: string;
+  widthMm: number;
+  heightMm: number;
+  /** Coin haut-gauche (fraction du billet) et côté (fraction de la largeur). */
+  qr: { x: number; y: number; size: number };
+  /** Centre du numéro (fraction du billet), taille en points. */
+  number: { show: boolean; x: number; y: number; sizePt: number; light: boolean };
+}
+
+const CUSTOM_MARGIN = 5;
+
+function customLayout(w: number, h: number) {
+  const options = [
+    { orientation: "portrait" as const, pageW: A4_W, pageH: A4_H, custom: false },
+    { orientation: "landscape" as const, pageW: A4_H, pageH: A4_W, custom: false },
+  ].map((o) => ({
+    ...o,
+    cols: Math.floor((o.pageW - 2 * CUSTOM_MARGIN) / w),
+    rows: Math.floor((o.pageH - 2 * CUSTOM_MARGIN) / h),
+  }));
+  const best = options.sort((a, b) => b.cols * b.rows - a.cols * a.rows)[0];
+  if (best.cols * best.rows > 0) return best;
+  // Billet plus grand qu'une A4 : une page au format du billet.
+  return {
+    orientation: (w > h ? "landscape" : "portrait") as "landscape" | "portrait",
+    pageW: w + 2 * CUSTOM_MARGIN,
+    pageH: h + 2 * CUSTOM_MARGIN,
+    cols: 1,
+    rows: 1,
+    custom: true,
+  };
+}
+
+/** Nombre de billets par page pour un format de billet donné. */
+export function customTicketsPerPage(widthMm: number, heightMm: number): number {
+  const l = customLayout(widthMm, heightMm);
+  return l.cols * l.rows;
+}
+
+/**
+ * PDF des billets d'un lot sur le design de l'organisateur : l'image est
+ * répétée (intégrée une seule fois) et chaque billet reçoit son QR et son numéro.
+ */
+export async function buildCustomDesignSheet(
+  design: CustomTicketDesign,
+  tickets: PrintSheetTicket[],
+  onProgress?: (done: number) => void
+): Promise<jsPDF> {
+  const w = design.widthMm;
+  const h = design.heightMm;
+  const layout = customLayout(w, h);
+  const doc = new jsPDF({
+    unit: "mm",
+    orientation: layout.orientation,
+    format: layout.custom ? [layout.pageW, layout.pageH] : "a4",
+  });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const perPage = layout.cols * layout.rows;
+  const offsetX = (pageW - layout.cols * w) / 2;
+  const offsetY = (pageH - layout.rows * h) / 2;
+  const qrSize = design.qr.size * w;
+  const quiet = Math.max(1, qrSize * 0.06);
+
+  for (let i = 0; i < tickets.length; i++) {
+    if (i > 0 && i % perPage === 0) doc.addPage();
+    const slot = i % perPage;
+    const x = offsetX + (slot % layout.cols) * w;
+    const y = offsetY + Math.floor(slot / layout.cols) * h;
+
+    doc.addImage(design.image, "JPEG", x, y, w, h, "ticket-design", "FAST");
+    cropMarks(doc, x, y, w, h);
+
+    const qx = x + design.qr.x * w;
+    const qy = y + design.qr.y * h;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(qx - quiet, qy - quiet, qrSize + 2 * quiet, qrSize + 2 * quiet, "F");
+    doc.addImage(await qrDataUrl(tickets[i].qrToken), "PNG", qx, qy, qrSize, qrSize, undefined, "FAST");
+
+    if (design.number.show) {
+      const light = design.number.light;
+      doc.setTextColor(light ? 255 : 15, light ? 255 : 23, light ? 255 : 42);
+      doc.setFont("courier", "bold");
+      doc.setFontSize(design.number.sizePt);
+      doc.text(
+        `N° ${ticketNumber(tickets[i].number)}`,
+        x + design.number.x * w,
+        y + design.number.y * h,
+        { align: "center", baseline: "middle" }
+      );
+    }
+
+    if (onProgress && (i % 20 === 19 || i === tickets.length - 1)) {
+      onProgress(i + 1);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+  return doc;
+}
