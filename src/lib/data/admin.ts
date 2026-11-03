@@ -77,21 +77,93 @@ export async function getPromoCodeStats(): Promise<PromoCodeStats[]> {
  * Cherche par nom/email du participant ou par référence (début du `qr_token`).
  * Réservé à l'administration (page protégée par le layout admin).
  */
-export async function searchTickets(query: string): Promise<Ticket[]> {
+export type TicketKindFilter = "all" | "online" | "physical";
+
+export async function searchTickets(
+  query: string,
+  kind: TicketKindFilter = "all",
+): Promise<Ticket[]> {
   if (!isSupabaseConfigured) return [];
   const q = query.trim().replace(/[%,()]/g, "");
   if (!q) return [];
   const admin = createAdminClient();
   const like = `%${q}%`;
-  const { data } = await admin
-    .from("tickets")
-    .select("*, event:events(*)")
-    .or(
-      `holder_email.ilike.${like},holder_name.ilike.${like},qr_token.ilike.${like}`,
-    )
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const search = () =>
+    admin
+      .from("tickets")
+      .select("*, event:events(*)")
+      .or(
+        `holder_email.ilike.${like},holder_name.ilike.${like},qr_token.ilike.${like}`,
+      )
+      .order("created_at", { ascending: false })
+      .limit(50);
+  if (kind === "all") {
+    const { data } = await search();
+    return (data as Ticket[]) ?? [];
+  }
+  const { data, error } = await search().eq("is_physical", kind === "physical");
+  if (error) {
+    // migration 0022 pas encore appliquée : aucun billet physique possible
+    if (kind === "physical") return [];
+    const { data: all } = await search();
+    return (all as Ticket[]) ?? [];
+  }
   return (data as Ticket[]) ?? [];
+}
+
+/** Billets physiques (papier) : générés (hors annulés) et entrés au scanner. */
+export interface PhysicalTicketCounts {
+  generated: number;
+  entered: number;
+}
+
+/**
+ * Billets physiques par événement. Les billets numériques sont comptés par
+ * `events.tickets_sold`, que le trigger n'incrémente pas pour les billets
+ * papier. Carte vide si la migration 0022 n'est pas appliquée.
+ */
+async function getPhysicalCountsByEvent(
+  eventIds?: string[],
+): Promise<Map<string, PhysicalTicketCounts>> {
+  const counts = new Map<string, PhysicalTicketCounts>();
+  if (eventIds && eventIds.length === 0) return counts;
+  const admin = createAdminClient();
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    let query = admin
+      .from("tickets")
+      .select("id, event_id, status")
+      .eq("is_physical", true)
+      .in("status", ["valid", "used"]);
+    if (eventIds) query = query.in("event_id", eventIds);
+    const { data, error } = await query
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error) return counts;
+    const rows = (data ?? []) as Pick<Ticket, "event_id" | "status">[];
+    for (const t of rows) {
+      const c = counts.get(t.event_id) ?? { generated: 0, entered: 0 };
+      c.generated += 1;
+      if (t.status === "used") c.entered += 1;
+      counts.set(t.event_id, c);
+    }
+    if (rows.length < PAGE) break;
+  }
+  return counts;
+}
+
+function sumPhysical(
+  counts: Map<string, PhysicalTicketCounts>,
+  eventIds: string[],
+): PhysicalTicketCounts {
+  const total = { generated: 0, entered: 0 };
+  for (const id of eventIds) {
+    const c = counts.get(id);
+    if (!c) continue;
+    total.generated += c.generated;
+    total.entered += c.entered;
+  }
+  return total;
 }
 
 export interface AdminStats {
@@ -100,6 +172,10 @@ export interface AdminStats {
   pendingEvents: number;
   totalRevenue: number;
   platformCommission: number;
+  /** Billets achetés en ligne (`events.tickets_sold`). */
+  onlineTickets: number;
+  physicalTickets: number;
+  physicalEntered: number;
 }
 
 /** Commission de la plateforme par défaut (10%), quand un événement n'a pas de taux défini. */
@@ -119,17 +195,21 @@ export async function getAdminStats(): Promise<AdminStats> {
       pendingEvents: 2,
       totalRevenue: revenue,
       platformCommission: Math.round(revenue * PLATFORM_COMMISSION_RATE),
+      onlineTickets: sampleEvents.reduce((s, e) => s + e.tickets_sold, 0),
+      physicalTickets: 0,
+      physicalEntered: 0,
     };
   }
 
   const supabase = await createClient();
-  const [{ count: users }, { data: events }, { data: payments }] =
+  const [{ count: users }, { data: events }, { data: payments }, physical] =
     await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       // `*` (plutôt que colonnes explicites) pour rester tolérant si la
       // colonne `commission_rate` n'est pas encore migrée (fallback 10 %).
       supabase.from("events").select("*"),
       supabase.from("payments").select("event_id, amount").eq("status", "paid"),
+      getPhysicalCountsByEvent(),
     ]);
 
   const eventRows = (events ?? []) as Pick<
@@ -152,6 +232,9 @@ export async function getAdminStats(): Promise<AdminStats> {
     pendingEvents: eventRows.filter((e) => e.status === "pending").length,
     totalRevenue: revenue,
     platformCommission: Math.round(platformCommission),
+    onlineTickets: eventRows.reduce((s, e) => s + (e.tickets_sold ?? 0), 0),
+    physicalTickets: [...physical.values()].reduce((s, c) => s + c.generated, 0),
+    physicalEntered: [...physical.values()].reduce((s, c) => s + c.entered, 0),
   };
 }
 
@@ -174,18 +257,20 @@ export interface AdminEvent extends Event {
   commission: number;
   /** Taux effectif appliqué (0–1). */
   commissionRate: number;
+  physical: PhysicalTicketCounts;
 }
 
 /** Liste tous les événements de la plateforme (tous statuts, tous organisateurs). */
 export async function getAllEvents(): Promise<AdminEvent[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const [{ data: events }, { data: payments }] = await Promise.all([
+  const [{ data: events }, { data: payments }, physical] = await Promise.all([
     supabase
       .from("events")
       .select("*, category:categories(*), organizer:organizers(id, company_name)")
       .order("created_at", { ascending: false }),
     supabase.from("payments").select("event_id, amount").eq("status", "paid"),
+    getPhysicalCountsByEvent(),
   ]);
 
   const paymentRows = (payments ?? []) as Pick<Payment, "event_id" | "amount">[];
@@ -206,6 +291,7 @@ export async function getAllEvents(): Promise<AdminEvent[]> {
       revenue,
       commission: Math.round(revenue * rate),
       commissionRate: rate,
+      physical: physical.get(e.id) ?? { generated: 0, entered: 0 },
     };
   });
 }
@@ -323,6 +409,8 @@ export interface OrganizerWithStats extends Organizer {
   eventsCount: number;
   publishedEvents: number;
   ticketsSold: number;
+  physicalTickets: number;
+  physicalEntered: number;
   revenue: number;
   commission: number;
 }
@@ -336,7 +424,7 @@ export async function getAllOrganizers(): Promise<OrganizerWithStats[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
 
-  const [{ data: organizers }, { data: events }, { data: payments }] =
+  const [{ data: organizers }, { data: events }, { data: payments }, physical] =
     await Promise.all([
       supabase
         .from("organizers")
@@ -345,6 +433,7 @@ export async function getAllOrganizers(): Promise<OrganizerWithStats[]> {
       // `*` pour rester tolérant si `commission_rate` n'est pas encore migré.
       supabase.from("events").select("*"),
       supabase.from("payments").select("event_id, amount").eq("status", "paid"),
+      getPhysicalCountsByEvent(),
     ]);
 
   const eventRows = (events ?? []) as Pick<
@@ -382,12 +471,15 @@ export async function getAllOrganizers(): Promise<OrganizerWithStats[]> {
   return ((organizers as OrganizerRow[]) ?? []).map((o) => {
     const own = eventRows.filter((e) => e.organizer_id === o.id);
     const revenue = revenueByOrganizer.get(o.id) ?? 0;
+    const paper = sumPhysical(physical, own.map((e) => e.id));
     return {
       ...o,
       owner: o.owner ?? null,
       eventsCount: own.length,
       publishedEvents: own.filter((e) => e.status === "published").length,
       ticketsSold: own.reduce((s, e) => s + (e.tickets_sold ?? 0), 0),
+      physicalTickets: paper.generated,
+      physicalEntered: paper.entered,
       revenue,
       commission: Math.round(commissionByOrganizer.get(o.id) ?? 0),
     };
@@ -398,9 +490,10 @@ export interface OrganizerActivity {
   organizer: OrganizerWithStats;
   events: Event[];
   payments: Payment[];
-  /** Entrées réelles : tickets distincts validés au scanner. */
+  /** Entrées réelles : tickets distincts validés au scanner (tous types). */
   entriesCount: number;
   entriesByEvent: Record<string, number>;
+  physicalByEvent: Record<string, PhysicalTicketCounts>;
   /** Tentatives refusées sur un ticket déjà utilisé (non comptées en entrées). */
   repeatScans: number;
 }
@@ -432,8 +525,9 @@ export async function getOrganizerActivity(
   let entriesCount = 0;
   let repeatScans = 0;
   const entriesByEvent: Record<string, number> = {};
+  let physical = new Map<string, PhysicalTicketCounts>();
   if (eventIds.length > 0) {
-    const [{ data: payments }, usedCounts, { count: repeats }] =
+    const [{ data: payments }, usedCounts, { count: repeats }, paper] =
       await Promise.all([
         supabase
           .from("payments")
@@ -457,7 +551,9 @@ export async function getOrganizerActivity(
           })
           .eq("result", "already_used")
           .in("ticket.event_id", eventIds),
+        getPhysicalCountsByEvent(eventIds),
       ]);
+    physical = paper;
     paymentRows = (payments as Payment[]) ?? [];
     eventIds.forEach((eventId, i) => {
       const n = usedCounts[i].count ?? 0;
@@ -477,6 +573,8 @@ export async function getOrganizerActivity(
     0,
   );
 
+  const paper = sumPhysical(physical, eventIds);
+
   return {
     organizer: {
       ...org,
@@ -484,6 +582,8 @@ export async function getOrganizerActivity(
       eventsCount: eventRows.length,
       publishedEvents: eventRows.filter((e) => e.status === "published").length,
       ticketsSold: eventRows.reduce((s, e) => s + (e.tickets_sold ?? 0), 0),
+      physicalTickets: paper.generated,
+      physicalEntered: paper.entered,
       revenue,
       commission: Math.round(commission),
     },
@@ -491,6 +591,7 @@ export async function getOrganizerActivity(
     payments: paymentRows,
     entriesCount,
     entriesByEvent,
+    physicalByEvent: Object.fromEntries(physical),
     repeatScans,
   };
 }
