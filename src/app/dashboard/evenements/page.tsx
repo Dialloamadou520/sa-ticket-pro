@@ -5,6 +5,7 @@ import {
   BarChart3,
   CalendarDays,
   Gift,
+  Printer,
   MapPin,
   Pencil,
   Plus,
@@ -198,6 +199,13 @@ function EventCard({ event, isOwner }: { event: Event; isOwner: boolean }) {
         >
           <Gift className="h-4 w-4 shrink-0" />
           Invitations
+        </Link>
+        <Link
+          href={`/dashboard/evenements/${event.id}/billets-physiques`}
+          className={ACTION_CLASS}
+        >
+          <Printer className="h-4 w-4 shrink-0" />
+          <span className="truncate">Billets physiques</span>
         </Link>
         {isOwner && (
           <Link

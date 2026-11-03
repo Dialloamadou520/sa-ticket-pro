@@ -6,6 +6,7 @@ import {
   CalendarPlus,
   Gift,
   LayoutDashboard,
+  Printer,
   ScanLine,
   Tag,
   Ticket,
@@ -35,6 +36,7 @@ const defaultItems: Item[] = [
   { label: "Codes promo", href: "/dashboard/codes-promo", icon: Tag },
   { label: "Reversements", href: "/dashboard/reversements", icon: Wallet },
   { label: "Invitations", href: "/dashboard/invitations", icon: Gift },
+  { label: "Billets physiques", href: "/dashboard/billets-physiques", icon: Printer },
   { label: "Ticket perdu", href: "/dashboard/tickets", icon: TicketCheck },
   { label: "Scanner les tickets", href: "/scanner", icon: ScanLine },
 ];

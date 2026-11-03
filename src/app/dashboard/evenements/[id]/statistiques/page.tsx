@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Gift, ScanLine, Ticket, Wallet } from "lucide-react";
+import { ChevronRight, Gift, Printer, ScanLine, Ticket, Wallet } from "lucide-react";
 import { SalesChart } from "@/components/dashboard/sales-chart";
 import { getEventSalesStats, getManageableEventById } from "@/lib/data/dashboard";
 import { formatPrice } from "@/lib/format";
@@ -24,6 +24,9 @@ export default async function EventStatsPage({
     { label: "Billets vendus", value: stats.totalTickets.toLocaleString("fr-FR"), sub: `sur ${event.capacity}`, icon: Ticket, tone: "bg-brand-50 text-brand-700" },
     { label: "Entrées", value: stats.scanned.toLocaleString("fr-FR"), sub: stats.totalTickets ? `${Math.round((stats.scanned / stats.totalTickets) * 100)} % des vendus` : "—", icon: ScanLine, tone: "bg-sky-50 text-sky-700" },
     { label: "Invitations", value: stats.invitations.toLocaleString("fr-FR"), sub: `${stats.invitationsScanned} entrée${stats.invitationsScanned > 1 ? "s" : ""}`, icon: Gift, tone: "bg-purple-50 text-purple-700" },
+    ...(stats.physical > 0
+      ? [{ label: "Billets physiques", value: stats.physical.toLocaleString("fr-FR"), sub: `${stats.physicalScanned} entrée${stats.physicalScanned > 1 ? "s" : ""}`, icon: Printer, tone: "bg-slate-100 text-slate-700" }]
+      : []),
     ...(isOwner
       ? [{ label: "Revenus billets", value: formatPrice(stats.totalRevenue), sub: "hors frais de service", icon: Wallet, tone: "bg-amber-50 text-amber-700" }]
       : []),
