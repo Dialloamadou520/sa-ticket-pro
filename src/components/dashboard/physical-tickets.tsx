@@ -2,12 +2,13 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Ban, FileDown, Loader2, Palette, Printer, QrCode, Sheet } from "lucide-react";
+import { Ban, FileDown, Loader2, Palette, Printer, QrCode, Sheet, Trash2 } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   cancelPhysicalBatch,
   createPhysicalBatch,
+  deletePhysicalBatch,
   getPhysicalBatchTickets,
   type PhysicalBatchFormState,
 } from "@/app/dashboard/actions";
@@ -51,7 +52,7 @@ interface Props {
   closed: boolean;
 }
 
-type Busy = { batchId: string; kind: PrintFormat | "csv" | "cancel" | "design"; done?: number } | null;
+type Busy = { batchId: string; kind: PrintFormat | "csv" | "cancel" | "delete" | "design"; done?: number } | null;
 
 export function PhysicalTickets({ eventId, eventSlug, event, categories, batches, ready, closed }: Props) {
   const action = createPhysicalBatch.bind(null, eventId);
@@ -158,6 +159,25 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
     startTransition(async () => {
       await cancelPhysicalBatch(eventId, batch.id);
       toast.success("Lot annulé.");
+      setBusy(null);
+    });
+  }
+
+  function onDelete(batch: PhysicalBatchRow) {
+    if (
+      !window.confirm(
+        `Supprimer définitivement le lot N° ${ticketNumber(batch.firstNumber)} à ${ticketNumber(batch.lastNumber)} ?\n\nSes ${batch.quantity} QR codes seront effacés : s'ils sont déjà imprimés, ils seront refusés au scanner. Cette action est irréversible.`
+      )
+    )
+      return;
+    setBusy({ batchId: batch.id, kind: "delete" });
+    startTransition(async () => {
+      const res = await deletePhysicalBatch(eventId, batch.id);
+      if (res.error) toast.error(res.error);
+      else {
+        toast.success("Lot supprimé. Vous pouvez en générer un nouveau.");
+        if (designFor === batch.id) setDesignFor(null);
+      }
       setBusy(null);
     });
   }
@@ -329,6 +349,17 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
                       )}
                     </div>
                   )}
+                  {b.scanned === 0 && (
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      disabled={!!busy}
+                      onClick={() => onDelete(b)}
+                    >
+                      {isBusy && busy?.kind === "delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      Supprimer définitivement
+                    </button>
+                  )}
                   {active > 0 && designFor === b.id && (
                     <TicketDesigner
                       eventId={eventId}
@@ -355,7 +386,9 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
         à imprimer sur vos propres tickets. <strong>CSV imprimeur</strong> : numéros et
         contenus des QR pour une impression professionnelle.{" "}
         <strong>Mon design (PDF)</strong> : importez votre propre visuel de billet et
-        placez-y le QR code ; il est ajouté automatiquement à chaque billet du lot.
+        placez-y le QR code ; il est ajouté automatiquement à chaque billet du lot.{" "}
+        <strong>Supprimer définitivement</strong> : efface un lot dont aucun billet n&apos;est
+        encore entré, pour le refaire ; la numérotation reprend après le dernier lot restant.
       </p>
     </div>
   );

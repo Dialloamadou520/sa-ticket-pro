@@ -866,3 +866,50 @@ export async function cancelPhysicalBatch(eventId: string, batchId: string): Pro
     .eq("status", "valid");
   revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
 }
+
+/**
+ * Supprime définitivement un lot et ses QR codes (erreur de saisie, lot à refaire).
+ * Refusé dès qu'un billet du lot a été scanné à l'entrée : il faut alors l'annuler.
+ * Le prochain lot reprend la numérotation après le plus grand numéro restant.
+ */
+export async function deletePhysicalBatch(
+  eventId: string,
+  batchId: string
+): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+  if (!(await canManageEvent(eventId))) return { error: "Action non autorisée." };
+  const admin = createAdminClient();
+
+  const { data: batch } = await admin
+    .from("ticket_print_batches")
+    .select("id")
+    .eq("id", batchId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (!batch) return { error: "Lot introuvable." };
+
+  const { count, error: countError } = await admin
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("print_batch_id", batchId)
+    .eq("status", "used");
+  if (countError) return { error: countError.message };
+  if (count) {
+    return {
+      error: `Impossible : ${count} billet${count > 1 ? "s" : ""} de ce lot ${count > 1 ? "sont déjà entrés" : "est déjà entré"}. Utilisez « Annuler le lot ».`,
+    };
+  }
+
+  const { error: ticketsError } = await admin
+    .from("tickets")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("print_batch_id", batchId)
+    .eq("is_physical", true);
+  if (ticketsError) return { error: ticketsError.message };
+  const { error } = await admin.from("ticket_print_batches").delete().eq("id", batchId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
+  return {};
+}
