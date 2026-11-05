@@ -7,13 +7,19 @@ import { FileDown, ImageUp, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import {
-  customTicketsPerPage,
+  CUSTOM_MAX_H_MM,
+  CUSTOM_MAX_W_MM,
+  customTicketGrid,
   verifyUrl,
   type CustomTicketDesign,
 } from "@/lib/tickets/print-sheet";
 
 const MAX_EDGE_PX = 2400;
 const MIN_QR_MM = 18;
+const MIN_W_MM = 30;
+const MIN_H_MM = 20;
+const A4_W_MM = 210;
+const A4_H_MM = 297;
 
 function storageKey(eventId: string) {
   return `kaypass:ticket-design:${eventId}`;
@@ -22,7 +28,10 @@ function storageKey(eventId: string) {
 export function loadTicketDesign(eventId: string): CustomTicketDesign | null {
   try {
     const raw = window.localStorage.getItem(storageKey(eventId));
-    return raw ? (JSON.parse(raw) as CustomTicketDesign) : null;
+    if (!raw) return null;
+    const d = JSON.parse(raw) as CustomTicketDesign;
+    const k = Math.min(1, CUSTOM_MAX_W_MM / d.widthMm, CUSTOM_MAX_H_MM / d.heightMm);
+    return k < 1 ? { ...d, widthMm: round1(d.widthMm * k), heightMm: round1(d.heightMm * k) } : d;
   } catch {
     return null;
   }
@@ -55,6 +64,74 @@ function normalizeImage(file: File): Promise<{ data: string; ratio: number }> {
 }
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+const round1 = (v: number) => Math.round(v * 10) / 10;
+
+/** Plus grand côté de QR (fraction de la largeur) qui tient dans le billet. */
+function maxQrFraction(d: { widthMm: number; heightMm: number }) {
+  return Math.min(0.85, (0.85 * d.heightMm) / d.widthMm);
+}
+
+/** Taille du billet ramenée dans les limites d'une A4 portrait, en gardant un ratio si demandé. */
+function fitSize(widthMm: number, heightMm: number, ratio: number | null) {
+  let w = clamp(widthMm, MIN_W_MM, CUSTOM_MAX_W_MM);
+  let h = ratio ? w * ratio : clamp(heightMm, MIN_H_MM, CUSTOM_MAX_H_MM);
+  if (ratio && h > CUSTOM_MAX_H_MM) {
+    h = CUSTOM_MAX_H_MM;
+    w = h / ratio;
+  }
+  if (ratio && h < MIN_H_MM) {
+    h = MIN_H_MM;
+    w = Math.min(CUSTOM_MAX_W_MM, h / ratio);
+  }
+  return { widthMm: round1(w), heightMm: round1(h) };
+}
+
+/** Champ numérique en mm : on peut taper librement, la valeur est validée en sortie du champ. */
+function MmField({
+  id,
+  label,
+  value,
+  min,
+  max,
+  onCommit,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (v: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  const [shown, setShown] = useState(value);
+  if (shown !== value) {
+    setShown(value);
+    setText(String(value));
+  }
+  const parse = (t: string) => Number(t.replace(",", "."));
+  return (
+    <div>
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          const n = parse(e.target.value);
+          if (Number.isFinite(n) && n >= min && n <= max) onCommit(n);
+        }}
+        onBlur={() => {
+          const n = parse(text);
+          if (Number.isFinite(n) && n > 0) onCommit(clamp(n, min, max));
+          setText(String(value));
+        }}
+        className="text-base sm:text-sm"
+      />
+    </div>
+  );
+}
 
 /** Garde le QR et sa marge blanche à l'intérieur du billet. */
 function placeQr(d: CustomTicketDesign, x: number, y: number, size: number) {
@@ -91,6 +168,7 @@ export function TicketDesigner({
   // Monté uniquement après un clic (jamais rendu côté serveur) : lecture directe du stockage local.
   const [design, setDesign] = useState<CustomTicketDesign | null>(() => loadTicketDesign(eventId));
   const [ratio, setRatio] = useState(() => (design ? design.heightMm / design.widthMm : 0.4));
+  const [lockRatio, setLockRatio] = useState(true);
   const [scale, setScale] = useState(1);
   const [sampleQr, setSampleQr] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
@@ -127,12 +205,12 @@ export function TicketDesigner({
     }
     try {
       const { data, ratio: r } = await normalizeImage(file);
-      const widthMm = design?.widthMm ?? 150;
+      const size = fitSize(design?.widthMm ?? 150, 0, r);
       setRatio(r);
+      setLockRatio(true);
       setDesign({
         image: data,
-        widthMm,
-        heightMm: Math.round(widthMm * r * 10) / 10,
+        ...size,
         qr: design?.qr ?? { x: 0.74, y: 0.15, size: 0.2 },
         number: design?.number ?? { show: true, x: 0.84, y: 0.88, sizePt: 10, light: false },
       });
@@ -145,10 +223,16 @@ export function TicketDesigner({
     setDesign((d) => (d ? { ...d, ...patch } : d));
   }
 
-  function setWidth(widthMm: number) {
-    if (!Number.isFinite(widthMm)) return;
-    const w = clamp(widthMm, 40, 400);
-    update({ widthMm: w, heightMm: Math.round(w * ratio * 10) / 10 });
+  function setSize(widthMm: number, heightMm: number, from: "width" | "height") {
+    setDesign((d) => {
+      if (!d) return d;
+      let size;
+      if (!lockRatio) size = fitSize(widthMm, heightMm, null);
+      else if (from === "width") size = fitSize(widthMm, 0, ratio);
+      else size = fitSize(heightMm / ratio, 0, ratio);
+      const next = { ...d, ...size };
+      return { ...next, qr: placeQr(next, d.qr.x, d.qr.y, Math.min(d.qr.size, maxQrFraction(next))) };
+    });
   }
 
   function pointerPos(e: ReactPointerEvent) {
@@ -182,8 +266,10 @@ export function TicketDesigner({
   }
 
   const qrMm = design ? Math.round(design.qr.size * design.widthMm) : 0;
-  const maxQrSize = design ? Math.min(0.85, (0.85 * design.heightMm) / design.widthMm) : 0.85;
-  const perPage = design ? customTicketsPerPage(design.widthMm, design.heightMm) : 0;
+  const maxQrSize = design ? maxQrFraction(design) : 0.85;
+  const grid = design ? customTicketGrid(design.widthMm, design.heightMm) : null;
+  const perPage = grid ? grid.cols * grid.rows : 0;
+  const stretched = design ? Math.abs(design.heightMm / design.widthMm - ratio) / ratio > 0.02 : false;
 
   return (
     <div className="space-y-4 rounded-2xl border border-brand-200 bg-brand-50/40 p-4">
@@ -272,22 +358,80 @@ export function TicketDesigner({
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="design-width">Largeur du billet (mm)</Label>
-              <Input
-                id="design-width"
-                type="number"
-                inputMode="numeric"
-                min={40}
-                max={400}
-                value={design.widthMm}
-                onChange={(e) => setWidth(Number(e.target.value))}
-                className="text-base sm:text-sm"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                Hauteur : {design.heightMm} mm · {perPage} billet{perPage > 1 ? "s" : ""} par page
-                {perPage > 1 ? " A4" : ""}
-              </p>
+            <div className="space-y-3 sm:col-span-2">
+              <div className="grid grid-cols-2 gap-3">
+                <MmField
+                  id="design-width"
+                  label="Largeur (mm)"
+                  value={design.widthMm}
+                  min={MIN_W_MM}
+                  max={CUSTOM_MAX_W_MM}
+                  onCommit={(w) => setSize(w, design.heightMm, "width")}
+                />
+                <MmField
+                  id="design-height"
+                  label="Hauteur (mm)"
+                  value={design.heightMm}
+                  min={MIN_H_MM}
+                  max={CUSTOM_MAX_H_MM}
+                  onCommit={(h) => setSize(design.widthMm, h, "height")}
+                />
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={lockRatio}
+                  onChange={(e) => {
+                    setLockRatio(e.target.checked);
+                    if (e.target.checked) {
+                      setDesign((d) => {
+                        if (!d) return d;
+                        const next = { ...d, ...fitSize(d.widthMm, 0, ratio) };
+                        return { ...next, qr: placeQr(next, d.qr.x, d.qr.y, Math.min(d.qr.size, maxQrFraction(next))) };
+                      });
+                    }
+                  }}
+                  className="h-4 w-4 accent-brand-600"
+                />
+                Garder les proportions de l&apos;image
+              </label>
+              {stretched && (
+                <p className="text-xs text-amber-600">
+                  L&apos;image est étirée pour remplir {design.widthMm} × {design.heightMm} mm.
+                </p>
+              )}
+              {grid && (
+                <div className="flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                  <div
+                    className="relative w-16 shrink-0 bg-white shadow-sm ring-1 ring-slate-300"
+                    style={{ aspectRatio: `${A4_W_MM} / ${A4_H_MM}` }}
+                    aria-hidden
+                  >
+                    {Array.from({ length: perPage }, (_, i) => (
+                      <div
+                        key={i}
+                        className="absolute border border-white bg-brand-500/70"
+                        style={{
+                          left: `${((grid.offsetX + (i % grid.cols) * design.widthMm) / A4_W_MM) * 100}%`,
+                          top: `${((grid.offsetY + Math.floor(i / grid.cols) * design.heightMm) / A4_H_MM) * 100}%`,
+                          width: `${(design.widthMm / A4_W_MM) * 100}%`,
+                          height: `${(design.heightMm / A4_H_MM) * 100}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-slate-700">
+                    <span className="font-semibold">
+                      {perPage} billet{perPage > 1 ? "s" : ""} par page A4 portrait
+                    </span>
+                    <br />
+                    <span className="text-xs text-slate-500">
+                      {grid.cols} colonne{grid.cols > 1 ? "s" : ""} × {grid.rows} ligne{grid.rows > 1 ? "s" : ""} · max{" "}
+                      {CUSTOM_MAX_W_MM} × {CUSTOM_MAX_H_MM} mm
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="design-qr">Taille du QR code : {qrMm} mm</Label>

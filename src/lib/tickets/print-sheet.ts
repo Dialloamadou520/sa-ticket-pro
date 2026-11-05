@@ -221,33 +221,20 @@ export interface CustomTicketDesign {
 }
 
 const CUSTOM_MARGIN = 5;
+/** Format maximal d'un billet pour tenir sur une A4 portrait (marges comprises). */
+export const CUSTOM_MAX_W_MM = A4_W - 2 * CUSTOM_MARGIN;
+export const CUSTOM_MAX_H_MM = A4_H - 2 * CUSTOM_MARGIN;
 
-function customLayout(w: number, h: number) {
-  const options = [
-    { orientation: "portrait" as const, pageW: A4_W, pageH: A4_H, custom: false },
-    { orientation: "landscape" as const, pageW: A4_H, pageH: A4_W, custom: false },
-  ].map((o) => ({
-    ...o,
-    cols: Math.floor((o.pageW - 2 * CUSTOM_MARGIN) / w),
-    rows: Math.floor((o.pageH - 2 * CUSTOM_MARGIN) / h),
-  }));
-  const best = options.sort((a, b) => b.cols * b.rows - a.cols * a.rows)[0];
-  if (best.cols * best.rows > 0) return best;
-  // Billet plus grand qu'une A4 : une page au format du billet.
+/** Disposition des billets sur une page A4 portrait. */
+export function customTicketGrid(widthMm: number, heightMm: number) {
+  const cols = Math.floor((CUSTOM_MAX_W_MM + 0.001) / widthMm);
+  const rows = Math.floor((CUSTOM_MAX_H_MM + 0.001) / heightMm);
   return {
-    orientation: (w > h ? "landscape" : "portrait") as "landscape" | "portrait",
-    pageW: w + 2 * CUSTOM_MARGIN,
-    pageH: h + 2 * CUSTOM_MARGIN,
-    cols: 1,
-    rows: 1,
-    custom: true,
+    cols,
+    rows,
+    offsetX: (A4_W - cols * widthMm) / 2,
+    offsetY: (A4_H - rows * heightMm) / 2,
   };
-}
-
-/** Nombre de billets par page pour un format de billet donné. */
-export function customTicketsPerPage(widthMm: number, heightMm: number): number {
-  const l = customLayout(widthMm, heightMm);
-  return l.cols * l.rows;
 }
 
 /**
@@ -261,25 +248,20 @@ export async function buildCustomDesignSheet(
 ): Promise<jsPDF> {
   const w = design.widthMm;
   const h = design.heightMm;
-  const layout = customLayout(w, h);
-  const doc = new jsPDF({
-    unit: "mm",
-    orientation: layout.orientation,
-    format: layout.custom ? [layout.pageW, layout.pageH] : "a4",
-  });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const perPage = layout.cols * layout.rows;
-  const offsetX = (pageW - layout.cols * w) / 2;
-  const offsetY = (pageH - layout.rows * h) / 2;
+  const grid = customTicketGrid(w, h);
+  if (grid.cols < 1 || grid.rows < 1) {
+    throw new Error(`Billet trop grand pour une A4 portrait (max ${CUSTOM_MAX_W_MM} × ${CUSTOM_MAX_H_MM} mm).`);
+  }
+  const doc = new jsPDF({ unit: "mm", orientation: "portrait", format: "a4" });
+  const perPage = grid.cols * grid.rows;
   const qrSize = design.qr.size * w;
   const quiet = Math.max(1, qrSize * 0.06);
 
   for (let i = 0; i < tickets.length; i++) {
     if (i > 0 && i % perPage === 0) doc.addPage();
     const slot = i % perPage;
-    const x = offsetX + (slot % layout.cols) * w;
-    const y = offsetY + Math.floor(slot / layout.cols) * h;
+    const x = grid.offsetX + (slot % grid.cols) * w;
+    const y = grid.offsetY + Math.floor(slot / grid.cols) * h;
 
     doc.addImage(design.image, "JPEG", x, y, w, h, "ticket-design", "FAST");
     cropMarks(doc, x, y, w, h);
