@@ -54,11 +54,11 @@ export function Footer() {
             <p className="mt-3 max-w-sm text-sm text-slate-600">{SITE.tagline}.</p>
             <div className="mt-4 flex flex-col gap-1 text-sm">
               <a
-                href="mailto:kaypass001@gmail.com"
+                href="mailto:kaypass26@gmail.com"
                 className="inline-flex min-h-11 items-center gap-2 text-slate-600 transition-colors hover:text-brand-600 sm:min-h-0"
               >
                 <Mail className="h-4 w-4 shrink-0 text-slate-400" />
-                kaypass001@gmail.com
+                kaypass26@gmail.com
               </a>
               {SUPPORT_PHONES.map((phone) => (
                 <a

@@ -24,8 +24,8 @@ const infos: ContactInfo[] = [
   {
     icon: Mail,
     label: "Email",
-    lines: ["kaypass001@gmail.com"],
-    href: "mailto:kaypass001@gmail.com",
+    lines: ["kaypass26@gmail.com"],
+    href: "mailto:kaypass26@gmail.com",
     hint: "Réponse sous 24h",
   },
   {
