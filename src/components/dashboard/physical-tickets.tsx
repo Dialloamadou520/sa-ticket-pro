@@ -122,6 +122,8 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
         setBusy({ batchId: batch.id, kind: "design", done })
       );
       doc.save(`${fileBase(batch)}-design.pdf`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Impossible de générer le PDF.");
     } finally {
       setBusy(null);
     }
