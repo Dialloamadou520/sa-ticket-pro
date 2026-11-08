@@ -19,6 +19,11 @@ export const SUPPORT_PHONES = [
   { label: "+221 78 927 12 24", href: "tel:+221789271224" },
 ] as const;
 
+export const SOCIAL_LINKS = {
+  instagram: "https://www.instagram.com/kaypass_officiel/",
+  whatsapp: "https://wa.me/221773525382",
+} as const;
+
 export const CURRENCY_LABEL = "FCFA";
 
 export const TICKET_TYPE_LABELS: Record<string, string> = {

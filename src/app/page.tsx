@@ -6,7 +6,7 @@ import { Testimonials } from "@/components/home/testimonials";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getRecentEvents, getUpcomingEvents } from "@/lib/data/events";
-import { SITE, SUPPORT_PHONES } from "@/lib/constants";
+import { SITE, SOCIAL_LINKS, SUPPORT_PHONES } from "@/lib/constants";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -24,6 +24,7 @@ const siteJsonLd = {
       email: "kaypass26@gmail.com",
       telephone: SUPPORT_PHONES[0].label.replace(/\s/g, ""),
       areaServed: "SN",
+      sameAs: [SOCIAL_LINKS.instagram],
     },
     {
       "@type": "WebSite",
