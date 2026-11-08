@@ -7,7 +7,9 @@ import { SUPPORT_PHONES } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contactez l'équipe kaypass.",
+  description:
+    "Contactez l'équipe kaypass par téléphone, WhatsApp ou email pour vendre vos billets d'événements au Sénégal ou obtenir de l'aide sur un achat.",
+  alternates: { canonical: "/contact" },
 };
 
 interface ContactInfo {

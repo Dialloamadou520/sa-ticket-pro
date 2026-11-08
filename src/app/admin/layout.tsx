@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Container } from "@/components/ui/container";
+import { NO_INDEX } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/data/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+
+export const metadata: Metadata = { robots: NO_INDEX };
 
 export default async function AdminLayout({
   children,

@@ -231,7 +231,7 @@ export default async function Image({
               <div style={{ display: "flex" }} />
             )}
             <div style={{ display: "flex", fontSize: 24, color: "rgba(255,255,255,0.7)" }}>
-              {SITE.url.replace(/^https?:\/\//, "")}
+              {SITE.publicUrl.replace(/^https?:\/\/(www\.)?/, "")}
             </div>
           </div>
         </div>

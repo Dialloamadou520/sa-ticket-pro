@@ -13,10 +13,10 @@ import {
 } from "@/lib/payments/dexpay";
 import { fulfillPaidPayment } from "@/lib/payments/fulfill";
 import { formatDate } from "@/lib/format";
-import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { NO_INDEX, TICKET_TYPE_LABELS } from "@/lib/constants";
 import type { Payment, Ticket } from "@/lib/types";
 
-export const metadata: Metadata = { title: "Confirmation de paiement" };
+export const metadata: Metadata = { title: "Confirmation de paiement", robots: NO_INDEX };
 export const dynamic = "force-dynamic";
 
 export default async function ConfirmationPage({

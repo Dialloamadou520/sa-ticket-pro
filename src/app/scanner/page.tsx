@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { NO_INDEX } from "@/lib/constants";
 import { ScanLine } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { ScannerClient } from "@/components/tickets/scanner-client";
 import { getScannableEvents } from "@/lib/data/scanner";
 
-export const metadata: Metadata = { title: "Scanner les tickets" };
+export const metadata: Metadata = { title: "Scanner les tickets", robots: NO_INDEX };
 
 export default async function ScannerPage() {
   const events = await getScannableEvents();

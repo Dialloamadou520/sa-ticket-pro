@@ -8,7 +8,8 @@ import { getCategories, getPublishedEvents } from "@/lib/data/events";
 export const metadata: Metadata = {
   title: "Explorer les événements",
   description:
-    "Découvrez tous les événements à venir au Sénégal et en Afrique : concerts, festivals, sport, conférences et plus.",
+    "Concerts, soirées, festivals, sport, conférences : achetez vos billets pour les événements à venir au Sénégal (Dakar, Saint-Louis, Thiès…) avec Wave ou Orange Money.",
+  alternates: { canonical: "/explorer" },
 };
 
 export default async function ExplorerPage({

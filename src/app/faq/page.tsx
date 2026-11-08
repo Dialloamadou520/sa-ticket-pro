@@ -6,7 +6,9 @@ import { FaqAccordion, type FaqItem } from "@/components/faq/faq-accordion";
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description: "Questions fréquentes sur kaypass.",
+  description:
+    "Questions fréquentes sur kaypass : acheter un billet avec Wave ou Orange Money, recevoir son QR code, créer et vendre un événement au Sénégal.",
+  alternates: { canonical: "/faq" },
 };
 
 const generales: FaqItem[] = [

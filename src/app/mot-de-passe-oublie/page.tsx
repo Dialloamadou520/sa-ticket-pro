@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { NO_INDEX } from "@/lib/constants";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
-export const metadata: Metadata = { title: "Mot de passe oublié" };
+export const metadata: Metadata = { title: "Mot de passe oublié", robots: NO_INDEX };
 
 export default function MotDePasseOubliePage() {
   return (
