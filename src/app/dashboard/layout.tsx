@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
+import { NO_INDEX } from "@/lib/constants";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+
+export const metadata: Metadata = { robots: NO_INDEX };
 
 export default function DashboardLayout({
   children,

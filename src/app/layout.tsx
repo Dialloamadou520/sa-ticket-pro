@@ -14,18 +14,20 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE.url),
+  metadataBase: new URL(SITE.publicUrl),
   title: {
     default: `${SITE.name} — ${SITE.tagline}`,
     template: `%s | ${SITE.name}`,
   },
   description: SITE.description,
   keywords: [
-    "billetterie",
+    "billetterie en ligne",
+    "billets concert",
     "tickets",
     "événements",
     "Sénégal",
     "Dakar",
+    "Saint-Louis",
     "Wave",
     "Orange Money",
     "QR code",
@@ -34,6 +36,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: SITE.locale,
     siteName: SITE.name,
+    url: "/",
     title: `${SITE.name} — ${SITE.tagline}`,
     description: SITE.description,
   },

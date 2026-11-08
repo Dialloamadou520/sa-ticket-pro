@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NO_INDEX } from "@/lib/constants";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate, formatTime } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Vérification du ticket" };
+export const metadata: Metadata = { title: "Vérification du ticket", robots: NO_INDEX };
 
 export default async function VerifierPage({
   params,

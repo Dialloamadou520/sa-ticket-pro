@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NO_INDEX } from "@/lib/constants";
 import { redirect } from "next/navigation";
 import { CalendarDays, MapPin, ScanLine } from "lucide-react";
 import { Container } from "@/components/ui/container";
@@ -8,7 +9,7 @@ import { getControllerEvents } from "@/lib/data/controllers";
 import { getScannableEvents } from "@/lib/data/scanner";
 import { formatDateShort } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Contrôle des entrées" };
+export const metadata: Metadata = { title: "Contrôle des entrées", robots: NO_INDEX };
 
 export default async function ControlePage() {
   const user = await getCurrentUser();

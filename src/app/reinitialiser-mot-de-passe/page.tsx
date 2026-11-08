@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { NO_INDEX } from "@/lib/constants";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
-export const metadata: Metadata = { title: "Réinitialiser le mot de passe" };
+export const metadata: Metadata = { title: "Réinitialiser le mot de passe", robots: NO_INDEX };
 
 export default function ReinitialiserPage() {
   return (

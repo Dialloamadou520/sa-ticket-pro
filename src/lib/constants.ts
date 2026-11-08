@@ -6,7 +6,12 @@ export const SITE = {
   locale: "fr_SN",
   currency: "XOF",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  /** Domaine public indexé par les moteurs de recherche (canonical, sitemap). */
+  publicUrl: (process.env.NEXT_PUBLIC_CANONICAL_URL ?? "https://www.kaypass.com").replace(/\/$/, ""),
 } as const;
+
+/** Pages privées ou transactionnelles : à ne pas indexer. */
+export const NO_INDEX = { index: false, follow: false } as const;
 
 export const SUPPORT_PHONES = [
   { label: "+221 77 352 53 82", href: "tel:+221773525382" },

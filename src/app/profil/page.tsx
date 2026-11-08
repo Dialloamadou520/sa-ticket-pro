@@ -8,10 +8,10 @@ import { getCurrentUser } from "@/lib/data/auth";
 import { getMyTickets } from "@/lib/data/tickets";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate } from "@/lib/format";
-import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { NO_INDEX, TICKET_TYPE_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Mon profil" };
+export const metadata: Metadata = { title: "Mon profil", robots: NO_INDEX };
 
 export default async function ProfilPage({
   searchParams,

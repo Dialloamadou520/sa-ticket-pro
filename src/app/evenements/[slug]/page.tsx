@@ -26,6 +26,7 @@ import {
 import { SITE, TICKET_TYPE_LABELS } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
 import { EventCountdown } from "@/components/events/event-countdown";
+import { JsonLd } from "@/components/seo/json-ld";
 import { FillGauge } from "@/components/events/fill-gauge";
 
 export async function generateMetadata({
@@ -48,8 +49,9 @@ export async function generateMetadata({
   const description = details
     ? `${summary}. ${details.length > 160 ? `${details.slice(0, 159).trimEnd()}…` : details}`
     : summary;
+  const city = event.city?.replace(/\s+/g, " ").trim();
   return {
-    title: event.title,
+    title: `${event.title}${city ? ` à ${city}` : ""} — Billets`,
     description,
     alternates: { canonical: `/evenements/${event.slug}` },
     openGraph: {
@@ -98,8 +100,48 @@ export default async function EventDetailPage({
       ? "Événement complet"
       : null;
 
+  const eventUrl = `${SITE.publicUrl}/evenements/${event.slug}`;
+  const offers = (event.tiers?.length ? event.tiers : [null]).map((tier) => ({
+    "@type": "Offer",
+    ...(tier ? { name: tier.name } : {}),
+    price: tier ? tier.price : event.price,
+    priceCurrency: SITE.currency,
+    availability:
+      soldOut || (tier && tier.sold >= tier.capacity)
+        ? "https://schema.org/SoldOut"
+        : "https://schema.org/InStock",
+    url: `${eventUrl}/achat`,
+    validFrom: event.created_at,
+  }));
+  const eventJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    ...(event.description ? { description: event.description.slice(0, 500) } : {}),
+    startDate: event.starts_at,
+    ...(event.ends_at ? { endDate: event.ends_at } : {}),
+    eventStatus:
+      event.status === "cancelled"
+        ? "https://schema.org/EventCancelled"
+        : "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: event.location,
+      address: {
+        "@type": "PostalAddress",
+        ...(event.city ? { addressLocality: event.city } : {}),
+        addressCountry: "SN",
+      },
+    },
+    ...(event.banner_url ? { image: [event.banner_url] } : {}),
+    url: eventUrl,
+    offers,
+  };
+
   return (
     <div className="bg-slate-50">
+      <JsonLd data={eventJsonLd} />
       <section className="relative overflow-hidden bg-slate-950 text-white">
         {event.banner_url && (
           <Image

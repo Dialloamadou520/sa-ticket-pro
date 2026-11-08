@@ -21,9 +21,9 @@ import { ProviderLogo } from "@/components/payments/provider-logo";
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeePercent } from "@/lib/data/settings";
 import { formatDate, formatPrice, formatTime, isEventPast } from "@/lib/format";
-import { TICKET_TYPE_LABELS } from "@/lib/constants";
+import { NO_INDEX, TICKET_TYPE_LABELS } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Achat de ticket" };
+export const metadata: Metadata = { title: "Achat de ticket", robots: NO_INDEX };
 
 export default async function AchatPage({
   params,
