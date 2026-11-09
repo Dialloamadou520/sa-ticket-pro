@@ -27,8 +27,7 @@ import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
 import { VisitsChart } from "@/components/admin/visits-chart";
 import { AdminOrganizers } from "@/components/admin/admin-organizers";
 import { ServiceFeePercentEditor } from "@/components/admin/service-fee-percent-editor";
-import { UserRoleEditor } from "@/components/admin/user-role-editor";
-import { AddAdminForm } from "@/components/admin/add-admin-form";
+import { AdminUsers } from "@/components/admin/admin-users";
 import {
   getAdminStats,
   getAllEvents,
@@ -484,112 +483,7 @@ export default async function AdminPage() {
 
       <AdminOrganizers organizers={organizers} />
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
-            <Users className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-semibold text-slate-900">
-              Utilisateurs récents
-            </h2>
-            <p className="text-xs text-slate-500">
-              {`Attribuez un rôle à un compte existant. Un administrateur a accès à tout : événements, organisateurs, revenus et rôles.`}
-            </p>
-          </div>
-        </div>
-        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 sm:px-5">
-          <AddAdminForm />
-        </div>
-        {users.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-500">
-            {`La liste des utilisateurs s'affichera ici une fois Supabase configuré.`}
-          </p>
-        ) : (
-          <>
-            <ul className="divide-y divide-slate-100 sm:hidden">
-              {users.map((u) => (
-                <li key={u.id} className="space-y-2 p-4">
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {u.full_name || "—"}
-                    </p>
-                    <p className="break-all text-xs text-slate-500">
-                      {u.email}
-                    </p>
-                    {u.phone && (
-                      <a
-                        href={`tel:${u.phone.replace(/\s/g, "")}`}
-                        className="text-sm font-medium text-brand-700"
-                      >
-                        {u.phone}
-                      </a>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <UserRoleEditor
-                      userId={u.id}
-                      role={u.role}
-                      self={u.id === currentUser?.id}
-                    />
-                    <span className="shrink-0 text-xs text-slate-400">
-                      {formatDateShort(u.created_at)}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full text-sm">
-                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-5 py-3">Nom</th>
-                    <th className="px-5 py-3">Email</th>
-                    <th className="px-5 py-3">Téléphone</th>
-                    <th className="px-5 py-3">Rôle</th>
-                    <th className="px-5 py-3">Inscrit le</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {users.map((u) => (
-                    <tr
-                      key={u.id}
-                      className="transition-colors hover:bg-slate-50"
-                    >
-                      <td className="px-5 py-3 font-medium text-slate-900">
-                        {u.full_name || "—"}
-                      </td>
-                      <td className="px-5 py-3 text-slate-500">{u.email}</td>
-                      <td className="px-5 py-3 text-slate-500">
-                        {u.phone ? (
-                          <a
-                            href={`tel:${u.phone.replace(/\s/g, "")}`}
-                            className="hover:text-brand-700"
-                          >
-                            {u.phone}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <UserRoleEditor
-                          userId={u.id}
-                          role={u.role}
-                          self={u.id === currentUser?.id}
-                        />
-                      </td>
-                      <td className="px-5 py-3 text-slate-500">
-                        {formatDateShort(u.created_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
+      <AdminUsers users={users} currentUserId={currentUser?.id ?? null} />
     </div>
   );
 }
