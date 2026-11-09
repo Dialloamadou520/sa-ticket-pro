@@ -56,14 +56,14 @@ export function AddAdminForm() {
         placeholder="email@exemple.com"
         disabled={pending}
         aria-label="Email de la personne"
-        className="min-w-56 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+        className="h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-base sm:h-9 sm:w-auto sm:min-w-56 sm:flex-1 sm:text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
       />
       <select
         value={role}
         onChange={(e) => setRole(e.target.value as UserRole)}
         disabled={pending}
         aria-label="Rôle à attribuer"
-        className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+        className="h-11 flex-1 rounded-lg border border-slate-300 bg-white px-2 text-sm sm:h-9 sm:flex-none text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
       >
         {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
           <option key={r} value={r}>
@@ -74,7 +74,7 @@ export function AddAdminForm() {
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+        className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm sm:h-9 sm:px-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         <ShieldPlus className="h-4 w-4" />
         Ajouter
