@@ -21,11 +21,9 @@ import {
   Printer,
 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
-import { AdminEventsMobile } from "@/components/admin/admin-events-mobile";
+import { AdminEvents } from "@/components/admin/admin-events";
 import { EventModeration } from "@/components/admin/event-moderation";
 import { AdminDeleteEventButton } from "@/components/admin/delete-event-button";
-import { AdminPublishEventButton } from "@/components/admin/publish-event-button";
-import { EventCommissionEditor } from "@/components/admin/event-commission-editor";
 import { VisitsChart } from "@/components/admin/visits-chart";
 import { AdminOrganizers } from "@/components/admin/admin-organizers";
 import { ServiceFeePercentEditor } from "@/components/admin/service-fee-percent-editor";
@@ -43,23 +41,10 @@ import { getVisitStats } from "@/lib/data/analytics";
 import { getPendingPayoutAlert } from "@/lib/data/payouts";
 import { getUnhandledContactCount } from "@/lib/data/contact";
 import { getCurrentUser } from "@/lib/data/auth";
-import type { EventStatus } from "@/lib/types";
 import { getServiceFeePercent } from "@/lib/data/settings";
 import { formatAmount, formatDateShort, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Administration" };
-
-const STATUS_BADGE: Record<EventStatus, { label: string; className: string }> =
-  {
-    draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
-    pending: { label: "En attente", className: "bg-amber-100 text-amber-700" },
-    published: {
-      label: "Publié",
-      className: "bg-emerald-100 text-emerald-700",
-    },
-    rejected: { label: "Rejeté", className: "bg-red-100 text-red-700" },
-    cancelled: { label: "Annulé", className: "bg-slate-100 text-slate-500" },
-  };
 
 const HERO_LINK_CLASS =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/20 sm:min-h-0 sm:justify-start sm:py-2.5";
@@ -475,155 +460,27 @@ export default async function AdminPage() {
         )}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-start gap-3 border-b border-slate-100 p-4 sm:items-center sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-            <CalendarDays className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="flex items-center font-semibold text-slate-900">
-              Tous les événements
-              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                {allEvents.length}
-              </span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Tous les événements de la plateforme, quel que soit leur statut.
-              Publiez directement un brouillon, réglez les frais de service et
-              la commission (%) par événement, ou supprimez-en définitivement
-              n&apos;importe lequel.
-            </p>
-          </div>
-        </div>
-        {allEvents.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-500">
-            Aucun événement.
-          </p>
-        ) : (
-          <>
-            <AdminEventsMobile
-              events={allEvents.map((event) => ({
-                id: event.id,
-                title: event.title,
-                place: event.city ?? event.location,
-                startsAt: event.starts_at,
-                status: event.status,
-                ticketsSold: event.tickets_sold,
-                capacity: event.capacity,
-                physicalTickets: event.physical.generated,
-                physicalEntered: event.physical.entered,
-                revenue: event.revenue,
-                commission: event.commission,
-                commissionRate: event.commissionRate,
-                organizerId: event.organizer?.id ?? null,
-                organizerName: event.organizer?.company_name ?? null,
-              }))}
-            />
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full text-sm">
-                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-5 py-3">Événement</th>
-                    <th className="px-5 py-3">Organisateur</th>
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Numériques</th>
-                    <th className="px-5 py-3">Physiques</th>
-                    <th className="px-5 py-3">Revenus</th>
-                    <th className="px-5 py-3">Taux</th>
-                    <th className="px-5 py-3">Commission</th>
-                    <th className="px-5 py-3">Statut</th>
-                    <th className="px-5 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {allEvents.map((event) => {
-                    const badge = STATUS_BADGE[event.status];
-                    return (
-                      <tr
-                        key={event.id}
-                        className="transition-colors hover:bg-slate-50"
-                      >
-                        <td className="px-5 py-3">
-                          <p className="font-medium text-slate-900">
-                            {event.title}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {event.city ?? event.location} ·{" "}
-                            {formatPrice(event.price)}
-                          </p>
-                        </td>
-                        <td className="px-5 py-3">
-                          {event.organizer ? (
-                            <Link
-                              href={`/admin/organisateurs/${event.organizer.id}`}
-                              className="text-slate-600 hover:text-brand-700"
-                            >
-                              {event.organizer.company_name}
-                            </Link>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-slate-600">
-                          {formatDateShort(event.starts_at)}
-                        </td>
-                        <td className="px-5 py-3 text-slate-600">
-                          {event.tickets_sold}/{event.capacity}
-                        </td>
-                        <td className="px-5 py-3 text-slate-600">
-                          {event.physical.generated > 0 ? (
-                            <>
-                              {event.physical.generated}
-                              <p className="text-xs text-slate-400">
-                                {event.physical.entered} entrés
-                              </p>
-                            </>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 font-medium text-slate-900">
-                          {formatAmount(event.revenue)}
-                        </td>
-                        <td className="px-5 py-3">
-                          <EventCommissionEditor
-                            id={event.id}
-                            rate={event.commissionRate}
-                          />
-                        </td>
-                        <td className="px-5 py-3 text-slate-600">
-                          {formatAmount(event.commission)}
-                        </td>
-                        <td className="px-5 py-3">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            {event.status !== "published" && (
-                              <AdminPublishEventButton
-                                id={event.id}
-                                title={event.title}
-                              />
-                            )}
-                            <AdminDeleteEventButton
-                              id={event.id}
-                              title={event.title}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
+      <AdminEvents
+        events={allEvents.map((event) => ({
+          id: event.id,
+          slug: event.slug,
+          title: event.title,
+          bannerUrl: event.banner_url,
+          place: event.city ?? event.location,
+          price: event.price,
+          startsAt: event.starts_at,
+          status: event.status,
+          ticketsSold: event.tickets_sold,
+          capacity: event.capacity,
+          physicalTickets: event.physical.generated,
+          physicalEntered: event.physical.entered,
+          revenue: event.revenue,
+          commission: event.commission,
+          commissionRate: event.commissionRate,
+          organizerId: event.organizer?.id ?? null,
+          organizerName: event.organizer?.company_name ?? null,
+        }))}
+      />
 
       <AdminOrganizers organizers={organizers} />
 
