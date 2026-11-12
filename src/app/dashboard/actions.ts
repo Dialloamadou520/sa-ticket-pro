@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isSupabaseConfigured, SUPABASE_URL } from "@/lib/supabase/config";
 import { slugify } from "@/lib/slug";
 import { normalizeSenegalPhone } from "@/lib/payments/dexpay";
 import { getMyPayoutPage } from "@/lib/data/payouts";
@@ -12,6 +12,7 @@ import { MIN_PAYOUT_AMOUNT, PAYOUT_OPERATORS } from "@/lib/payments/payout";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 import { isEventPast } from "@/lib/format";
 import type { PayoutOperator, TicketTier, TicketType } from "@/lib/types";
+import { categoryKey, type SavedTicketDesign } from "@/lib/tickets/ticket-design";
 
 interface TierInput {
   name: string;
@@ -912,4 +913,84 @@ export async function deletePhysicalBatch(
 
   revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
   return {};
+}
+
+const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+const unit = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
+
+/**
+ * Enregistre le design de billet d'une catégorie : il sert aux billets papier
+ * et s'affiche sur les billets numériques de la même catégorie.
+ */
+export async function saveTicketDesign(
+  eventId: string,
+  category: string,
+  design: SavedTicketDesign
+): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return { error: "Mode démo : configurez Supabase." };
+  if (!(await canManageEvent(eventId))) return { error: "Action non autorisée." };
+
+  const key = categoryKey(category);
+  const imagePrefix = `${SUPABASE_URL}/storage/v1/object/public/event-images/`;
+  const { qr, number } = design;
+  if (
+    !key ||
+    typeof design.imageUrl !== "string" ||
+    !design.imageUrl.startsWith(imagePrefix) ||
+    !(design.widthMm > 0 && design.widthMm <= 300) ||
+    !(design.heightMm > 0 && design.heightMm <= 300) ||
+    !qr || !unit(qr.x) || !unit(qr.y) || !unit(qr.size) ||
+    !number || !unit(number.x) || !unit(number.y) ||
+    !(number.sizePt >= 4 && number.sizePt <= 40)
+  ) {
+    return { error: "Design invalide." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await createAdminClient()
+    .from("ticket_designs")
+    .upsert(
+      {
+        event_id: eventId,
+        category: key,
+        image_url: design.imageUrl,
+        width_mm: design.widthMm,
+        height_mm: design.heightMm,
+        qr: { x: qr.x, y: qr.y, size: qr.size },
+        number: {
+          show: Boolean(number.show),
+          x: number.x,
+          y: number.y,
+          sizePt: number.sizePt,
+          light: Boolean(number.light),
+        },
+        updated_by: user?.id ?? null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "event_id,category" }
+    );
+  if (error) {
+    return {
+      error: MISSING_TABLE_CODES.has(error.code)
+        ? "Design non enregistré pour les billets numériques (migration 0024 à lancer)."
+        : error.message,
+    };
+  }
+  revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
+  return {};
+}
+
+export async function deleteTicketDesign(eventId: string, category: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (!(await canManageEvent(eventId))) return;
+  await createAdminClient()
+    .from("ticket_designs")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("category", categoryKey(category));
+  revalidatePath(`/dashboard/evenements/${eventId}/billets-physiques`);
 }

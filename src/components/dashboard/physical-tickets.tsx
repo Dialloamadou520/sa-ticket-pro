@@ -22,6 +22,7 @@ import {
   type PrintFormat,
   type PrintSheetEvent,
 } from "@/lib/tickets/print-sheet";
+import { pickDesign, type TicketDesignMap } from "@/lib/tickets/ticket-design";
 
 export interface PhysicalBatchRow {
   id: string;
@@ -48,13 +49,23 @@ interface Props {
   event: { title: string; date: string; location: string };
   categories: PhysicalCategoryOption[];
   batches: PhysicalBatchRow[];
+  designs: TicketDesignMap;
   ready: boolean;
   closed: boolean;
 }
 
 type Busy = { batchId: string; kind: PrintFormat | "csv" | "cancel" | "delete" | "design"; done?: number } | null;
 
-export function PhysicalTickets({ eventId, eventSlug, event, categories, batches, ready, closed }: Props) {
+export function PhysicalTickets({
+  eventId,
+  eventSlug,
+  event,
+  categories,
+  batches,
+  designs,
+  ready,
+  closed,
+}: Props) {
   const action = createPhysicalBatch.bind(null, eventId);
   const [state, formAction, pending] = useActionState<PhysicalBatchFormState, FormData>(
     action,
@@ -363,6 +374,8 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
                   {active > 0 && designFor === b.id && (
                     <TicketDesigner
                       eventId={eventId}
+                      category={b.category}
+                      saved={pickDesign(designs, b.category)}
                       busy={isBusy && busy?.kind === "design"}
                       progress={
                         isBusy && busy?.kind === "design"
@@ -386,7 +399,8 @@ export function PhysicalTickets({ eventId, eventSlug, event, categories, batches
         à imprimer sur vos propres tickets. <strong>CSV imprimeur</strong> : numéros et
         contenus des QR pour une impression professionnelle.{" "}
         <strong>Mon design (PDF)</strong> : importez votre propre visuel de billet et
-        placez-y le QR code ; il est ajouté automatiquement à chaque billet du lot.{" "}
+        placez-y le QR code ; il est ajouté automatiquement à chaque billet du lot, et le
+        même design s&apos;affiche sur les billets numériques de la catégorie.{" "}
         <strong>Supprimer définitivement</strong> : efface un lot dont aucun billet n&apos;est
         encore entré, pour le refaire ; la numérotation reprend après le dernier lot restant.
       </p>

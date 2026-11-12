@@ -4,6 +4,8 @@ import {
   type TicketViewData,
 } from "@/components/tickets/ticket-view";
 import { formatDate } from "@/lib/format";
+import { getTicketDesigns } from "@/lib/data/ticket-designs";
+import { pickDesign } from "@/lib/tickets/ticket-design";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
 import type { Ticket, TicketStatus } from "@/lib/types";
 
@@ -16,7 +18,7 @@ const STATUS_BADGE: Record<TicketStatus, { label: string; className: string }> =
   };
 
 /** Résultats de recherche d'un ticket perdu (admin et organisateur). */
-export function TicketRecoveryResults({
+export async function TicketRecoveryResults({
   query,
   tickets,
 }: {
@@ -24,6 +26,7 @@ export function TicketRecoveryResults({
   tickets: (Ticket & { phone?: string | null })[];
 }) {
   if (!query) return null;
+  const designs = await getTicketDesigns(tickets.map((t) => t.event_id));
   return (
     <>
       <p className="text-sm text-slate-500">
@@ -47,6 +50,10 @@ export function TicketRecoveryResults({
             holderName: t.holder_name ?? "",
             ticketType: t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type],
             qrToken: t.qr_token,
+            design: pickDesign(
+              designs[t.event_id],
+              t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type]
+            ),
           };
           return (
             <div key={t.id}>
