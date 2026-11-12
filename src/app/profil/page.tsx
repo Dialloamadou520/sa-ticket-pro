@@ -6,6 +6,8 @@ import { TicketView, type TicketViewData } from "@/components/tickets/ticket-vie
 import { LinkButton } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/data/auth";
 import { getMyTickets } from "@/lib/data/tickets";
+import { getTicketDesigns } from "@/lib/data/ticket-designs";
+import { pickDesign } from "@/lib/tickets/ticket-design";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatDate } from "@/lib/format";
 import { NO_INDEX, TICKET_TYPE_LABELS } from "@/lib/constants";
@@ -38,6 +40,7 @@ export default async function ProfilPage({
 
   const user = await getCurrentUser();
   const tickets = await getMyTickets();
+  const designs = await getTicketDesigns(tickets.map((t) => t.event_id));
 
   const ticketData: TicketViewData[] = tickets.map((t) => ({
     id: t.id,
@@ -49,6 +52,7 @@ export default async function ProfilPage({
     holderName: t.holder_name ?? user?.profile?.full_name ?? "",
     ticketType: t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type],
     qrToken: t.qr_token,
+    design: pickDesign(designs[t.event_id], t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type]),
   }));
 
   return (

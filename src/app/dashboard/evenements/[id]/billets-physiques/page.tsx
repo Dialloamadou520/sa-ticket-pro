@@ -8,6 +8,7 @@ import {
   type PhysicalCategoryOption,
 } from "@/components/dashboard/physical-tickets";
 import { getManageableEventById, getPhysicalBatches } from "@/lib/data/dashboard";
+import { getTicketDesigns } from "@/lib/data/ticket-designs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
@@ -39,9 +40,10 @@ export default async function PhysicalTicketsPage({
   if (!manageable) notFound();
   const { event } = manageable;
 
-  const [{ ready, batches }, tiers] = await Promise.all([
+  const [{ ready, batches }, tiers, designs] = await Promise.all([
     getPhysicalBatches(id),
     getTiers(id),
+    getTicketDesigns([id]),
   ]);
 
   const defaultCategory = TICKET_TYPE_LABELS[event.ticket_type];
@@ -116,6 +118,7 @@ export default async function PhysicalTicketsPage({
         }}
         categories={categories}
         batches={rows}
+        designs={designs[id] ?? {}}
         ready={ready}
         closed={isEventPast(event)}
       />

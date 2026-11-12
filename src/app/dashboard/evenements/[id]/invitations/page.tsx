@@ -7,6 +7,7 @@ import {
   type InvitationRow,
 } from "@/components/dashboard/event-invitations";
 import { getEventInvitations, getManageableEventById } from "@/lib/data/dashboard";
+import { getTicketDesigns } from "@/lib/data/ticket-designs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { TICKET_TYPE_LABELS } from "@/lib/constants";
@@ -35,9 +36,10 @@ export default async function InvitationsPage({
   if (!manageable) notFound();
   const { event } = manageable;
 
-  const [{ ready, invitations }, tiers] = await Promise.all([
+  const [{ ready, invitations }, tiers, designs] = await Promise.all([
     getEventInvitations(id),
     getTiers(id),
+    getTicketDesigns([id]),
   ]);
 
   const rows: InvitationRow[] = invitations.map((t) => ({
@@ -81,6 +83,7 @@ export default async function InvitationsPage({
         }}
         tiers={tiers}
         invitations={rows}
+        designs={designs[id] ?? {}}
         ready={ready}
         closed={isEventPast(event)}
       />

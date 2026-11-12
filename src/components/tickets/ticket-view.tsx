@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SITE } from "@/lib/constants";
 import { getTierTheme } from "@/lib/tier-theme";
+import type { SavedTicketDesign } from "@/lib/tickets/ticket-design";
 
 export interface TicketViewData {
   id: string;
@@ -25,9 +26,23 @@ export interface TicketViewData {
   holderName: string;
   ticketType: string;
   qrToken: string;
+  /** Design de l'organisateur pour cette catégorie (le même que sur papier). */
+  design?: SavedTicketDesign;
 }
 
 const QR_SIZE = 1024;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = src;
+  return img.decode().then(() => img);
+}
+
+/** Marge blanche autour du QR, comme sur les billets papier (mm). */
+function quietMm(design: SavedTicketDesign) {
+  return Math.max(1, design.qr.size * design.widthMm * 0.06);
+}
 
 /** QR (correction H) avec la pastille kaypass au centre. */
 async function buildQrWithLogo(url: string): Promise<string> {
@@ -104,7 +119,143 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
     };
   }, [fullscreen]);
 
+  async function downloadDesignPdf(design: SavedTicketDesign) {
+    const img = await loadImage(design.imageUrl);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext("2d")?.drawImage(img, 0, 0);
+    const image = canvas.toDataURL("image/jpeg", 0.92);
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const PW = 210;
+    const k = Math.min(1, 186 / design.widthMm, 150 / design.heightMm);
+    const w = design.widthMm * k;
+    const h = design.heightMm * k;
+    const x = (PW - w) / 2;
+    const y = 20;
+    doc.addImage(image, "JPEG", x, y, w, h);
+
+    const qrSize = design.qr.size * w;
+    const quiet = quietMm(design) * k;
+    const qx = x + design.qr.x * w;
+    const qy = y + design.qr.y * h;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(qx - quiet, qy - quiet, qrSize + 2 * quiet, qrSize + 2 * quiet, "F");
+    if (qr) doc.addImage(qr, "PNG", qx, qy, qrSize, qrSize);
+
+    if (design.number.show) {
+      const light = design.number.light;
+      doc.setTextColor(light ? 255 : 15, light ? 255 : 23, light ? 255 : 42);
+      doc.setFont("courier", "bold");
+      doc.setFontSize(design.number.sizePt * k);
+      doc.text(`RÉF. ${reference}`, x + design.number.x * w, y + design.number.y * h, {
+        align: "center",
+        baseline: "middle",
+      });
+    }
+
+    let ty = y + h + 14;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text(ticket.eventTitle, x, ty, { maxWidth: w });
+    ty += 9;
+    const fields: [string, string][] = [
+      ["DATE", ticket.date],
+      ["LIEU", ticket.location],
+      ["PARTICIPANT", ticket.holderName],
+      ["CATÉGORIE", ticket.ticketType],
+      ["RÉFÉRENCE", reference],
+    ];
+    for (const [label, value] of fields) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(label, x, ty);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+      doc.text(value, x, ty + 5, { maxWidth: w });
+      ty += 11;
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Présentez ce QR code à l'entrée · ${SITE.url.replace(/^https?:\/\//, "")}`,
+      PW / 2,
+      ty + 6,
+      { align: "center" }
+    );
+    doc.save(`ticket-${ticket.id.slice(0, 8)}.pdf`);
+  }
+
+  /** Le design avec le QR, puis un bandeau avec le participant et la référence. */
+  async function downloadDesignImage(design: SavedTicketDesign) {
+    const img = await loadImage(design.imageUrl);
+    const S = img.naturalWidth / design.widthMm; // px par mm
+    const W = img.naturalWidth;
+    const H = img.naturalHeight;
+    const band = Math.round(16 * S);
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H + band;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H + band);
+    ctx.drawImage(img, 0, 0, W, H);
+
+    const qrSize = design.qr.size * W;
+    const quiet = quietMm(design) * S;
+    const qx = design.qr.x * W;
+    const qy = design.qr.y * H;
+    ctx.fillRect(qx - quiet, qy - quiet, qrSize + 2 * quiet, qrSize + 2 * quiet);
+    if (qr) ctx.drawImage(await loadImage(qr), qx, qy, qrSize, qrSize);
+
+    const pt = S * 0.3528;
+    if (design.number.show) {
+      ctx.fillStyle = design.number.light ? "#ffffff" : "#0f172a";
+      ctx.font = `700 ${design.number.sizePt * pt}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`RÉF. ${reference}`, design.number.x * W, design.number.y * H);
+    }
+
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#0f172a";
+    ctx.font = `700 ${11 * pt}px sans-serif`;
+    ctx.fillText(`${ticket.holderName} · ${ticket.ticketType}`, 6 * S, H + band / 2, W * 0.6);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#64748b";
+    ctx.font = `700 ${10 * pt}px monospace`;
+    ctx.fillText(`RÉF. ${reference}`, W - 6 * S, H + band / 2);
+
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `ticket-${ticket.id.slice(0, 8)}.png`;
+    link.click();
+  }
+
   function downloadPdf() {
+    if (ticket.design) {
+      downloadDesignPdf(ticket.design).catch(() => downloadDefaultPdf());
+      return;
+    }
+    downloadDefaultPdf();
+  }
+
+  function downloadImage() {
+    if (ticket.design) {
+      downloadDesignImage(ticket.design).catch(() => downloadDefaultImage());
+      return;
+    }
+    downloadDefaultImage();
+  }
+
+  function downloadDefaultPdf() {
     const doc = new jsPDF({ unit: "mm", format: "a5" });
     const W = 148;
     const M = 12;
@@ -186,7 +337,7 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
   }
 
   /** Même mise en page que le PDF, rendue en PNG (mesures en mm × échelle). */
-  async function downloadImage() {
+  async function downloadDefaultImage() {
     const W = 148;
     const H = 210;
     const M = 12;
@@ -300,6 +451,131 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
     link.click();
   }
 
+  const fullscreenQr = (
+
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white p-4"
+          onClick={() => setFullscreen(false)}
+        >
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={() => setFullscreen(false)}
+            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {qr && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={qr}
+              alt="QR code du ticket"
+              className="h-[min(92vw,70vh)] w-[min(92vw,70vh)]"
+            />
+          )}
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-900">{ticket.eventTitle}</p>
+            <p className="mt-1 font-mono text-xs tracking-[0.2em] text-slate-500">
+              RÉF. {reference}
+            </p>
+          </div>
+        </div>
+  );
+
+  const downloads = (
+    <div className="grid w-full grid-cols-2 gap-2">
+      <Button variant="outline" size="sm" onClick={downloadPdf} className="h-11 w-full">
+        <Download className="h-4 w-4" />
+        PDF
+      </Button>
+      <Button variant="outline" size="sm" onClick={downloadImage} className="h-11 w-full">
+        <ImageDown className="h-4 w-4" />
+        Image
+      </Button>
+    </div>
+  );
+
+  const design = ticket.design;
+  if (design) {
+    const quiet = (quietMm(design) / design.widthMm) * 100;
+    return (
+      <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-200/70">
+        <div
+          className="relative w-full"
+          style={{ aspectRatio: `${design.widthMm} / ${design.heightMm}`, containerType: "inline-size" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={design.imageUrl}
+            alt={`Billet ${ticket.eventTitle}`}
+            className="absolute inset-0 h-full w-full"
+          />
+          <button
+            type="button"
+            onClick={() => setFullscreen(true)}
+            aria-label="Agrandir le QR code"
+            className="absolute bg-white"
+            style={{
+              left: `${design.qr.x * 100}%`,
+              top: `${design.qr.y * 100}%`,
+              width: `${design.qr.size * 100}%`,
+              aspectRatio: "1",
+              boxSizing: "content-box",
+              padding: `${quiet}%`,
+              marginLeft: `-${quiet}%`,
+              marginTop: `-${quiet}%`,
+            }}
+          >
+            {qr ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qr} alt="QR code du ticket" className="h-full w-full" />
+            ) : (
+              <span className="block h-full w-full animate-pulse bg-slate-100" />
+            )}
+          </button>
+          {design.number.show && (
+            <span
+              className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-mono font-bold ${
+                design.number.light ? "text-white" : "text-slate-900"
+              }`}
+              style={{
+                left: `${design.number.x * 100}%`,
+                top: `${design.number.y * 100}%`,
+                fontSize: `${((design.number.sizePt * 0.3528) / design.widthMm) * 100}cqw`,
+              }}
+            >
+              RÉF. {reference}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-4 px-5 py-5 sm:px-6">
+          <button
+            type="button"
+            onClick={() => setFullscreen(true)}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white active:scale-[0.99]"
+          >
+            <Maximize2 className="h-4 w-4" />
+            Afficher le QR en grand à l&apos;entrée
+          </button>
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <Field icon={<CalendarDays className="h-4 w-4" />} label="Date" value={ticket.date} />
+            <Field icon={<MapPin className="h-4 w-4" />} label="Lieu" value={ticket.location} />
+            <Field icon={<User className="h-4 w-4" />} label="Participant" value={ticket.holderName} />
+            <Field
+              icon={<span className={`h-3 w-3 rounded-full ${theme.dot}`} />}
+              label="Catégorie"
+              value={ticket.ticketType}
+            />
+          </dl>
+          {downloads}
+        </div>
+
+        {fullscreen && fullscreenQr}
+      </div>
+    );
+  }
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-200/70">
       {/* Bandeau coloré selon la catégorie */}
@@ -364,26 +640,7 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
           <p className="text-center text-xs text-slate-500">
             Touchez le QR pour l&apos;agrandir · à présenter à l&apos;entrée
           </p>
-          <div className="grid w-full grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadPdf}
-              className="h-11 w-full"
-            >
-              <Download className="h-4 w-4" />
-              PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadImage}
-              className="h-11 w-full"
-            >
-              <ImageDown className="h-4 w-4" />
-              Image
-            </Button>
-          </div>
+          {downloads}
         </div>
 
         {/* Corps principal */}
@@ -413,35 +670,7 @@ export function TicketView({ ticket }: { ticket: TicketViewData }) {
         </div>
       </div>
 
-      {fullscreen && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white p-4"
-          onClick={() => setFullscreen(false)}
-        >
-          <button
-            type="button"
-            aria-label="Fermer"
-            onClick={() => setFullscreen(false)}
-            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          {qr && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={qr}
-              alt="QR code du ticket"
-              className="h-[min(92vw,70vh)] w-[min(92vw,70vh)]"
-            />
-          )}
-          <div className="text-center">
-            <p className="text-sm font-semibold text-slate-900">{ticket.eventTitle}</p>
-            <p className="mt-1 font-mono text-xs tracking-[0.2em] text-slate-500">
-              RÉF. {reference}
-            </p>
-          </div>
-        </div>
-      )}
+      {fullscreen && fullscreenQr}
     </div>
   );
 }

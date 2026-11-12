@@ -6,6 +6,7 @@ import { Ban, Gift, Loader2, Phone, QrCode } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TicketView, type TicketViewData } from "@/components/tickets/ticket-view";
+import { pickDesign, type TicketDesignMap } from "@/lib/tickets/ticket-design";
 import {
   cancelInvitation,
   createInvitations,
@@ -30,6 +31,7 @@ interface Props {
   event: { title: string; date: string; location: string };
   tiers: { id: string; name: string }[];
   invitations: InvitationRow[];
+  designs: TicketDesignMap;
   ready: boolean;
   closed: boolean;
 }
@@ -41,7 +43,7 @@ const STATUS: Record<TicketStatus, { label: string; className: string }> = {
   refunded: { label: "Annulée", className: "bg-red-100 text-red-700" },
 };
 
-export function EventInvitations({ eventId, event, tiers, invitations, ready, closed }: Props) {
+export function EventInvitations({ eventId, event, tiers, invitations, designs, ready, closed }: Props) {
   const action = createInvitations.bind(null, eventId);
   const [state, formAction, pending] = useActionState<InvitationFormState, FormData>(
     action,
@@ -71,6 +73,7 @@ export function EventInvitations({ eventId, event, tiers, invitations, ready, cl
       holderName: t.holderName,
       ticketType: t.ticketType,
       qrToken: t.qrToken,
+      design: pickDesign(designs, t.ticketType),
     };
   }
 

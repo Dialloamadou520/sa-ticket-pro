@@ -3,6 +3,8 @@ import { CheckCircle2, Clock } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 import { TicketView, type TicketViewData } from "@/components/tickets/ticket-view";
+import { getTicketDesigns } from "@/lib/data/ticket-designs";
+import { pickDesign } from "@/lib/tickets/ticket-design";
 import { AutoRefresh } from "@/components/payments/auto-refresh";
 import { getEventBySlug } from "@/lib/data/events";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -135,6 +137,7 @@ async function resolveTickets(sp: {
 
   const rows = (data as Ticket[]) ?? [];
   if (rows.length === 0) return "pending";
+  const designs = await getTicketDesigns(rows.map((t) => t.event_id));
 
   return rows.map((t) => ({
     id: t.id,
@@ -146,5 +149,6 @@ async function resolveTickets(sp: {
     holderName: t.holder_name ?? "",
     ticketType: t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type],
     qrToken: t.qr_token,
+    design: pickDesign(designs[t.event_id], t.tier_name ?? TICKET_TYPE_LABELS[t.ticket_type]),
   }));
 }

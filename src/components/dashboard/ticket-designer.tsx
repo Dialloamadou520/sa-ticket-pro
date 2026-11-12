@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { FileDown, ImageUp, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { deleteTicketDesign, saveTicketDesign } from "@/app/dashboard/actions";
+import { categoryKey, type SavedTicketDesign } from "@/lib/tickets/ticket-design";
 import {
   CUSTOM_MAX_H_MM,
   CUSTOM_MAX_W_MM,
@@ -21,13 +23,13 @@ const MIN_H_MM = 20;
 const A4_W_MM = 210;
 const A4_H_MM = 297;
 
-function storageKey(eventId: string) {
-  return `kaypass:ticket-design:${eventId}`;
+function storageKey(eventId: string, category: string) {
+  return `kaypass:ticket-design:${eventId}:${categoryKey(category)}`;
 }
 
-export function loadTicketDesign(eventId: string): CustomTicketDesign | null {
+function loadTicketDesign(eventId: string, category: string): CustomTicketDesign | null {
   try {
-    const raw = window.localStorage.getItem(storageKey(eventId));
+    const raw = window.localStorage.getItem(storageKey(eventId, category));
     if (!raw) return null;
     const d = JSON.parse(raw) as CustomTicketDesign;
     const k = Math.min(1, CUSTOM_MAX_W_MM / d.widthMm, CUSTOM_MAX_H_MM / d.heightMm);
@@ -35,6 +37,42 @@ export function loadTicketDesign(eventId: string): CustomTicketDesign | null {
   } catch {
     return null;
   }
+}
+
+async function urlToDataUrl(url: string): Promise<string> {
+  const blob = await (await fetch(url)).blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("image"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Envoie l'image vers le stockage et enregistre le design pour la catégorie. */
+async function persistDesign(
+  eventId: string,
+  category: string,
+  design: CustomTicketDesign
+): Promise<{ imageUrl?: string; error?: string }> {
+  let imageUrl = design.imageUrl;
+  if (!imageUrl) {
+    const form = new FormData();
+    form.append("file", await (await fetch(design.image)).blob(), "billet.jpg");
+    const res = await fetch("/api/upload", { method: "POST", body: form });
+    const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+    if (!res.ok || !json.url) return { error: json.error ?? "Envoi de l'image impossible." };
+    imageUrl = json.url;
+  }
+  const saved: SavedTicketDesign = {
+    imageUrl,
+    widthMm: design.widthMm,
+    heightMm: design.heightMm,
+    qr: design.qr,
+    number: design.number,
+  };
+  const res = await saveTicketDesign(eventId, category, saved);
+  return res.error ? { error: res.error, imageUrl } : { imageUrl };
 }
 
 /** Réduit l'image et la convertit en JPEG (fond blanc) pour un PDF léger. */
@@ -154,19 +192,27 @@ type Drag = { target: "qr" | "number"; dx: number; dy: number } | null;
  */
 export function TicketDesigner({
   eventId,
+  category,
+  saved,
   busy,
   progress,
   onGenerate,
   onClose,
 }: {
   eventId: string;
+  /** Catégorie du lot : le design s'affiche aussi sur ses billets numériques. */
+  category: string;
+  saved?: SavedTicketDesign;
   busy: boolean;
   progress?: string;
   onGenerate: (design: CustomTicketDesign) => void;
   onClose: () => void;
 }) {
   // Monté uniquement après un clic (jamais rendu côté serveur) : lecture directe du stockage local.
-  const [design, setDesign] = useState<CustomTicketDesign | null>(() => loadTicketDesign(eventId));
+  const [design, setDesign] = useState<CustomTicketDesign | null>(() =>
+    loadTicketDesign(eventId, category)
+  );
+  const [saving, setSaving] = useState(false);
   const [ratio, setRatio] = useState(() => (design ? design.heightMm / design.widthMm : 0.4));
   const [lockRatio, setLockRatio] = useState(true);
   const [scale, setScale] = useState(1);
@@ -181,13 +227,28 @@ export function TicketDesigner({
   }, []);
 
   useEffect(() => {
+    if (!saved || loadTicketDesign(eventId, category)) return;
+    let cancelled = false;
+    urlToDataUrl(saved.imageUrl)
+      .then((image) => {
+        if (cancelled) return;
+        setRatio(saved.heightMm / saved.widthMm);
+        setDesign({ ...saved, image });
+      })
+      .catch(() => toast.error("Impossible de charger le design enregistré."));
+    return () => {
+      cancelled = true;
+    };
+  }, [saved, eventId, category]);
+
+  useEffect(() => {
     if (!design) return;
     try {
-      window.localStorage.setItem(storageKey(eventId), JSON.stringify(design));
+      window.localStorage.setItem(storageKey(eventId, category), JSON.stringify(design));
     } catch {
       // image trop lourde pour le stockage local : le design reste valable pour cette session
     }
-  }, [design, eventId]);
+  }, [design, eventId, category]);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -210,6 +271,7 @@ export function TicketDesigner({
       setLockRatio(true);
       setDesign({
         image: data,
+        imageUrl: undefined,
         ...size,
         qr: design?.qr ?? { x: 0.74, y: 0.15, size: 0.2 },
         number: design?.number ?? { show: true, x: 0.84, y: 0.88, sizePt: 10, light: false },
@@ -217,6 +279,21 @@ export function TicketDesigner({
     } catch {
       toast.error("Impossible de lire cette image.");
     }
+  }
+
+  async function generate(d: CustomTicketDesign) {
+    setSaving(true);
+    try {
+      const res = await persistDesign(eventId, category, d);
+      if (res.imageUrl) update({ imageUrl: res.imageUrl });
+      if (res.error) toast.error(res.error);
+      else toast.success(`Design enregistré : il s'affiche aussi sur les billets numériques « ${category} ».`);
+    } catch {
+      toast.error("Design non enregistré pour les billets numériques.");
+    } finally {
+      setSaving(false);
+    }
+    onGenerate(d);
   }
 
   function update(patch: Partial<CustomTicketDesign>) {
@@ -278,7 +355,8 @@ export function TicketDesigner({
           <p className="font-semibold text-slate-900">Mon design de billet</p>
           <p className="text-xs text-slate-500">
             Importez votre visuel (Canva, Photoshop…), placez le QR code, puis générez le PDF :
-            chaque billet reçoit son propre QR.
+            chaque billet reçoit son propre QR. Le design est aussi appliqué aux billets
+            numériques « {category} ».
           </p>
         </div>
         <button
@@ -494,15 +572,16 @@ export function TicketDesigner({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={() => onGenerate(design)} disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-              {busy ? progress ?? "Préparation…" : "Générer le PDF avec mon design"}
+            <Button type="button" onClick={() => generate(design)} disabled={busy || saving}>
+              {busy || saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+              {saving ? "Enregistrement…" : busy ? progress ?? "Préparation…" : "Générer le PDF avec mon design"}
             </Button>
             <button
               type="button"
               onClick={() => {
-                window.localStorage.removeItem(storageKey(eventId));
+                window.localStorage.removeItem(storageKey(eventId, category));
                 setDesign(null);
+                deleteTicketDesign(eventId, category);
               }}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm text-slate-500 hover:bg-white hover:text-red-600"
             >

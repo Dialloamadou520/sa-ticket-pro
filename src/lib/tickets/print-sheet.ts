@@ -212,6 +212,8 @@ export function buildPrintCsv(event: PrintSheetEvent, tickets: PrintSheetTicket[
 export interface CustomTicketDesign {
   /** Image du billet (data URL JPEG). */
   image: string;
+  /** URL publique de l'image une fois enregistrée (billets numériques). */
+  imageUrl?: string;
   widthMm: number;
   heightMm: number;
   /** Coin haut-gauche (fraction du billet) et côté (fraction de la largeur). */
