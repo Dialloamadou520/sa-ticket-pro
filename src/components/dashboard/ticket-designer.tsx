@@ -490,8 +490,8 @@ export function TicketDesigner({
                         key={i}
                         className="absolute border border-white bg-brand-500/70"
                         style={{
-                          left: `${((grid.offsetX + (i % grid.cols) * design.widthMm) / A4_W_MM) * 100}%`,
-                          top: `${((grid.offsetY + Math.floor(i / grid.cols) * design.heightMm) / A4_H_MM) * 100}%`,
+                          left: `${((grid.offsetX + (i % grid.cols) * grid.pitchX) / A4_W_MM) * 100}%`,
+                          top: `${((grid.offsetY + Math.floor(i / grid.cols) * grid.pitchY) / A4_H_MM) * 100}%`,
                           width: `${(design.widthMm / A4_W_MM) * 100}%`,
                           height: `${(design.heightMm / A4_H_MM) * 100}%`,
                         }}
