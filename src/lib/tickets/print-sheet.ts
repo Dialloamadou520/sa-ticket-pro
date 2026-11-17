@@ -227,14 +227,14 @@ const CUSTOM_MARGIN = 5;
 export const CUSTOM_MAX_W_MM = A4_W - 2 * CUSTOM_MARGIN;
 export const CUSTOM_MAX_H_MM = A4_H - 2 * CUSTOM_MARGIN;
 
-/** Disposition des billets sur une page A4 portrait. */
+/** Disposition des billets sur une page A4 portrait, calés sur la marge droite. */
 export function customTicketGrid(widthMm: number, heightMm: number) {
   const cols = Math.floor((CUSTOM_MAX_W_MM + 0.001) / widthMm);
   const rows = Math.floor((CUSTOM_MAX_H_MM + 0.001) / heightMm);
   return {
     cols,
     rows,
-    offsetX: (A4_W - cols * widthMm) / 2,
+    offsetX: A4_W - CUSTOM_MARGIN - cols * widthMm,
     offsetY: (A4_H - rows * heightMm) / 2,
   };
 }
