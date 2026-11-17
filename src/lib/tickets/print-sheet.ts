@@ -227,15 +227,28 @@ const CUSTOM_MARGIN = 5;
 export const CUSTOM_MAX_W_MM = A4_W - 2 * CUSTOM_MARGIN;
 export const CUSTOM_MAX_H_MM = A4_H - 2 * CUSTOM_MARGIN;
 
-/** Disposition des billets sur une page A4 portrait, calés sur la marge droite. */
+/** Espace visé entre deux billets, pour faciliter la découpe. */
+const CUSTOM_GAP = 3;
+
+/**
+ * Disposition des billets sur une page A4 portrait, calés sur la marge droite.
+ * L'espace entre billets est réduit si besoin pour ne pas perdre de billet par page.
+ */
 export function customTicketGrid(widthMm: number, heightMm: number) {
   const cols = Math.floor((CUSTOM_MAX_W_MM + 0.001) / widthMm);
   const rows = Math.floor((CUSTOM_MAX_H_MM + 0.001) / heightMm);
+  const gapX = cols > 1 ? Math.min(CUSTOM_GAP, (CUSTOM_MAX_W_MM - cols * widthMm) / (cols - 1)) : 0;
+  const gapY = rows > 1 ? Math.min(CUSTOM_GAP, (CUSTOM_MAX_H_MM - rows * heightMm) / (rows - 1)) : 0;
+  const usedW = cols * widthMm + Math.max(0, cols - 1) * gapX;
+  const usedH = rows * heightMm + Math.max(0, rows - 1) * gapY;
   return {
     cols,
     rows,
-    offsetX: A4_W - CUSTOM_MARGIN - cols * widthMm,
-    offsetY: (A4_H - rows * heightMm) / 2,
+    offsetX: A4_W - CUSTOM_MARGIN - usedW,
+    offsetY: (A4_H - usedH) / 2,
+    /** Distance entre le début de deux billets voisins. */
+    pitchX: widthMm + gapX,
+    pitchY: heightMm + gapY,
   };
 }
 
@@ -262,8 +275,8 @@ export async function buildCustomDesignSheet(
   for (let i = 0; i < tickets.length; i++) {
     if (i > 0 && i % perPage === 0) doc.addPage();
     const slot = i % perPage;
-    const x = grid.offsetX + (slot % grid.cols) * w;
-    const y = grid.offsetY + Math.floor(slot / grid.cols) * h;
+    const x = grid.offsetX + (slot % grid.cols) * grid.pitchX;
+    const y = grid.offsetY + Math.floor(slot / grid.cols) * grid.pitchY;
 
     doc.addImage(design.image, "JPEG", x, y, w, h, "ticket-design", "FAST");
     cropMarks(doc, x, y, w, h);
