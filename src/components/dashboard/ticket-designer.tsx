@@ -213,7 +213,7 @@ export function TicketDesigner({
     loadTicketDesign(eventId, category)
   );
   const [saving, setSaving] = useState(false);
-  const [ratio, setRatio] = useState(() => (design ? design.heightMm / design.widthMm : 0.4));
+  const [ratio, setRatio] = useState(() => (design ? design.heightMm / design.widthMm : 70 / 180));
   const [lockRatio, setLockRatio] = useState(true);
   const [scale, setScale] = useState(1);
   const [sampleQr, setSampleQr] = useState("");
@@ -266,7 +266,7 @@ export function TicketDesigner({
     }
     try {
       const { data, ratio: r } = await normalizeImage(file);
-      const size = fitSize(design?.widthMm ?? 150, 0, r);
+      const size = fitSize(design?.widthMm ?? 180, 0, r);
       setRatio(r);
       setLockRatio(true);
       setDesign({
