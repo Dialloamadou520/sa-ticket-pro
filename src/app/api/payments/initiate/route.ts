@@ -55,6 +55,12 @@ export async function POST(request: NextRequest) {
   let tierName: string | null = null;
   let tierFeePercent: number | null = null;
   let tierFeePayer: FeePayer | null = null;
+  if (!body.tierId && (event.tiers?.length ?? 0) > 0) {
+    return NextResponse.json(
+      { error: "Choisissez une catégorie de ticket." },
+      { status: 400 }
+    );
+  }
   if (body.tierId && isSupabaseConfigured) {
     const lookup = createAdminClient();
     const { data: tier } = await lookup
