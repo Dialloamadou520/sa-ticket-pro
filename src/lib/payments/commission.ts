@@ -1,3 +1,5 @@
+import type { FeePayer } from "@/lib/types";
+
 /**
  * Frais de service de la plateforme, ajoutés au prix d'un ticket et payés par
  * l'acheteur (inclus dans le total débité, **par ticket**). Le revenu de
@@ -41,6 +43,18 @@ export function resolveFeePercent(
     return normalizeFeePercent(eventPercent);
   }
   return normalizeFeePercent(globalPercent);
+}
+
+/**
+ * Qui supporte les frais d'un achat : la catégorie de ticket si elle a son
+ * propre réglage, sinon l'événement, sinon l'acheteur.
+ */
+export function resolveFeePayer(
+  tierPayer: FeePayer | null | undefined,
+  eventPayer: FeePayer | null | undefined,
+): FeePayer {
+  if (tierPayer === "buyer" || tierPayer === "organizer") return tierPayer;
+  return eventPayer === "organizer" ? "organizer" : "buyer";
 }
 
 /** Frais par ticket pour un prix unitaire donné (arrondi au FCFA). */

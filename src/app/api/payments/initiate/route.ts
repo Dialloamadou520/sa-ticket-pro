@@ -11,7 +11,11 @@ import {
 } from "@/lib/payments/dexpay";
 import { getEventBySlug } from "@/lib/data/events";
 import { getServiceFeePercent } from "@/lib/data/settings";
-import { feeForUnitPrice, resolveFeePercent } from "@/lib/payments/commission";
+import {
+  feeForUnitPrice,
+  resolveFeePayer,
+  resolveFeePercent,
+} from "@/lib/payments/commission";
 import { discountFor, findPromoCode } from "@/lib/payments/promo";
 import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
@@ -50,11 +54,18 @@ export async function POST(request: NextRequest) {
   let tierId: string | null = null;
   let tierName: string | null = null;
   let tierFeePercent: number | null = null;
+  let tierFeePayer: FeePayer | null = null;
+  if (!body.tierId && (event.tiers?.length ?? 0) > 0) {
+    return NextResponse.json(
+      { error: "Choisissez une catégorie de ticket." },
+      { status: 400 }
+    );
+  }
   if (body.tierId && isSupabaseConfigured) {
     const lookup = createAdminClient();
     const { data: tier } = await lookup
       .from("ticket_tiers")
-      .select("id, name, price, event_id, fee_percent")
+      .select("id, name, price, event_id, fee_percent, fee_payer")
       .eq("id", body.tierId)
       .maybeSingle();
     if (!tier || tier.event_id !== event.id) {
@@ -67,17 +78,19 @@ export async function POST(request: NextRequest) {
     tierId = tier.id;
     tierName = tier.name;
     tierFeePercent = tier.fee_percent ?? null;
+    tierFeePayer = tier.fee_payer ?? null;
   }
   // `amount` = revenu de base (revient à l'organisateur). Le pourcentage des
   // frais vient de la catégorie de ticket, sinon de l'événement, sinon du
-  // réglage global. Selon l'événement, ces frais sont ajoutés au montant débité
-  // (acheteur) ou retenus plus tard sur les revenus de l'organisateur.
+  // réglage global. Selon la catégorie (ou à défaut l'événement), ces frais sont
+  // ajoutés au montant débité (acheteur) ou retenus plus tard sur les revenus de
+  // l'organisateur.
   const feePercent = resolveFeePercent(
     tierFeePercent,
     event.fee_percent,
     await getServiceFeePercent(),
   );
-  const feePaidBy: FeePayer = event.fee_payer === "organizer" ? "organizer" : "buyer";
+  const feePaidBy = resolveFeePayer(tierFeePayer, event.fee_payer);
   const subtotal = unitPrice * quantity;
   const serviceFee = feeForUnitPrice(unitPrice, feePercent) * quantity;
 

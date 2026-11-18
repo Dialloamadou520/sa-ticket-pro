@@ -328,6 +328,22 @@ export async function setTierFeePercent(tierId: string, percent: number | null) 
 }
 
 /**
+ * Définit qui supporte les frais d'une catégorie de ticket. `null` remet la
+ * catégorie sur le réglage de l'événement. Ne change rien aux paiements déjà
+ * encaissés.
+ */
+export async function setTierFeePayer(tierId: string, payer: FeePayer | null) {
+  if (!isSupabaseConfigured) return;
+  await assertAdmin();
+  if (payer !== null && payer !== "buyer" && payer !== "organizer") {
+    throw new Error("Payeur des frais invalide.");
+  }
+  const admin = createAdminClient();
+  await admin.from("ticket_tiers").update({ fee_payer: payer }).eq("id", tierId);
+  revalidatePath("/admin/frais");
+}
+
+/**
  * Règle les frais d'un événement. `null` remet l'événement sur le taux global
  * (les catégories de tickets peuvent encore avoir leur propre taux).
  */

@@ -44,11 +44,31 @@ function parseTiers(formData: FormData): TierInput[] {
 /**
  * Remplace les catégories de tickets d'un événement (delete + insert) via le
  * client service-role (l'appelant a déjà été authentifié comme propriétaire).
+ * Les frais réglés par l'admin (taux, payeur) suivent la catégorie de même nom
+ * (dans l'ordre, si plusieurs catégories portent le même nom).
+ * Retourne un message d'erreur si les catégories n'ont pas pu être lues.
  */
-async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
+async function syncTiers(
+  eventId: string,
+  tiers: TierInput[],
+): Promise<string | null> {
   const admin = createAdminClient();
+  const { data: previous, error } = await admin
+    .from("ticket_tiers")
+    .select("name, fee_percent, fee_payer, position")
+    .eq("event_id", eventId)
+    .order("position");
+  if (error) return error.message;
+  type Fees = { fee_percent: number | null; fee_payer: string | null };
+  const feesByName = new Map<string, Fees[]>();
+  for (const t of previous ?? []) {
+    const key = String(t.name).trim().toLowerCase();
+    const list = feesByName.get(key) ?? [];
+    list.push({ fee_percent: t.fee_percent ?? null, fee_payer: t.fee_payer ?? null });
+    feesByName.set(key, list);
+  }
   await admin.from("ticket_tiers").delete().eq("event_id", eventId);
-  if (tiers.length === 0) return;
+  if (tiers.length === 0) return null;
   await admin.from("ticket_tiers").insert(
     tiers.map((t, i) => ({
       event_id: eventId,
@@ -56,8 +76,10 @@ async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
       price: t.price,
       capacity: t.capacity,
       position: i,
+      ...(feesByName.get(t.name.toLowerCase())?.shift() ?? {}),
     }))
   );
+  return null;
 }
 
 export interface EventFormState {
@@ -199,7 +221,8 @@ export async function createEvent(
   }
   if (error || !created) return { error: error?.message ?? "Erreur." };
 
-  await syncTiers(created.id, tiers);
+  const tierError = await syncTiers(created.id, tiers);
+  if (tierError) return { error: tierError };
 
   revalidatePath("/dashboard/evenements");
   return { success: true };
@@ -237,7 +260,8 @@ export async function updateEvent(
   }
   if (error) return { error: error.message };
 
-  await syncTiers(id, tiers);
+  const tierError = await syncTiers(id, tiers);
+  if (tierError) return { error: tierError };
 
   revalidatePath("/dashboard/evenements");
   return { success: true };

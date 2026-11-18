@@ -85,6 +85,11 @@ export interface TicketTier {
    * catégorie suit le pourcentage global de la plateforme. Réglé par l'admin.
    */
   fee_percent?: number | null;
+  /**
+   * Qui supporte les frais de cette catégorie. `null` = la catégorie suit
+   * `Event.fee_payer`. Réglé par l'admin.
+   */
+  fee_payer?: FeePayer | null;
   created_at: string;
 }
 
