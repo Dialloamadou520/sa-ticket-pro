@@ -55,54 +55,11 @@ export default async function AdminFeesPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 p-4 sm:p-5">
-          <h2 className="font-semibold text-slate-900">Frais par événement</h2>
-          <p className="text-xs text-slate-500">
-            Taux propre à l&apos;événement (champ vide = taux global{" "}
-            {globalPercent} %) et qui le paie. Par défaut les frais sont ajoutés
-            au prix et payés par l&apos;acheteur ; « payés par
-            l&apos;organisateur » les retient sur ses revenus (l&apos;acheteur
-            paie alors le prix affiché). Les paiements déjà encaissés ne
-            changent pas.
-          </p>
-        </div>
-        {events.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-500">
-            Aucun événement.
-          </p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {events.map((event) => (
-              <li
-                key={event.id}
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-5"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium break-words text-slate-900">
-                    {event.title}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {event.fee_percent == null
-                      ? `Taux global (${globalPercent} %)`
-                      : `${event.fee_percent} %`}{" "}
-                    — {feeLabel(event.fee_payer)}
-                  </p>
-                </div>
-                <EventFeeEditor
-                  eventId={event.id}
-                  percent={event.fee_percent}
-                  payer={event.fee_payer}
-                  globalPercent={globalPercent}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 p-4 sm:p-5">
+      <section
+        id="categories"
+        className="scroll-mt-24 overflow-hidden rounded-2xl border-2 border-amber-300 bg-white shadow-sm"
+      >
+        <div className="border-b border-amber-200 bg-amber-50 p-4 sm:p-5">
           <h2 className="font-semibold text-slate-900">
             Frais par catégorie de ticket
           </h2>
@@ -243,6 +200,52 @@ export default async function AdminFeesPage() {
           </div>
         )}
       </section>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
+          <h2 className="font-semibold text-slate-900">Frais par événement</h2>
+          <p className="text-xs text-slate-500">
+            Taux propre à l&apos;événement (champ vide = taux global{" "}
+            {globalPercent} %) et qui le paie. Par défaut les frais sont ajoutés
+            au prix et payés par l&apos;acheteur ; « payés par
+            l&apos;organisateur » les retient sur ses revenus (l&apos;acheteur
+            paie alors le prix affiché). Les paiements déjà encaissés ne
+            changent pas.
+          </p>
+        </div>
+        {events.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            Aucun événement.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {events.map((event) => (
+              <li
+                key={event.id}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-5"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium break-words text-slate-900">
+                    {event.title}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {event.fee_percent == null
+                      ? `Taux global (${globalPercent} %)`
+                      : `${event.fee_percent} %`}{" "}
+                    — {feeLabel(event.fee_payer)}
+                  </p>
+                </div>
+                <EventFeeEditor
+                  eventId={event.id}
+                  percent={event.fee_percent}
+                  payer={event.fee_payer}
+                  globalPercent={globalPercent}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
     </div>
   );
 }
