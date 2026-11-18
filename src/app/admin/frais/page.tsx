@@ -6,7 +6,11 @@ import { TierFeePercentEditor } from "@/components/admin/tier-fee-percent-editor
 import { EventFeeEditor } from "@/components/admin/event-fee-editor";
 import { getEventsWithTiers } from "@/lib/data/admin";
 import { getServiceFeePercent } from "@/lib/data/settings";
-import { feeForUnitPrice, resolveFeePercent } from "@/lib/payments/commission";
+import {
+  feeForUnitPrice,
+  resolveFeePayer,
+  resolveFeePercent,
+} from "@/lib/payments/commission";
 import { formatAmount } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Frais de service" };
@@ -104,7 +108,9 @@ export default async function AdminFeesPage() {
           </h2>
           <p className="text-xs text-slate-500">
             Laissez le champ vide pour suivre le taux de l&apos;événement (ou, à
-            défaut, le taux global de {globalPercent} %).
+            défaut, le taux global de {globalPercent} %). Chaque catégorie peut
+            aussi avoir son propre payeur des frais (acheteur ou organisateur) ;
+            sinon elle suit l&apos;événement.
           </p>
         </div>
         {withTiers.length === 0 ? (
@@ -119,7 +125,7 @@ export default async function AdminFeesPage() {
                   {event.title}
                 </h3>
                 <p className="mb-3 text-xs text-slate-500">
-                  Frais {feeLabel(event.fee_payer)}
+                  Par défaut, frais {feeLabel(event.fee_payer)}
                 </p>
                 <ul className="space-y-3 sm:hidden">
                   {event.tiers.map((tier) => {
@@ -129,6 +135,10 @@ export default async function AdminFeesPage() {
                       globalPercent,
                     );
                     const fee = feeForUnitPrice(tier.price, percent);
+                    const payer = resolveFeePayer(
+                      tier.fee_payer,
+                      event.fee_payer,
+                    );
                     return (
                       <li
                         key={tier.id}
@@ -144,10 +154,10 @@ export default async function AdminFeesPage() {
                         </div>
                         <p className="text-xs text-slate-500">
                           Frais {formatAmount(fee)} ({percent} %
-                          {tier.fee_percent == null ? " — global" : ""}) · total
-                          acheteur{" "}
+                          {tier.fee_percent == null ? " — global" : ""}) ·{" "}
+                          {feeLabel(payer)} · total acheteur{" "}
                           {formatAmount(
-                            event.fee_payer === "organizer"
+                            payer === "organizer"
                               ? tier.price
                               : tier.price + fee,
                           )}
@@ -156,6 +166,8 @@ export default async function AdminFeesPage() {
                           tierId={tier.id}
                           percent={tier.fee_percent ?? null}
                           globalPercent={globalPercent}
+                          payer={tier.fee_payer ?? null}
+                          eventPayer={event.fee_payer}
                         />
                       </li>
                     );
@@ -169,11 +181,9 @@ export default async function AdminFeesPage() {
                         <th className="py-2 pr-4">Prix</th>
                         <th className="py-2 pr-4">Frais appliqués</th>
                         <th className="py-2 pr-4">
-                          {event.fee_payer === "organizer"
-                            ? "Total acheteur (frais non ajoutés)"
-                            : "Total acheteur"}
+                          Total acheteur
                         </th>
-                        <th className="py-2">Taux de cette catégorie</th>
+                        <th className="py-2">Taux et payeur de cette catégorie</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -184,6 +194,10 @@ export default async function AdminFeesPage() {
                           globalPercent,
                         );
                         const fee = feeForUnitPrice(tier.price, percent);
+                        const payer = resolveFeePayer(
+                          tier.fee_payer,
+                          event.fee_payer,
+                        );
                         return (
                           <tr key={tier.id}>
                             <td className="py-3 pr-4 font-medium text-slate-900">
@@ -198,10 +212,13 @@ export default async function AdminFeesPage() {
                                 ({percent} %
                                 {tier.fee_percent == null ? " — global" : ""})
                               </span>
+                              <span className="block text-xs text-slate-500">
+                                {feeLabel(payer)}
+                              </span>
                             </td>
                             <td className="py-3 pr-4 text-slate-700">
                               {formatAmount(
-                                event.fee_payer === "organizer"
+                                payer === "organizer"
                                   ? tier.price
                                   : tier.price + fee,
                               )}
@@ -211,6 +228,8 @@ export default async function AdminFeesPage() {
                                 tierId={tier.id}
                                 percent={tier.fee_percent ?? null}
                                 globalPercent={globalPercent}
+                                payer={tier.fee_payer ?? null}
+                                eventPayer={event.fee_payer}
                               />
                             </td>
                           </tr>

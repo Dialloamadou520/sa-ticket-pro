@@ -9,6 +9,7 @@ import { formatPrice } from "@/lib/format";
 import {
   DEFAULT_FEE_PERCENT,
   feeForUnitPrice,
+  resolveFeePayer,
   resolveFeePercent,
 } from "@/lib/payments/commission";
 import { discountFor } from "@/lib/payments/promo-discount";
@@ -70,7 +71,7 @@ export function PurchaseForm({
   const isFree = unitPrice <= 0;
   // Frais à la charge de l'organisateur : l'acheteur paie le prix affiché.
   const unitFee =
-    event.fee_payer === "organizer"
+    resolveFeePayer(selectedTier?.fee_payer, event.fee_payer) === "organizer"
       ? 0
       : feeForUnitPrice(
           unitPrice,

@@ -2,24 +2,31 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { setTierFeePercent } from "@/app/admin/actions";
+import { setTierFeePayer, setTierFeePercent } from "@/app/admin/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { MIN_FEE_PERCENT } from "@/lib/payments/commission";
+import type { FeePayer } from "@/lib/types";
 
 /**
- * Frais de service d'une catégorie de ticket, réservé admin. Champ vide = la
- * catégorie suit le pourcentage global de la plateforme.
+ * Frais de service d'une catégorie de ticket, réservé admin : taux (champ vide =
+ * taux de l'événement ou global) et partie qui les supporte (vide = comme
+ * l'événement).
  */
 export function TierFeePercentEditor({
   tierId,
   percent,
   globalPercent,
+  payer,
+  eventPayer,
 }: {
   tierId: string;
   percent: number | null;
   globalPercent: number;
+  payer: FeePayer | null;
+  eventPayer: FeePayer;
 }) {
   const [value, setValue] = useState(percent === null ? "" : String(percent));
+  const [currentPayer, setCurrentPayer] = useState<FeePayer | "">(payer ?? "");
   const [pending, startTransition] = useTransition();
 
   function save() {
@@ -56,8 +63,34 @@ export function TierFeePercentEditor({
     });
   }
 
+  function savePayer(next: FeePayer | "") {
+    if (!isSupabaseConfigured) {
+      toast.error("Mode démo : réglage indisponible.");
+      return;
+    }
+    const previous = currentPayer;
+    setCurrentPayer(next);
+    startTransition(async () => {
+      try {
+        await setTierFeePayer(tierId, next === "" ? null : next);
+        toast.success(
+          next === ""
+            ? "Catégorie alignée sur l'événement pour le paiement des frais."
+            : next === "organizer"
+              ? "Frais de cette catégorie à la charge de l'organisateur."
+              : "Frais de cette catégorie à la charge de l'acheteur.",
+        );
+      } catch (error) {
+        setCurrentPayer(previous);
+        toast.error(
+          error instanceof Error ? error.message : "Mise à jour impossible.",
+        );
+      }
+    });
+  }
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <div className="relative">
         <input
           type="number"
@@ -83,6 +116,20 @@ export function TierFeePercentEditor({
       >
         Enregistrer
       </button>
+      <select
+        value={currentPayer}
+        onChange={(e) => savePayer(e.target.value as FeePayer | "")}
+        disabled={pending}
+        aria-label="Qui paie les frais de cette catégorie"
+        className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+      >
+        <option value="">
+          Comme l&apos;événement (
+          {eventPayer === "organizer" ? "organisateur" : "acheteur"})
+        </option>
+        <option value="buyer">Payés par l&apos;acheteur</option>
+        <option value="organizer">Payés par l&apos;organisateur</option>
+      </select>
     </div>
   );
 }

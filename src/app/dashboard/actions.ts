@@ -44,9 +44,20 @@ function parseTiers(formData: FormData): TierInput[] {
 /**
  * Remplace les catégories de tickets d'un événement (delete + insert) via le
  * client service-role (l'appelant a déjà été authentifié comme propriétaire).
+ * Les frais réglés par l'admin (taux, payeur) suivent la catégorie de même nom.
  */
 async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
   const admin = createAdminClient();
+  const { data: previous } = await admin
+    .from("ticket_tiers")
+    .select("name, fee_percent, fee_payer")
+    .eq("event_id", eventId);
+  const feesByName = new Map(
+    (previous ?? []).map((t) => [
+      String(t.name).trim().toLowerCase(),
+      { fee_percent: t.fee_percent ?? null, fee_payer: t.fee_payer ?? null },
+    ]),
+  );
   await admin.from("ticket_tiers").delete().eq("event_id", eventId);
   if (tiers.length === 0) return;
   await admin.from("ticket_tiers").insert(
@@ -56,6 +67,7 @@ async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
       price: t.price,
       capacity: t.capacity,
       position: i,
+      ...(feesByName.get(t.name.toLowerCase()) ?? {}),
     }))
   );
 }
