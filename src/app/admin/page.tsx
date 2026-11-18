@@ -399,13 +399,7 @@ export default async function AdminPage() {
               <p className="text-xs text-slate-500">
                 Pourcentage ajouté au prix de chaque ticket et payé par
                 l&apos;acheteur. S&apos;applique à tous les événements. De 0 %
-                (aucun frais) à 100 %.{" "}
-                <Link
-                  href="/admin/frais"
-                  className="font-medium text-brand-700 hover:underline"
-                >
-                  Régler par catégorie de ticket
-                </Link>
+                (aucun frais) à 100 %.
               </p>
             </div>
           </div>
@@ -416,6 +410,24 @@ export default async function AdminPage() {
             <ServiceFeePercentEditor percent={serviceFeePercent} />
           </div>
         </div>
+        <Link
+          href="/admin/frais#categories"
+          className="group flex items-center gap-3 border-t border-amber-200 bg-amber-50 px-4 py-3 transition-colors hover:bg-amber-100 sm:px-5"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400 text-slate-900">
+            <Tag className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-900">
+              Régler par catégorie de ticket
+            </span>
+            <span className="block text-xs text-slate-600">
+              Taux et payeur des frais (acheteur ou organisateur) pour chaque
+              catégorie : Prévente, VIP…
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-amber-700 transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
