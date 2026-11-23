@@ -15,7 +15,6 @@ export const RATE_LIMITS = {
   paymentInitiate: { name: "pay", max: 15, windowSeconds: 10 * 60 },
   signup: { name: "signup", max: 5, windowSeconds: 60 * 60 },
   contact: { name: "contact", max: 5, windowSeconds: 60 * 60 },
-  ticketVerify: { name: "verify", max: 120, windowSeconds: 60 },
   upload: { name: "upload", max: 30, windowSeconds: 10 * 60 },
 } satisfies Record<string, RateLimitRule>;
 

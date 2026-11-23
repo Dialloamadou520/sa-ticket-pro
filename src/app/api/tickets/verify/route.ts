@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { verifyTicketToken } from "@/lib/tickets/verify-ticket";
-import { hitRateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 
 /** Valide un ticket au point d'entrée (admin, organisateur ou contrôleur). */
 export async function POST(request: NextRequest) {
@@ -24,8 +23,6 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
   }
-  const limit = await hitRateLimit(RATE_LIMITS.ticketVerify, user.id);
-  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
   const { status, body } = await verifyTicketToken(createAdminClient(), user, raw);
   return NextResponse.json(body, { status });
