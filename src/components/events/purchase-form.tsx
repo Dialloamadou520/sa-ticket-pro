@@ -32,20 +32,25 @@ interface PromoResult {
   discountValue: number;
 }
 
-/** Valide un code promo côté serveur ; `null` si le code n'est pas utilisable. */
+/** Valide un code promo côté serveur ; `error` si le code n'est pas utilisable. */
 async function lookupPromo(
   code: string,
   slug: string,
-): Promise<PromoResult | null> {
+): Promise<{ promo?: PromoResult; error?: string }> {
+  const invalid = "Code invalide pour cet événement.";
   try {
     const res = await fetch(
       `/api/promo/validate?code=${encodeURIComponent(code)}&event=${encodeURIComponent(slug)}`,
       { cache: "no-store" },
     );
-    if (!res.ok) return null;
-    return (await res.json()) as PromoResult;
+    if (res.status === 429) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      return { error: data.error ?? "Trop de tentatives. Réessayez plus tard." };
+    }
+    if (!res.ok) return { error: invalid };
+    return { promo: (await res.json()) as PromoResult };
   } catch {
-    return null;
+    return { error: invalid };
   }
 }
 
@@ -98,10 +103,10 @@ export function PurchaseForm({
     const code = promoInput.trim();
     if (!code) return;
     setPromoLoading(true);
-    const result = await lookupPromo(code, event.slug);
+    const { promo: result, error } = await lookupPromo(code, event.slug);
     setPromoLoading(false);
     if (!result) {
-      toast.error("Code invalide pour cet événement.");
+      toast.error(error);
       return;
     }
     setPromo(result);

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { normalizeSenegalPhone } from "@/lib/payments/dexpay";
 import type { UserRole } from "@/lib/types";
+import { clientIp, hitRateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 
 interface Body {
   email: string;
@@ -28,6 +29,9 @@ export async function POST(request: NextRequest) {
       { status: 503 }
     );
   }
+
+  const limit = await hitRateLimit(RATE_LIMITS.signup, clientIp(request.headers));
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
   const body = (await request.json()) as Body;
   const email = (body.email ?? "").trim().toLowerCase();

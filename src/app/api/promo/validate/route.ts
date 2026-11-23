@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getEventBySlug } from "@/lib/data/events";
 import { findPromoCode } from "@/lib/payments/promo";
+import { clientIp, hitRateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 
 /** Vérifie un code promo saisi à l'achat et renvoie la réduction applicable. */
 export async function GET(request: NextRequest) {
@@ -12,6 +13,8 @@ export async function GET(request: NextRequest) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ error: "Mode démo." }, { status: 400 });
   }
+  const limit = await hitRateLimit(RATE_LIMITS.promoValidate, clientIp(request.headers));
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
   const event = await getEventBySlug(slug);
   if (!event) {
     return NextResponse.json({ error: "Événement introuvable." }, { status: 404 });
