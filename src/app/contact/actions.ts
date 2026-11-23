@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { notifySupportOnWhatsapp } from "@/lib/notifications/whatsapp";
+import { clientIp, hitRateLimit, RATE_LIMITS, retryMessage } from "@/lib/rate-limit";
 
 export interface ContactSubmission {
   name: string;
@@ -41,6 +43,9 @@ export async function submitContactMessage(
   if (!isSupabaseConfigured) {
     return { ok: false, error: "Service indisponible pour le moment." };
   }
+
+  const limit = await hitRateLimit(RATE_LIMITS.contact, clientIp(await headers()));
+  if (!limit.allowed) return { ok: false, error: retryMessage(limit.retryAfter) };
 
   const admin = createAdminClient();
   const { data, error } = await admin

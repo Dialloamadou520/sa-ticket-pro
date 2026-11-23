@@ -19,6 +19,7 @@ import {
 import { discountFor, findPromoCode } from "@/lib/payments/promo";
 import { isEventPast } from "@/lib/format";
 import { SITE } from "@/lib/constants";
+import { clientIp, hitRateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 import type { FeePayer, PaymentProvider, TicketType } from "@/lib/types";
 
 interface Body {
@@ -33,6 +34,9 @@ interface Body {
 }
 
 export async function POST(request: NextRequest) {
+  const limit = await hitRateLimit(RATE_LIMITS.paymentInitiate, clientIp(request.headers));
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
+
   const body = (await request.json()) as Body;
   const event = await getEventBySlug(body.eventSlug);
   if (!event) {

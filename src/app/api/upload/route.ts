@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { hitRateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 
 const BUCKET = "event-images";
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
   }
+  const limit = await hitRateLimit(RATE_LIMITS.upload, user.id);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
   const form = await request.formData();
   const file = form.get("file");
